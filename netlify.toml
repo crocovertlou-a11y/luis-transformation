@@ -1,11 +1,9 @@
 [build]
   publish = "."
-
 [[headers]]
   for = "/sw.js"
   [headers.values]
     Cache-Control = "no-cache"
-
 [[headers]]
   for = "/*"
   [headers.values]
