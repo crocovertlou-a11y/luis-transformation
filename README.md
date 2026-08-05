@@ -1,11 +1,9 @@
-# Luis Transformation v4 — Musculation guidée
+# Luis Transformation v6 — Garmin Maps & Photo Analysis
 
-Cette version conserve le Dashboard et la Nutrition, et ajoute un module musculation guidé.
+- Cartes interactives OpenStreetMap pour imports GPX/TCX
+- Fiches de course façon Garmin avec distance, allure, durée, FC et dénivelé
+- Comparateur photo avant/après par pose
+- Analyse hebdomadaire basée sur poids et tour de taille
+- Données existantes conservées
 
-## Nouveautés
-- programmes Push, Pull, Legs, Haut/Bas du corps et Full body
-- exercices affichés automatiquement
-- séries et répétitions recommandées
-- poids saisi en face de chaque exercice
-- dernière charge mémorisée pour la prochaine séance
-- historique détaillé des exercices et charges
+Pour une synchronisation Garmin automatique, une approbation Garmin Developer Program et OAuth 2.0 restent nécessaires.
