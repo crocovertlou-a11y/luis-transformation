@@ -117,13 +117,60 @@ async function startBarcodeScan(){
 }
 function parseDuration(v){if(!v)return 0;const p=String(v).trim().split(':').map(Number);return p.length===3?p[0]*60+p[1]+p[2]/60:p.length===2?p[0]+p[1]/60:num(v)}
 function xmlText(doc,names){for(const n of names){const el=doc.getElementsByTagName(n)[0]||doc.getElementsByTagNameNS('*',n)[0];if(el?.textContent)return el.textContent}return ''}
+function setOperationStatus(id,message,type='working'){
+  const el=$(id);if(!el)return;
+  el.textContent=message;el.className=`operation-status ${type}`;
+  if(!message)el.classList.add('hidden');
+}
+function parseLocaleNumber(value){
+  if(value===null||value===undefined)return 0;
+  let s=String(value).trim().replace(/\s/g,'').replace(/[^0-9,.-]/g,'');
+  if(s.includes(',')&&!s.includes('.'))s=s.replace(',','.');
+  else if(s.includes(',')&&s.includes('.'))s=s.lastIndexOf(',')>s.lastIndexOf('.')?s.replace(/\./g,'').replace(',','.'):s.replace(/,/g,'');
+  return num(s);
+}
+function xmlNodes(doc,name){return [...doc.getElementsByTagName(name),...doc.getElementsByTagNameNS('*',name)]}
 async function importGarminFile(file){
-  const ext=file.name.split('.').pop().toLowerCase();if(ext==='fit')return toast('FIT brut : exporte l’activité Garmin en GPX, TCX ou CSV');
-  try{let run={id:crypto.randomUUID(),type:'Garmin',rpe:6,note:`Import Garmin · ${file.name}`};
-    if(['gpx','tcx'].includes(ext)){const doc=new DOMParser().parseFromString(await file.text(),'application/xml');const time=xmlText(doc,['Time','time']);run.date=(time||today()).slice(0,10);let pts=[...doc.getElementsByTagNameNS('*','trkpt')].map(n=>({lat:+n.getAttribute('lat'),lon:+n.getAttribute('lon')})).filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon));if(!pts.length){pts=[...doc.getElementsByTagNameNS('*','Trackpoint')].map(n=>({lat:num(xmlText(n,['LatitudeDegrees'])),lon:num(xmlText(n,['LongitudeDegrees']))})).filter(p=>p.lat&&p.lon)}run.route=pts.filter((_,i)=>i%Math.max(1,Math.floor(pts.length/600))===0);let dist=num(xmlText(doc,['DistanceMeters']))/1000;if(!dist&&pts.length>1){let m=0;for(let i=1;i<pts.length;i++){const a=pts[i-1],b=pts[i],R=6371,dLat=(b.lat-a.lat)*Math.PI/180,dLon=(b.lon-a.lon)*Math.PI/180,q=Math.sin(dLat/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLon/2)**2;m+=2*R*Math.asin(Math.sqrt(q))}dist=m}run.distance=fmt(dist);let sec=num(xmlText(doc,['TotalTimeSeconds']));if(!sec){const times=[...doc.getElementsByTagNameNS('*','time'),...doc.getElementsByTagNameNS('*','Time')].map(n=>Date.parse(n.textContent)).filter(Number.isFinite);if(times.length>1)sec=(Math.max(...times)-Math.min(...times))/1000}run.duration=fmt(sec/60);run.hr=num(xmlText(doc,['AverageHeartRateBpm','Value']));run.elevation=num(xmlText(doc,['ElevationGain']));}
-    else if(ext==='csv'){const lines=(await file.text()).split(/\r?\n/).filter(Boolean),sep=lines[0].includes(';')?';':',';const h=lines[0].split(sep).map(x=>x.replace(/"/g,'').trim().toLowerCase()),v=lines[1].split(sep).map(x=>x.replace(/"/g,'').trim());const get=(...keys)=>{const i=h.findIndex(x=>keys.some(k=>x.includes(k)));return i>=0?v[i]:''};run.date=(get('date','début')||today()).slice(0,10);run.distance=num(String(get('distance')).replace(',','.'));run.duration=parseDuration(get('temps','time','durée'));run.hr=num(get('fréquence cardiaque moyenne','avg hr','fc moyenne'));run.elevation=num(get('dénivelé','elevation gain'));}
-    else throw new Error('format');if(!run.distance)throw new Error('distance');data.running.push(run);save();toast('Activité Garmin importée');
-  }catch{toast('Fichier Garmin non reconnu')}
+  if(!file)return false;
+  const status='garminImportStatus',ext=(file.name.split('.').pop()||'').toLowerCase();
+  setOperationStatus(status,`Lecture de ${file.name}…`);
+  if(ext==='fit'){setOperationStatus(status,'Le FIT brut doit être exporté depuis Garmin Connect en GPX, TCX ou CSV.','error');return false}
+  try{
+    if(!['gpx','tcx','csv'].includes(ext))throw new Error('Format non pris en charge');
+    let run={id:crypto.randomUUID(),type:'Garmin',rpe:6,note:`Import Garmin · ${file.name}`,sourceFile:file.name};
+    if(['gpx','tcx'].includes(ext)){
+      const text=await file.text();if(!text.trim())throw new Error('Fichier vide');
+      const doc=new DOMParser().parseFromString(text,'application/xml');
+      if(doc.querySelector('parsererror'))throw new Error('XML invalide');
+      const time=xmlText(doc,['Time','time']);run.date=(time||today()).slice(0,10);
+      let pts=xmlNodes(doc,'trkpt').map(n=>({lat:+n.getAttribute('lat'),lon:+n.getAttribute('lon')})).filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon));
+      if(!pts.length)pts=xmlNodes(doc,'Trackpoint').map(n=>({lat:parseLocaleNumber(xmlText(n,['LatitudeDegrees'])),lon:parseLocaleNumber(xmlText(n,['LongitudeDegrees']))})).filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon)&&p.lat&&p.lon);
+      run.route=pts.filter((_,i)=>i%Math.max(1,Math.floor(pts.length/600))===0);
+      let dist=parseLocaleNumber(xmlText(doc,['DistanceMeters']))/1000;
+      if(!dist&&pts.length>1){for(let i=1;i<pts.length;i++){const a=pts[i-1],b=pts[i],R=6371,dLat=(b.lat-a.lat)*Math.PI/180,dLon=(b.lon-a.lon)*Math.PI/180,q=Math.sin(dLat/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLon/2)**2;dist+=2*R*Math.asin(Math.sqrt(q))}}
+      run.distance=fmt(dist);
+      let sec=parseLocaleNumber(xmlText(doc,['TotalTimeSeconds']));
+      if(!sec){const times=[...xmlNodes(doc,'time'),...xmlNodes(doc,'Time')].map(n=>Date.parse(n.textContent)).filter(Number.isFinite);if(times.length>1)sec=(Math.max(...times)-Math.min(...times))/1000}
+      run.duration=fmt(sec/60);run.hr=parseLocaleNumber(xmlText(doc,['AverageHeartRateBpm','Value']));run.elevation=parseLocaleNumber(xmlText(doc,['ElevationGain']));
+    }else{
+      const text=await file.text();const lines=text.split(/\r?\n/).filter(x=>x.trim());if(lines.length<2)throw new Error('CSV vide ou sans activité');
+      const candidates=[';',',','\t'];const sep=candidates.sort((a,b)=>lines[0].split(b).length-lines[0].split(a).length)[0];
+      const split=line=>line.split(sep).map(x=>x.replace(/^"|"$/g,'').trim());
+      const h=split(lines[0]).map(x=>x.toLowerCase());const v=split(lines[1]);
+      const get=(...keys)=>{const i=h.findIndex(x=>keys.some(k=>x.includes(k)));return i>=0?v[i]:''};
+      run.date=(get('date','début','start time')||today()).slice(0,10);
+      run.distance=parseLocaleNumber(get('distance'));if(run.distance>1000)run.distance/=1000;
+      run.duration=parseDuration(get('temps','time','durée','duration'));
+      run.hr=parseLocaleNumber(get('fréquence cardiaque moyenne','avg hr','fc moyenne','average heart rate'));
+      run.elevation=parseLocaleNumber(get('dénivelé','elevation gain','gain altitude'));
+    }
+    if(!run.distance||run.distance<=0)throw new Error('Distance introuvable dans le fichier');
+    if(!run.duration||run.duration<=0)run.duration=0;
+    data.running.push(run);
+    if(!save())throw new Error('Enregistrement local impossible');
+    setOperationStatus(status,`Activité importée : ${fmt(run.distance)} km${run.duration?` · ${Math.round(run.duration)} min`:''}.`,'success');
+    toast('Activité Garmin importée');return true;
+  }catch(err){console.error('Import Garmin',err);setOperationStatus(status,`Import impossible : ${err.message||'fichier non reconnu'}.`,'error');return false}
 }
 const PHOTO_DB='luis-transformation-photos';
 function photoDB(){return new Promise((ok,no)=>{const r=indexedDB.open(PHOTO_DB,1);r.onupgradeneeded=()=>r.result.createObjectStore('photos',{keyPath:'id'});r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)})}
@@ -147,7 +194,7 @@ $('foodResults').onclick=e=>{const el=e.target.closest('[data-food]');if(el)open
 $('customFoodForm').onsubmit=e=>{e.preventDefault();const f=new FormData(e.target),food={id:`custom-${Date.now()}`,name:f.get('name'),kcal:num(f.get('kcal')),protein:num(f.get('protein')),carbs:num(f.get('carbs')),fat:num(f.get('fat'))};data.customFoods.unshift(food);save();e.target.reset();e.target.classList.add('hidden');toast('Aliment créé')};
 $('mealSections').onclick=e=>{const b=e.target.closest('[data-food-delete]');if(!b)return;const d=$('nutritionDate').value,n=nutritionDay(d);n.entries=n.entries.filter(x=>x.id!==b.dataset.foodDelete);data.nutrition[d]=n;save()};$('copyYesterday').onclick=()=>{const d=new Date(($('nutritionDate').value||today())+'T12:00:00');d.setDate(d.getDate()-1);const prev=d.toISOString().slice(0,10),src=nutritionDay(prev);if(!src.entries.length)return toast('Aucun repas la veille');data.nutrition[$('nutritionDate').value]={entries:src.entries.map(x=>({...x,id:crypto.randomUUID()}))};save();toast('Journée copiée')};
 document.addEventListener('click',e=>{const b=e.target.closest('[data-delete]');if(!b)return;data[b.dataset.delete]=data[b.dataset.delete].filter(x=>x.id!==b.dataset.id);save()});$('scanBarcodeBtn').onclick=startBarcodeScan;$('barcodeManualBtn').onclick=()=>{const c=prompt('Saisis les chiffres du code-barres :');if(c)lookupBarcode(c)};
-$('garminImport').onchange=e=>{const f=e.target.files[0];if(f)importGarminFile(f);e.target.value=''};
+$('garminImport').onchange=async e=>{const f=e.target.files?.[0];try{if(f)await importGarminFile(f)}finally{e.target.value=''}};
 $('photoForm').onsubmit=async e=>{e.preventDefault();const file=selectedPhotoFile;if(!file)return toast('Choisis une photo');const id=crypto.randomUUID(),meta={id,date:$('photoDate').value,pose:$('photoPose').value,weight:$('photoWeight').value,waist:$('photoWaist').value,note:$('photoNote').value.trim()};try{await storePhoto(meta,file);data.photos=[...(data.photos||[]),meta];save();e.target.reset();$('photoDate').value=today();renderPhotos();toast('Photo enregistrée sur cet appareil')}catch{toast('Impossible d’enregistrer la photo')}};
 $('photoGrid').onclick=async e=>{const b=e.target.closest('[data-photo-delete]');if(!b)return;await deletePhoto(b.dataset.photoDelete);data.photos=(data.photos||[]).filter(x=>x.id!==b.dataset.photoDelete);save();renderPhotos()};
 function blobToDataURL(blob){return new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=()=>no(r.error);r.readAsDataURL(blob)})}
@@ -158,7 +205,48 @@ function selectProgressPhoto(file){if(!file)return;selectedPhotoFile=file;$('pho
 $('photoCameraFile').onchange=e=>selectProgressPhoto(e.target.files[0]);$('photoLibraryFile').onchange=e=>selectProgressPhoto(e.target.files[0]);$('openProgressOverview').onclick=()=>showView('history');
 function coachBubble(role,text){const el=document.createElement('div');el.className='coach-bubble '+role;el.textContent=text;$('coachMessages').appendChild(el)}
 $('nutritionCoachForm').onsubmit=async e=>{e.preventDefault();const message=$('nutritionCoachInput').value.trim();if(!message)return;coachBubble('user',message);$('nutritionCoachInput').value='';const btn=e.target.querySelector('button');btn.disabled=true;try{const t=totals($('nutritionDate').value);const r=await fetch('/.netlify/functions/nutrition-coach',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message,context:{profile:data.profile,todayTotals:t}})});const j=await r.json();if(!r.ok)throw new Error(j.error||'Coach indisponible');coachBubble('assistant',j.answer)}catch(err){coachBubble('assistant',err.message)}finally{btn.disabled=false}};
-$('chartMetric').onchange=drawChart;$('exportBtn').onclick=async()=>{try{toast('Préparation de la sauvegarde complète…');const payload=await fullBackupPayload(),a=document.createElement('a'),url=URL.createObjectURL(new Blob([JSON.stringify(payload)],{type:'application/json'}));a.href=url;a.download=`luis-transformation-backup-complet-${today()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);toast(`Sauvegarde créée · ${payload.photoFiles.length} photo(s)`)}catch(e){console.error(e);alert('Impossible de créer la sauvegarde complète')}};$('importInput').onchange=async e=>{try{const parsed=JSON.parse(await e.target.files[0].text()),incoming=parsed?.format==='luis-transformation-full-backup'?parsed.data:parsed;data=normalizeData(incoming);if(Array.isArray(parsed.photoFiles)){for(const item of parsed.photoFiles){const meta=(data.photos||[]).find(x=>x.id===item.id);if(meta&&item.dataUrl)await storePhoto(meta,dataURLToBlob(item.dataUrl))}}if(save())toast('Données et photos restaurées')}catch(err){console.error(err);alert('Fichier de sauvegarde invalide ou incomplet')}finally{e.target.value=''}};$('clearAllBtn').onclick=()=>{if(confirm('Effacer toutes les données de suivi ? Une sauvegarde complète est recommandée avant.')){data=clone(initialData);save()}};
+$('chartMetric').onchange=drawChart;
+async function downloadFullBackup(){
+  const status='backupStatus';setOperationStatus(status,'Préparation de la sauvegarde complète…');
+  try{
+    save();const payload=await fullBackupPayload();
+    payload.stats={dailyDays:Object.keys(payload.data.daily||{}).length,nutritionDays:Object.keys(payload.data.nutrition||{}).length,strengthSessions:payload.data.strength.length,runs:payload.data.running.length,photos:payload.photoFiles.length};
+    const json=JSON.stringify(payload);if(!json||json.length<50)throw new Error('Sauvegarde vide');
+    const blob=new Blob([json],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download=`luis-transformation-backup-complet-${today()}.json`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),10000);
+    localStorage.setItem('luis-transformation-last-export',new Date().toISOString());
+    setOperationStatus(status,`Sauvegarde créée : ${payload.stats.strengthSessions} séance(s), ${payload.stats.runs} course(s), ${payload.stats.photos} photo(s).`,'success');
+  }catch(e){console.error(e);setOperationStatus(status,`Échec de la sauvegarde : ${e.message||'erreur inconnue'}.`,'error')}
+}
+async function restoreFullBackup(file){
+  const status='backupStatus';if(!file)return;
+  setOperationStatus(status,`Lecture de ${file.name}…`);
+  const previousData=clone(data);
+  try{
+    if(file.size>80*1024*1024)throw new Error('Fichier trop volumineux pour Safari');
+    const text=await file.text();if(!text.trim())throw new Error('Fichier vide');
+    const parsed=JSON.parse(text);const incoming=parsed?.format==='luis-transformation-full-backup'?parsed.data:parsed;
+    if(!incoming||typeof incoming!=='object')throw new Error('Structure de sauvegarde invalide');
+    const restored=normalizeData(incoming);
+    const useful=Object.keys(restored.daily).length+Object.keys(restored.nutrition).length+restored.strength.length+restored.running.length+restored.photos.length;
+    if(!useful&&!confirm('Cette sauvegarde ne contient aucun historique. Continuer ?'))throw new Error('Import annulé');
+    // Sauvegarder les données principales d’abord : elles ne dépendent pas des photos.
+    data=restored;if(!save())throw new Error('Impossible d’enregistrer les données restaurées');
+    const photos=Array.isArray(parsed.photoFiles)?parsed.photoFiles:[];let photoOk=0,photoFail=0;
+    for(let i=0;i<photos.length;i++){
+      setOperationStatus(status,`Données restaurées. Photos ${i+1}/${photos.length}…`);
+      const item=photos[i],meta=(data.photos||[]).find(x=>x.id===item.id);
+      if(!meta||!item.dataUrl)continue;
+      try{await storePhoto(meta,dataURLToBlob(item.dataUrl));photoOk++}catch(e){console.warn('Photo non restaurée',item.id,e);photoFail++}
+    }
+    renderAll();
+    const msg=`Import terminé : ${data.strength.length} séance(s), ${data.running.length} course(s), ${photoOk} photo(s) restaurée(s)${photoFail?`, ${photoFail} en échec`:''}.`;
+    setOperationStatus(status,msg,photoFail?'working':'success');toast('Sauvegarde restaurée');
+  }catch(err){console.error('Import global',err);data=previousData;save();setOperationStatus(status,`Import impossible : ${err.message||'fichier invalide'}. Les données actuelles ont été conservées.`,'error')}
+}
+$('exportBtn').onclick=downloadFullBackup;
+$('importInput').onchange=async e=>{const file=e.target.files?.[0];try{await restoreFullBackup(file)}finally{e.target.value=''}};
+$('clearAllBtn').onclick=()=>{if(confirm('Effacer toutes les données de suivi ? Une sauvegarde complète est recommandée avant.')){data=clone(initialData);save()}};
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;$('installBtn').classList.remove('hidden')});$('installBtn').onclick=async()=>{if(deferredPrompt){deferredPrompt.prompt();deferredPrompt=null}};if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js'));
 document.addEventListener('DOMContentLoaded',()=>{setDefaults();fillDaily(today());fillSupp(today());updateRanges();renderWorkoutPreset();renderAll()});
 
@@ -267,4 +355,4 @@ $('confirmAiFood').onclick=e=>{
 };
 
 if($("profileShortcut"))$("profileShortcut").onclick=()=>showView("settings");
-if($("profileForm"))$("profileForm").onsubmit=e=>{e.preventDefault();data.profile={...data.profile,name:$("profileName").value.trim()||"Luis",age:num($("profileAge").value)||41,height:num($("profileHeight").value)||189,calorieGoal:num($("profileCalories").value)||2400,proteinGoal:num($("profileProtein").value)||170};saveData();renderAll();toast("Profil enregistré");showView("dashboard")};
+if($("profileForm"))$("profileForm").onsubmit=e=>{e.preventDefault();data.profile={...data.profile,name:$("profileName").value.trim()||"Luis",age:num($("profileAge").value)||41,height:num($("profileHeight").value)||189,calorieGoal:num($("profileCalories").value)||2400,proteinGoal:num($("profileProtein").value)||170};save();renderAll();toast("Profil enregistré");showView("dashboard")};

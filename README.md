@@ -26,3 +26,9 @@ Facultatives :
 Par défaut, les fonctions utilisent `gpt-5-mini`.
 
 La clé API reste exclusivement côté serveur dans Netlify. Ne jamais la placer dans `app.js` ou dans GitHub.
+
+
+## v9.2 Import & Backup Safe
+- Import global avec progression, validation, rollback et restauration des photos.
+- Import Garmin GPX/TCX/CSV avec statut visible et erreurs explicites.
+- Export complet vérifié et résumé du contenu.
