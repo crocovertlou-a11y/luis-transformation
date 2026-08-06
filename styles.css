@@ -34,3 +34,20 @@ body{background:radial-gradient(circle at 15% 0%,rgba(121,230,163,.12),transpare
 .run-card{padding:0;overflow:hidden;margin-bottom:16px}.run-card-head{display:flex;justify-content:space-between;align-items:flex-start;padding:18px}.run-card-head h3{margin:4px 0 0}.run-map{height:250px;background:#1a1f25}.empty-map{display:grid;place-items:center;color:var(--muted)}.run-stats{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:14px}.run-card>p{padding:0 18px 18px}.leaflet-container{font-family:inherit}.leaflet-control-attribution{font-size:8px}
 .photo-analysis-card{background:linear-gradient(135deg,rgba(255,184,107,.11),rgba(98,214,255,.05))}.comparison-stage{position:relative;aspect-ratio:3/4;max-height:520px;overflow:hidden;border-radius:22px;background:#090a0c}.comparison-stage>img,.comparison-after img{width:100%;height:100%;object-fit:cover;object-position:center}.comparison-after{position:absolute;inset:0 auto 0 0;width:50%;overflow:hidden;border-right:2px solid white}.comparison-after img{width:100vw;max-width:none}.comparison-stage input{position:absolute;left:6%;right:6%;bottom:16px;width:88%;z-index:4}.analysis-summary{padding-top:18px}.analysis-summary h3{margin:7px 0 12px}.analysis-chips{display:flex;flex-wrap:wrap;gap:8px}.analysis-chips span{padding:8px 11px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid var(--soft-border);font-size:.82rem}
 @media(max-width:620px){.garmin-summary{align-items:flex-start;flex-direction:column}.garmin-kpis{width:100%}.garmin-kpis>div{flex:1}.run-stats{grid-template-columns:repeat(3,1fr)}.run-map{height:220px}}
+
+/* Dashboard cards: tappable navigation */
+.dashboard-link {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+.dashboard-link:active { transform: scale(.985); }
+.dashboard-link:focus-visible {
+  outline: 3px solid rgba(33, 150, 243, .35);
+  outline-offset: 3px;
+}
+@media (hover:hover) {
+  .dashboard-link:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(17, 24, 39, .12); }
+}
+.goal-row.dashboard-link { border-radius: 14px; padding: 10px 8px; margin-inline: -8px; }
+.spotlight-card.dashboard-link button { pointer-events: none; }
