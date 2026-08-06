@@ -60,11 +60,11 @@ Legs:{target:'Quadriceps · ischios · fessiers · mollets',exercises:[
 {name:'Circuit abdos',sets:3,reps:'12 crunchs · 10 genoux · 40 s planche',rest:'45 s',core:true}]}}
 let activeWorkoutExercises=[];
 function latestExerciseWeight(name){for(const w of [...data.strength].sort((a,b)=>b.date.localeCompare(a.date))){const ex=(w.workoutExercises||[]).find(x=>x.name===name&&num(x.weight)>0);if(ex)return num(ex.weight)}return ''}
-function renderWorkoutPreset(){const type=$('strengthType').value,preset=WORKOUT_PRESETS[type]||WORKOUT_PRESETS.Push;$('workoutTitle').textContent=`Séance ${type}`;$('workoutTarget').textContent=preset.target;activeWorkoutExercises=preset.exercises.map((e,i)=>({...e,weight:latestExerciseWeight(e.name),done:false,index:i}));$('exerciseRows').innerHTML=activeWorkoutExercises.map((e,i)=>`<article class="exercise-row ${e.core?'core-card':''}"><div class="exercise-main"><span class="exercise-tag">${e.core?'ABDOS':'EXERCICE'}</span><strong>${escapeHtml(e.name)}</strong><small>${e.sets} séries × ${e.reps} · repos ${e.rest}</small></div><label class="weight-field"><span>${e.reps.includes('s')?'Charge':'Poids'}</span><div><input type="number" step="0.5" min="0" inputmode="decimal" data-exercise-weight="${i}" value="${e.weight}" placeholder="kg"><b>kg</b></div></label></article>`).join('')}
+function renderWorkoutPreset(){const type=$('strengthType').value,preset=WORKOUT_PRESETS[type]||WORKOUT_PRESETS.Push;$('workoutTitle').textContent=`Séance ${type}`;$('workoutTarget').textContent=preset.target;activeWorkoutExercises=preset.exercises.map((e,i)=>({...e,weight:latestExerciseWeight(e.name),done:false,index:i}));$('exerciseRows').innerHTML=activeWorkoutExercises.map((e,i)=>`<article class="exercise-row ${e.core?'core-card':''}"><div class="exercise-main"><span class="exercise-tag">${e.core?'ABDOS':'EXERCICE'}</span><strong>${escapeHtml(e.name)}</strong><small>${e.sets} séries × ${e.reps} · repos ${e.rest}</small></div><div class="exercise-actions"><label class="weight-field"><span>${e.reps.includes('s')?'Charge':'Poids'}</span><div><input type="number" step="0.5" min="0" inputmode="decimal" data-exercise-weight="${i}" value="${e.weight}" placeholder="kg"><b>kg</b></div></label><a class="technique-link" href="https://www.youtube.com/results?search_query=${encodeURIComponent(e.name+' technique exercice musculation')}" target="_blank" rel="noopener">▶ Technique</a></div></article>`).join('')}
 function collectWorkoutExercises(){return activeWorkoutExercises.map((e,i)=>({...e,weight:num(document.querySelector(`[data-exercise-weight="${i}"]`)?.value)}))}
 
-const initialData={daily:{},supplements:{},nutrition:{},strength:[],running:[],customFoods:[],photos:[],profile:{initialWeight:81.5,initialWaist:92,proteinGoal:170,calorieGoal:2400,creatineGoal:5}};
-let data=loadData(),selectedFood=null,deferredPrompt=null;
+const initialData={daily:{},supplements:{},nutrition:{},strength:[],running:[],customFoods:[],photos:[],profile:{name:"Luis Sanchez",age:41,height:189,initialWeight:81.5,initialWaist:92,proteinGoal:170,calorieGoal:2400,creatineGoal:5}};
+let data=loadData(),selectedFood=null,deferredPrompt=null,selectedPhotoFile=null;
 const $=id=>document.getElementById(id),today=()=>{const d=new Date(),y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${day}`},num=(v,fb=0)=>Number.isFinite(Number(v))?Number(v):fb,fmt=n=>Math.round(n*10)/10;
 function clone(v){return JSON.parse(JSON.stringify(v))}
 function normalizeData(raw={}){const p=raw&&typeof raw==='object'?raw:{};return {...clone(initialData),...p,schemaVersion:SCHEMA_VERSION,daily:p.daily&&typeof p.daily==='object'?p.daily:{},supplements:p.supplements&&typeof p.supplements==='object'?p.supplements:{},nutrition:p.nutrition&&typeof p.nutrition==='object'?p.nutrition:{},strength:Array.isArray(p.strength)?p.strength:[],running:Array.isArray(p.running)?p.running:[],customFoods:Array.isArray(p.customFoods)?p.customFoods:[],photos:Array.isArray(p.photos)?p.photos:[],profile:{...initialData.profile,...(p.profile||{})}}}
@@ -76,7 +76,9 @@ function save(){try{const previous=localStorage.getItem(STORAGE_KEY);if(previous
 function toast(m){$('toast').textContent=m;$('toast').classList.remove('hidden');setTimeout(()=>$('toast').classList.add('hidden'),2000)}
 function fmtDate(d){return new Intl.DateTimeFormat('fr-CH',{day:'2-digit',month:'short',year:'numeric'}).format(new Date(d+'T12:00:00'))}
 function setDefaults(force=false){const current=today();['dailyDate','supplementDate','nutritionDate','strengthDate','runDate','photoDate'].forEach(id=>{const input=$(id);if(input&&(force||!input.value))input.value=current})}
-function showView(name){setDefaults();document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.dataset.view===name));document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.target===name));$('pageTitle').textContent={dashboard:'Tableau de bord',daily:'Saisie quotidienne',nutrition:'Nutrition',supplements:'Compléments',strength:'Musculation',running:'Course',history:'Historique',photos:'Photos progression',settings:'Plus'}[name]||'Luis Transformation';$('moreSheet').classList.add('hidden');if(name==='nutrition')renderNutrition();if(name==='history')drawChart();if(name==='photos')renderPhotos();scrollTo(0,0)}
+function profileInitials(name){const parts=String(name||"Luis").trim().split(/\s+/).filter(Boolean);return (parts.slice(0,2).map(x=>x[0]).join("")||"L").toUpperCase()}
+function renderProfile(){const p=data.profile||{};const name=String(p.name||"Luis Sanchez").trim();const first=name.split(/\s+/)[0]||"Luis";const initials=profileInitials(name);if($("profileDisplayName"))$("profileDisplayName").textContent=first;if($("profileInitials"))$("profileInitials").textContent=initials;if($("settingsInitials"))$("settingsInitials").textContent=initials;if($("profileName"))$("profileName").value=name;if($("profileAge"))$("profileAge").value=p.age||41;if($("profileHeight"))$("profileHeight").value=p.height||189;if($("profileCalories"))$("profileCalories").value=p.calorieGoal||2400;if($("profileProtein"))$("profileProtein").value=p.proteinGoal||170}
+function showView(name){setDefaults();document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.dataset.view===name));document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.target===name));$('pageTitle').textContent={dashboard:'Tableau de bord',daily:'Saisie quotidienne',nutrition:'Nutrition',supplements:'Compléments',strength:'Musculation',running:'Course',history:'Historique',photos:'Photos progression',settings:'Plus'}[name]||'Luis Transformation';$('moreSheet').classList.add('hidden');if(name==='nutrition')renderNutrition();if(name==='history')drawChart();if(name==='photos')renderPhotos();if(name==='settings')renderProfile();scrollTo(0,0)}
 function nutritionDay(date=today()){const n=data.nutrition[date];if(!n)return {entries:[]};if(Array.isArray(n.entries))return n;const legacyProtein=num(n.protein);return legacyProtein?{...n,entries:[],legacyProtein}:{...n,entries:[]}}
 function totals(date=today(),meal=null){const n=nutritionDay(date);const list=meal?n.entries.filter(e=>e.meal===meal):n.entries;const t=list.reduce((a,e)=>({kcal:a.kcal+num(e.kcal),protein:a.protein+num(e.protein),carbs:a.carbs+num(e.carbs),fat:a.fat+num(e.fat)}),{kcal:0,protein:0,carbs:0,fat:0});if(!meal&&n.legacyProtein&&!t.protein)t.protein=n.legacyProtein;return t}
 function renderNutrition(){const date=$('nutritionDate').value||today(),t=totals(date);$('nutKcal').textContent=Math.round(t.kcal);$('nutProtein').textContent=fmt(t.protein);$('nutCarbs').textContent=fmt(t.carbs);$('nutFat').textContent=fmt(t.fat);$('kcalBar').style.width=`${Math.min(100,t.kcal/data.profile.calorieGoal*100)}%`;$('proteinHint').textContent=t.protein>=data.profile.proteinGoal?'Objectif protéines atteint ✅':`Il te manque ${Math.ceil(data.profile.proteinGoal-t.protein)} g de protéines.`;const host=$('mealSections');host.innerHTML='';Object.entries(MEALS).forEach(([key,label])=>{const n=nutritionDay(date),list=n.entries.filter(e=>e.meal===key),mt=totals(date,key),sec=document.createElement('section');sec.className='card section-card';sec.innerHTML=`<div class="meal-head"><h2 class="meal-title">${label}</h2><span class="meal-total">${Math.round(mt.kcal)} kcal · ${fmt(mt.protein)} g prot.</span></div>${list.length?list.map(e=>`<div class="food-row"><div><strong>${escapeHtml(e.name)}</strong><small>${e.grams} g · ${Math.round(e.kcal)} kcal · ${fmt(e.protein)} g prot.</small></div><button class="delete" data-food-delete="${e.id}">×</button></div>`).join(''):'<div class="empty">Aucun aliment</div>'}`;host.appendChild(sec)});renderFoodSearch($('foodSearch').value)}
@@ -84,7 +86,7 @@ function foods(){return [...data.customFoods,...DEFAULT_FOODS]}function renderFo
 function openFood(f){selectedFood=f;$('dialogFoodName').textContent=f.name;$('dialogFoodMacros').textContent=`Pour 100 g : ${f.kcal} kcal · ${f.protein} g protéines · ${f.carbs} g glucides · ${f.fat} g lipides`;$('gramsInput').value=100;$('foodDialog').showModal()}
 function latestDaily(field,fallback){const r=Object.entries(data.daily).filter(([,v])=>v[field]!==''&&v[field]!=null).sort(([a],[b])=>b.localeCompare(a));return r.length?num(r[0][1][field],fallback):fallback}
 function getWeekBounds(){const d=new Date(),day=(d.getDay()+6)%7,start=new Date(d);start.setDate(d.getDate()-day);start.setHours(0,0,0,0);const end=new Date(start);end.setDate(start.getDate()+6);return{start,end}}function inCurrentWeek(ds){const d=new Date(ds+'T12:00:00'),{start,end}=getWeekBounds();return d>=start&&d<=end}
-function renderDashboard(){const date=today(),daily=data.daily[date]||{},sup=data.supplements[date]||{},t=totals(date),weight=latestDaily('weight',data.profile.initialWeight),waist=latestDaily('waist',data.profile.initialWaist);$('todayLabel').textContent=new Intl.DateTimeFormat('fr-CH',{weekday:'long',day:'numeric',month:'long'}).format(new Date());$('currentWeight').textContent=`${weight.toFixed(1).replace('.',',')} kg`;$('currentWaist').textContent=`${waist.toFixed(1).replace('.',',')} cm`;$('weightDelta').textContent=`${(weight-data.profile.initialWeight).toFixed(1)} kg`;$('waistDelta').textContent=`${(waist-data.profile.initialWaist).toFixed(1)} cm`;$('caloriesToday').textContent=`${Math.round(t.kcal)} / ${data.profile.calorieGoal}`;$('calorieStatus').textContent=t.kcal>=data.profile.calorieGoal*.9?'Bien avancé':'À compléter';$('proteinToday').textContent=`${fmt(t.protein)} / ${data.profile.proteinGoal} g`;$('proteinStatus').textContent=t.protein>=data.profile.proteinGoal?'Objectif atteint':'À compléter';const creatine=sup.creatineTaken?num(sup.creatineAmount,5):0;let checks=0;if(daily.weight)checks++;if(daily.waist)checks++;if(daily.sleep)checks++;if(daily.water)checks++;if(t.protein>=data.profile.proteinGoal)checks++;if(creatine>=5)checks++;if(data.strength.some(x=>x.date===date)||data.running.some(x=>x.date===date))checks++;$('dayScore').textContent=Math.round(checks/7*100);const strength=data.strength.filter(x=>inCurrentWeek(x.date)).length,runs=data.running.filter(x=>inCurrentWeek(x.date)).length,creatineDays=Object.entries(data.supplements).filter(([d,v])=>inCurrentWeek(d)&&v.creatineTaken&&num(v.creatineAmount)>=5).length;$('strengthProgress').value=Math.min(strength,4);$('runProgress').value=Math.min(runs,3);$('creatineProgress').value=Math.min(creatineDays,7);$('strengthCount').textContent=`${strength}/4`;$('runCount').textContent=`${runs}/3`;$('creatineCount').textContent=`${creatineDays}/7`;const {start,end}=getWeekBounds();$('weekRange').textContent=`${start.getDate()}–${end.getDate()}`;const pc=$('photoCount');if(pc)pc.textContent=`${(data.photos||[]).length} photo${(data.photos||[]).length>1?'s':''}`}
+function renderDashboard(){const date=today(),daily=data.daily[date]||{},sup=data.supplements[date]||{},t=totals(date),weight=latestDaily('weight',data.profile.initialWeight),waist=latestDaily('waist',data.profile.initialWaist);$('todayLabel').textContent=new Intl.DateTimeFormat('fr-CH',{weekday:'long',day:'numeric',month:'long'}).format(new Date());$('currentWeight').textContent=`${weight.toFixed(1).replace('.',',')} kg`;$('currentWaist').textContent=`${waist.toFixed(1).replace('.',',')} cm`;$('weightDelta').textContent=`${(weight-data.profile.initialWeight).toFixed(1)} kg`;$('waistDelta').textContent=`${(waist-data.profile.initialWaist).toFixed(1)} cm`;$('caloriesToday').textContent=`${Math.round(t.kcal)} / ${data.profile.calorieGoal}`;$('calorieStatus').textContent=t.kcal>=data.profile.calorieGoal*.9?'Bien avancé':'À compléter';$('proteinToday').textContent=`${fmt(t.protein)} / ${data.profile.proteinGoal} g`;$('proteinStatus').textContent=t.protein>=data.profile.proteinGoal?'Objectif atteint':'À compléter';const creatine=sup.creatineTaken?num(sup.creatineAmount,5):0;let checks=0;if(daily.weight)checks++;if(daily.waist)checks++;if(daily.sleep)checks++;if(daily.water)checks++;if(t.protein>=data.profile.proteinGoal)checks++;if(creatine>=5)checks++;if(data.strength.some(x=>x.date===date)||data.running.some(x=>x.date===date))checks++;$('dayScore').textContent=Math.round(checks/7*100);const strength=data.strength.filter(x=>inCurrentWeek(x.date)).length,runs=data.running.filter(x=>inCurrentWeek(x.date)).length,creatineDays=Object.entries(data.supplements).filter(([d,v])=>inCurrentWeek(d)&&v.creatineTaken&&num(v.creatineAmount)>=5).length;$('strengthProgress').value=Math.min(strength,4);$('runProgress').value=Math.min(runs,3);$('creatineProgress').value=Math.min(creatineDays,7);$('strengthCount').textContent=`${strength}/4`;$('runCount').textContent=`${runs}/3`;$('creatineCount').textContent=`${creatineDays}/7`;const {start,end}=getWeekBounds();$('weekRange').textContent=`${start.getDate()}–${end.getDate()}`;const pc=$('photoCount');if(pc)pc.textContent=`${(data.photos||[]).length} photo${(data.photos||[]).length>1?'s':''}`;const rows=Object.entries(data.daily).filter(([,v])=>num(v.weight)>0||num(v.waist)>0).sort(([a],[b])=>a.localeCompare(b));const first=rows[0]?.[1]||{},last=rows.at(-1)?.[1]||{};const wd=num(last.weight||data.profile.initialWeight)-num(first.weight||data.profile.initialWeight),wa=num(last.waist||data.profile.initialWaist)-num(first.waist||data.profile.initialWaist);$('totalWeightDelta').textContent=`${wd>0?'+':''}${fmt(wd)} kg`;$('totalWaistDelta').textContent=`${wa>0?'+':''}${fmt(wa)} cm`;$('totalWorkouts').textContent=data.strength.length;$('totalRuns').textContent=`${fmt(data.running.reduce((s,r)=>s+num(r.distance),0))} km`;$('progressMessage').textContent=rows.length<2?'Commence par enregistrer régulièrement tes mesures. Chaque étape compte.':wa<-.5?`Excellent rythme : ${Math.abs(fmt(wa))} cm en moins. Continue ainsi.`:wd<-.3?`Belle progression : ${Math.abs(fmt(wd))} kg en moins. Garde cette régularité.`:'Ta constance construit le résultat. Les progrès deviennent visibles semaine après semaine.'}
 function fillDaily(d){const v=data.daily[d]||{};['weight','waist','sleep','water'].forEach(k=>$(k).value=v[k]??'');$('stress').value=v.stress??3;$('energy').value=v.energy??3;$('hunger').value=v.hunger??3;$('dailyNote').value=v.note??'';updateRanges()}function fillSupp(d){const v=data.supplements[d]||{};$('creatineTaken').checked=!!v.creatineTaken;$('creatineAmount').value=v.creatineAmount??5;$('proteinPowderTaken').checked=!!v.proteinPowderTaken;$('proteinPowderAmount').value=v.proteinPowderAmount??30;$('otherSupplements').value=v.other??''}
 function updateRanges(){['stress','energy','hunger','strengthRpe','runRpe'].forEach(id=>{const o=$(id+'Out');if(o)o.textContent=`${$(id).value}/${$(id).max}`})}function escapeHtml(s=''){return String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function renderLists(){const mk=(x,type)=>{const detail=type==='strength'&&x.workoutExercises?.length?x.workoutExercises.map(e=>`${e.name} · ${e.sets}×${e.reps} · ${e.weight||0} kg`).join('\n'):escapeHtml(x.exercises||x.note||'');return `<article class="entry"><div class="entry-head"><div><h4>${type==='strength'?escapeHtml(x.type):`${escapeHtml(x.type)} — ${x.distance} km`}</h4><span class="muted">${fmtDate(x.date)}</span></div><button class="delete-entry" data-delete="${type}" data-id="${x.id}">×</button></div><p>${type==='strength'&&x.workoutExercises?.length?escapeHtml(detail):detail}</p></article>`};$('strengthList').innerHTML=[...data.strength].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8).map(x=>mk(x,'strength')).join('');$('runList').innerHTML=[...data.running].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8).map(x=>mk(x,'running')).join('');$('historyList').innerHTML=Object.entries(data.daily).sort(([a],[b])=>b.localeCompare(a)).slice(0,12).map(([d,v])=>`<article class="entry"><h4>${fmtDate(d)}</h4><div class="entry-meta">${v.weight?`<span class="chip">${v.weight} kg</span>`:''}${v.waist?`<span class="chip">${v.waist} cm</span>`:''}</div></article>`).join('')}
@@ -130,7 +132,7 @@ async function getPhoto(id){const db=await photoDB();return new Promise((ok,no)=
 async function deletePhoto(id){const db=await photoDB();await new Promise((ok,no)=>{const tx=db.transaction('photos','readwrite');tx.objectStore('photos').delete(id);tx.oncomplete=ok;tx.onerror=()=>no(tx.error)})}
 async function renderPhotos(){const host=$('photoGrid');if(!host)return;host.innerHTML='<div class="empty">Chargement…</div>';const items=[...(data.photos||[])].sort((a,b)=>b.date.localeCompare(a.date));if(!items.length){host.innerHTML='<div class="empty card">Ajoute ta première photo pour créer ton avant/après.</div>';return}const cards=[];for(const m of items){try{const r=await getPhoto(m.id),url=r?.blob?URL.createObjectURL(r.blob):'';cards.push(`<article class="photo-card card"><img src="${url}" alt="Progression ${m.date}"><div><strong>${fmtDate(m.date)} · ${escapeHtml(m.pose)}</strong><small>${m.weight||'—'} kg · ${m.waist||'—'} cm</small><p>${escapeHtml(m.note||'')}</p><button class="delete-photo danger-text" data-photo-delete="${m.id}">Supprimer</button></div></article>`)}catch{}}host.innerHTML=cards.join('')}
 
-function renderAll(){renderDashboard();renderLists();if(document.querySelector('[data-view="nutrition"]').classList.contains('active'))renderNutrition();if(document.querySelector('[data-view="photos"]').classList.contains('active'))renderPhotos()}
+function renderAll(){renderProfile();renderDashboard();renderLists();if(document.querySelector('[data-view="nutrition"]').classList.contains('active'))renderNutrition();if(document.querySelector('[data-view="photos"]').classList.contains('active'))renderPhotos()}
 document.querySelectorAll('.nav-item').forEach(b=>b.addEventListener('click',()=>b.classList.contains('more-button')?$('moreSheet').classList.remove('hidden'):showView(b.dataset.target)));document.querySelectorAll('[data-go]').forEach(el=>{
   el.addEventListener('click',()=>showView(el.dataset.go));
   if(el.getAttribute('role')==='button') el.addEventListener('keydown',e=>{
@@ -146,11 +148,123 @@ $('customFoodForm').onsubmit=e=>{e.preventDefault();const f=new FormData(e.targe
 $('mealSections').onclick=e=>{const b=e.target.closest('[data-food-delete]');if(!b)return;const d=$('nutritionDate').value,n=nutritionDay(d);n.entries=n.entries.filter(x=>x.id!==b.dataset.foodDelete);data.nutrition[d]=n;save()};$('copyYesterday').onclick=()=>{const d=new Date(($('nutritionDate').value||today())+'T12:00:00');d.setDate(d.getDate()-1);const prev=d.toISOString().slice(0,10),src=nutritionDay(prev);if(!src.entries.length)return toast('Aucun repas la veille');data.nutrition[$('nutritionDate').value]={entries:src.entries.map(x=>({...x,id:crypto.randomUUID()}))};save();toast('Journée copiée')};
 document.addEventListener('click',e=>{const b=e.target.closest('[data-delete]');if(!b)return;data[b.dataset.delete]=data[b.dataset.delete].filter(x=>x.id!==b.dataset.id);save()});$('scanBarcodeBtn').onclick=startBarcodeScan;$('barcodeManualBtn').onclick=()=>{const c=prompt('Saisis les chiffres du code-barres :');if(c)lookupBarcode(c)};
 $('garminImport').onchange=e=>{const f=e.target.files[0];if(f)importGarminFile(f);e.target.value=''};
-$('photoForm').onsubmit=async e=>{e.preventDefault();const file=$('photoFile').files[0];if(!file)return toast('Choisis une photo');const id=crypto.randomUUID(),meta={id,date:$('photoDate').value,pose:$('photoPose').value,weight:$('photoWeight').value,waist:$('photoWaist').value,note:$('photoNote').value.trim()};try{await storePhoto(meta,file);data.photos=[...(data.photos||[]),meta];save();e.target.reset();$('photoDate').value=today();renderPhotos();toast('Photo enregistrée sur cet appareil')}catch{toast('Impossible d’enregistrer la photo')}};
+$('photoForm').onsubmit=async e=>{e.preventDefault();const file=selectedPhotoFile;if(!file)return toast('Choisis une photo');const id=crypto.randomUUID(),meta={id,date:$('photoDate').value,pose:$('photoPose').value,weight:$('photoWeight').value,waist:$('photoWaist').value,note:$('photoNote').value.trim()};try{await storePhoto(meta,file);data.photos=[...(data.photos||[]),meta];save();e.target.reset();$('photoDate').value=today();renderPhotos();toast('Photo enregistrée sur cet appareil')}catch{toast('Impossible d’enregistrer la photo')}};
 $('photoGrid').onclick=async e=>{const b=e.target.closest('[data-photo-delete]');if(!b)return;await deletePhoto(b.dataset.photoDelete);data.photos=(data.photos||[]).filter(x=>x.id!==b.dataset.photoDelete);save();renderPhotos()};
 function blobToDataURL(blob){return new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=()=>no(r.error);r.readAsDataURL(blob)})}
 function dataURLToBlob(url){const [head,body]=url.split(',');const mime=(head.match(/data:(.*?);/)||[])[1]||'image/jpeg';const bin=atob(body),arr=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);return new Blob([arr],{type:mime})}
 async function fullBackupPayload(){const payload={format:'luis-transformation-full-backup',schemaVersion:SCHEMA_VERSION,exportedAt:new Date().toISOString(),origin:location.origin,data:normalizeData(data),photoFiles:[]};for(const meta of payload.data.photos||[]){try{const rec=await getPhoto(meta.id);if(rec?.blob)payload.photoFiles.push({id:meta.id,type:rec.blob.type||'image/jpeg,data',dataUrl:await blobToDataURL(rec.blob)})}catch(e){console.warn('Photo non exportée',meta.id,e)}}return payload}
+
+function selectProgressPhoto(file){if(!file)return;selectedPhotoFile=file;$('photoPreviewImage').src=URL.createObjectURL(file);$('photoPreview').classList.remove('hidden')}
+$('photoCameraFile').onchange=e=>selectProgressPhoto(e.target.files[0]);$('photoLibraryFile').onchange=e=>selectProgressPhoto(e.target.files[0]);$('openProgressOverview').onclick=()=>showView('history');
+function coachBubble(role,text){const el=document.createElement('div');el.className='coach-bubble '+role;el.textContent=text;$('coachMessages').appendChild(el)}
+$('nutritionCoachForm').onsubmit=async e=>{e.preventDefault();const message=$('nutritionCoachInput').value.trim();if(!message)return;coachBubble('user',message);$('nutritionCoachInput').value='';const btn=e.target.querySelector('button');btn.disabled=true;try{const t=totals($('nutritionDate').value);const r=await fetch('/.netlify/functions/nutrition-coach',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message,context:{profile:data.profile,todayTotals:t}})});const j=await r.json();if(!r.ok)throw new Error(j.error||'Coach indisponible');coachBubble('assistant',j.answer)}catch(err){coachBubble('assistant',err.message)}finally{btn.disabled=false}};
 $('chartMetric').onchange=drawChart;$('exportBtn').onclick=async()=>{try{toast('Préparation de la sauvegarde complète…');const payload=await fullBackupPayload(),a=document.createElement('a'),url=URL.createObjectURL(new Blob([JSON.stringify(payload)],{type:'application/json'}));a.href=url;a.download=`luis-transformation-backup-complet-${today()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);toast(`Sauvegarde créée · ${payload.photoFiles.length} photo(s)`)}catch(e){console.error(e);alert('Impossible de créer la sauvegarde complète')}};$('importInput').onchange=async e=>{try{const parsed=JSON.parse(await e.target.files[0].text()),incoming=parsed?.format==='luis-transformation-full-backup'?parsed.data:parsed;data=normalizeData(incoming);if(Array.isArray(parsed.photoFiles)){for(const item of parsed.photoFiles){const meta=(data.photos||[]).find(x=>x.id===item.id);if(meta&&item.dataUrl)await storePhoto(meta,dataURLToBlob(item.dataUrl))}}if(save())toast('Données et photos restaurées')}catch(err){console.error(err);alert('Fichier de sauvegarde invalide ou incomplet')}finally{e.target.value=''}};$('clearAllBtn').onclick=()=>{if(confirm('Effacer toutes les données de suivi ? Une sauvegarde complète est recommandée avant.')){data=clone(initialData);save()}};
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;$('installBtn').classList.remove('hidden')});$('installBtn').onclick=async()=>{if(deferredPrompt){deferredPrompt.prompt();deferredPrompt=null}};if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js'));
 document.addEventListener('DOMContentLoaded',()=>{setDefaults();fillDaily(today());fillSupp(today());updateRanges();renderWorkoutPreset();renderAll()});
+
+/* Luis Transformation v9 — ajout alimentaire assisté par IA */
+let aiFoodPhotoFile=null;
+let aiFoodPhotoDataUrl='';
+let aiFoodCandidate=null;
+
+function setAiFoodPhoto(file){
+  if(!file)return;
+  if(!file.type.startsWith('image/'))return toast('Choisis une image');
+  aiFoodPhotoFile=file;
+  const url=URL.createObjectURL(file);
+  $('aiFoodPreviewImage').src=url;
+  $('aiFoodPreview').classList.remove('hidden');
+}
+
+function clearAiFoodPhoto(){
+  aiFoodPhotoFile=null;aiFoodPhotoDataUrl='';
+  $('aiFoodCamera').value='';$('aiFoodLibrary').value='';
+  $('aiFoodPreviewImage').removeAttribute('src');
+  $('aiFoodPreview').classList.add('hidden');
+}
+
+function compressImageToDataURL(file,maxSide=1280,quality=.82){
+  return new Promise((resolve,reject)=>{
+    const img=new Image(),url=URL.createObjectURL(file);
+    img.onload=()=>{
+      try{
+        const scale=Math.min(1,maxSide/Math.max(img.naturalWidth,img.naturalHeight));
+        const canvas=document.createElement('canvas');
+        canvas.width=Math.max(1,Math.round(img.naturalWidth*scale));
+        canvas.height=Math.max(1,Math.round(img.naturalHeight*scale));
+        canvas.getContext('2d',{alpha:false}).drawImage(img,0,0,canvas.width,canvas.height);
+        URL.revokeObjectURL(url);
+        resolve(canvas.toDataURL('image/jpeg',quality));
+      }catch(e){URL.revokeObjectURL(url);reject(e)}
+    };
+    img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('Image illisible'))};
+    img.src=url;
+  });
+}
+
+function confidenceLabel(value){
+  const v=String(value||'moyenne').toLowerCase();
+  return v==='haute'?'Confiance élevée':v==='faible'?'À vérifier':'Confiance moyenne';
+}
+
+function fillAiFoodDialog(food){
+  aiFoodCandidate=food;
+  $('aiConfirmName').value=food.name||'';
+  $('aiConfirmBrand').value=food.brand||'';
+  $('aiConfirmPortion').value=Math.max(1,num(food.portionGrams)||100);
+  $('aiConfirmKcal').value=num(food.kcal100);
+  $('aiConfirmProtein').value=num(food.protein100);
+  $('aiConfirmCarbs').value=num(food.carbs100);
+  $('aiConfirmFat').value=num(food.fat100);
+  $('aiConfirmFiber').value=num(food.fiber100);
+  $('aiConfirmBarcode').value=food.barcode||'';
+  $('aiFoodConfidence').textContent=confidenceLabel(food.confidence);
+  $('aiFoodSource').textContent=food.sourceLabel||'Estimation IA à vérifier';
+  $('aiFoodNotes').textContent=food.notes||'';
+  if(aiFoodPhotoDataUrl){
+    $('aiConfirmPhotoImage').src=aiFoodPhotoDataUrl;
+    $('aiConfirmPhoto').classList.remove('hidden');
+  }else $('aiConfirmPhoto').classList.add('hidden');
+  $('aiFoodDialog').showModal();
+}
+
+async function identifyFoodWithAI(query){
+  const btn=$('identifyFoodBtn');btn.disabled=true;btn.textContent='Analyse en cours…';
+  try{
+    aiFoodPhotoDataUrl=aiFoodPhotoFile?await compressImageToDataURL(aiFoodPhotoFile):'';
+    if(!query&&!aiFoodPhotoDataUrl)throw new Error('Ajoute un nom ou une photo du produit.');
+    const res=await fetch('/.netlify/functions/nutrition-identify',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({query,imageDataUrl:aiFoodPhotoDataUrl,locale:'fr-CH'})
+    });
+    const json=await res.json();
+    if(!res.ok)throw new Error(json.error||'Identification indisponible');
+    fillAiFoodDialog(json.food);
+  }catch(err){toast(err.message||'Impossible d’identifier le produit')}
+  finally{btn.disabled=false;btn.textContent='✨ Identifier et préremplir'}
+}
+
+$('aiFoodCamera').onchange=e=>setAiFoodPhoto(e.target.files[0]);
+$('aiFoodLibrary').onchange=e=>setAiFoodPhoto(e.target.files[0]);
+$('removeAiFoodPhoto').onclick=clearAiFoodPhoto;
+$('aiFoodForm').onsubmit=e=>{e.preventDefault();identifyFoodWithAI($('aiFoodQuery').value.trim())};
+$('confirmAiFood').onclick=e=>{
+  e.preventDefault();
+  const portion=Math.max(1,num($('aiConfirmPortion').value));
+  const food={
+    id:`ai-${Date.now()}`,name:$('aiConfirmName').value.trim(),brand:$('aiConfirmBrand').value.trim(),
+    barcode:$('aiConfirmBarcode').value.trim(),kcal:num($('aiConfirmKcal').value),
+    protein:num($('aiConfirmProtein').value),carbs:num($('aiConfirmCarbs').value),fat:num($('aiConfirmFat').value),
+    fiber:num($('aiConfirmFiber').value),source:aiFoodCandidate?.sourceLabel||'IA confirmée',createdBy:'ai'
+  };
+  if(!food.name)return toast('Renseigne le nom de l’aliment');
+  const d=$('nutritionDate').value||today(),n=nutritionDay(d),ratio=portion/100;
+  n.entries.push({id:crypto.randomUUID(),meal:$('aiConfirmMeal').value,name:[food.brand,food.name].filter(Boolean).join(' · '),grams:portion,kcal:food.kcal*ratio,protein:food.protein*ratio,carbs:food.carbs*ratio,fat:food.fat*ratio,source:'ai-confirmed'});
+  data.nutrition[d]=n;
+  const existing=(data.customFoods||[]).findIndex(x=>food.barcode&&x.barcode===food.barcode);
+  if(existing>=0)data.customFoods[existing]={...data.customFoods[existing],...food};else data.customFoods.unshift(food);
+  save();$('aiFoodDialog').close();$('aiFoodQuery').value='';clearAiFoodPhoto();toast('Aliment confirmé et ajouté');
+};
+
+if($("profileShortcut"))$("profileShortcut").onclick=()=>showView("settings");
+if($("profileForm"))$("profileForm").onsubmit=e=>{e.preventDefault();data.profile={...data.profile,name:$("profileName").value.trim()||"Luis",age:num($("profileAge").value)||41,height:num($("profileHeight").value)||189,calorieGoal:num($("profileCalories").value)||2400,proteinGoal:num($("profileProtein").value)||170};saveData();renderAll();toast("Profil enregistré");showView("dashboard")};
