@@ -64,7 +64,7 @@ function renderWorkoutPreset(){const type=$('strengthType').value,preset=WORKOUT
 function collectWorkoutExercises(){return activeWorkoutExercises.map((e,i)=>({...e,weight:num(document.querySelector(`[data-exercise-weight="${i}"]`)?.value)}))}
 
 const initialData={daily:{},supplements:{},nutrition:{},strength:[],running:[],customFoods:[],photos:[],profile:{name:"Luis Sanchez",age:41,height:189,initialWeight:81.5,initialWaist:92,proteinGoal:170,calorieGoal:2400,creatineGoal:5}};
-let data=loadData(),selectedFood=null,deferredPrompt=null,selectedPhotoFile=null;
+let data=loadData(),selectedFood=null,deferredPrompt=null,selectedPhotoFile=null,selectedPhotoPreviewUrl='',selectedGarminFile=null;
 const $=id=>document.getElementById(id),today=()=>{const d=new Date(),y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${day}`},num=(v,fb=0)=>Number.isFinite(Number(v))?Number(v):fb,fmt=n=>Math.round(n*10)/10;
 function clone(v){return JSON.parse(JSON.stringify(v))}
 function normalizeData(raw={}){const p=raw&&typeof raw==='object'?raw:{};return {...clone(initialData),...p,schemaVersion:SCHEMA_VERSION,daily:p.daily&&typeof p.daily==='object'?p.daily:{},supplements:p.supplements&&typeof p.supplements==='object'?p.supplements:{},nutrition:p.nutrition&&typeof p.nutrition==='object'?p.nutrition:{},strength:Array.isArray(p.strength)?p.strength:[],running:Array.isArray(p.running)?p.running:[],customFoods:Array.isArray(p.customFoods)?p.customFoods:[],photos:Array.isArray(p.photos)?p.photos:[],profile:{...initialData.profile,...(p.profile||{})}}}
@@ -174,10 +174,30 @@ async function importGarminFile(file){
 }
 const PHOTO_DB='luis-transformation-photos';
 function photoDB(){return new Promise((ok,no)=>{const r=indexedDB.open(PHOTO_DB,1);r.onupgradeneeded=()=>r.result.createObjectStore('photos',{keyPath:'id'});r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)})}
-async function storePhoto(meta,file){const db=await photoDB(),rec={...meta,blob:file};await new Promise((ok,no)=>{const tx=db.transaction('photos','readwrite');tx.objectStore('photos').put(rec);tx.oncomplete=ok;tx.onerror=()=>no(tx.error)})}
+async function storePhoto(meta,file){
+  const db=await photoDB();
+  const dataUrl=typeof file==='string'?file:await compressImageToDataURL(file,1600,.86);
+  const rec={...meta,dataUrl,mimeType:'image/jpeg',savedAt:new Date().toISOString()};
+  await new Promise((ok,no)=>{const tx=db.transaction('photos','readwrite');tx.objectStore('photos').put(rec);tx.oncomplete=ok;tx.onerror=()=>no(tx.error)});
+}
 async function getPhoto(id){const db=await photoDB();return new Promise((ok,no)=>{const r=db.transaction('photos').objectStore('photos').get(id);r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)})}
 async function deletePhoto(id){const db=await photoDB();await new Promise((ok,no)=>{const tx=db.transaction('photos','readwrite');tx.objectStore('photos').delete(id);tx.oncomplete=ok;tx.onerror=()=>no(tx.error)})}
-async function renderPhotos(){const host=$('photoGrid');if(!host)return;host.innerHTML='<div class="empty">Chargement…</div>';const items=[...(data.photos||[])].sort((a,b)=>b.date.localeCompare(a.date));if(!items.length){host.innerHTML='<div class="empty card">Ajoute ta première photo pour créer ton avant/après.</div>';return}const cards=[];for(const m of items){try{const r=await getPhoto(m.id),url=r?.blob?URL.createObjectURL(r.blob):'';cards.push(`<article class="photo-card card"><img src="${url}" alt="Progression ${m.date}"><div><strong>${fmtDate(m.date)} · ${escapeHtml(m.pose)}</strong><small>${m.weight||'—'} kg · ${m.waist||'—'} cm</small><p>${escapeHtml(m.note||'')}</p><button class="delete-photo danger-text" data-photo-delete="${m.id}">Supprimer</button></div></article>`)}catch{}}host.innerHTML=cards.join('')}
+async function renderPhotos(){
+  const host=$('photoGrid');if(!host)return;
+  host.innerHTML='<div class="empty">Chargement…</div>';
+  const items=[...(data.photos||[])].sort((a,b)=>b.date.localeCompare(a.date));
+  if(!items.length){host.innerHTML='<div class="empty card">Ajoute ta première photo pour créer ton avant/après.</div>';return}
+  const cards=[];
+  for(const m of items){
+    try{
+      const r=await getPhoto(m.id);
+      const url=r?.dataUrl||(r?.blob?URL.createObjectURL(r.blob):'');
+      const media=url?`<img src="${url}" alt="Progression ${m.date}" loading="lazy">`:`<div class="photo-missing"><span>🖼️</span><strong>Photo indisponible sur cet appareil</strong><small>Les mesures sont conservées. Réimporte une sauvegarde complète ou ajoute de nouveau la photo.</small></div>`;
+      cards.push(`<article class="photo-card card">${media}<div><strong>${fmtDate(m.date)} · ${escapeHtml(m.pose)}</strong><small>${m.weight||'—'} kg · ${m.waist||'—'} cm</small><p>${escapeHtml(m.note||'')}</p><button class="delete-photo danger-text" data-photo-delete="${m.id}">Supprimer</button></div></article>`)
+    }catch(err){console.warn('Photo illisible',m.id,err);cards.push(`<article class="photo-card card"><div class="photo-missing"><span>⚠️</span><strong>Photo non lisible</strong><small>${fmtDate(m.date)} · ${escapeHtml(m.pose)}</small></div></article>`)}
+  }
+  host.innerHTML=cards.join('');
+}
 
 function renderAll(){renderProfile();renderDashboard();renderLists();if(document.querySelector('[data-view="nutrition"]').classList.contains('active'))renderNutrition();if(document.querySelector('[data-view="photos"]').classList.contains('active'))renderPhotos()}
 document.querySelectorAll('.nav-item').forEach(b=>b.addEventListener('click',()=>b.classList.contains('more-button')?$('moreSheet').classList.remove('hidden'):showView(b.dataset.target)));document.querySelectorAll('[data-go]').forEach(el=>{
@@ -194,15 +214,55 @@ $('foodResults').onclick=e=>{const el=e.target.closest('[data-food]');if(el)open
 $('customFoodForm').onsubmit=e=>{e.preventDefault();const f=new FormData(e.target),food={id:`custom-${Date.now()}`,name:f.get('name'),kcal:num(f.get('kcal')),protein:num(f.get('protein')),carbs:num(f.get('carbs')),fat:num(f.get('fat'))};data.customFoods.unshift(food);save();e.target.reset();e.target.classList.add('hidden');toast('Aliment créé')};
 $('mealSections').onclick=e=>{const b=e.target.closest('[data-food-delete]');if(!b)return;const d=$('nutritionDate').value,n=nutritionDay(d);n.entries=n.entries.filter(x=>x.id!==b.dataset.foodDelete);data.nutrition[d]=n;save()};$('copyYesterday').onclick=()=>{const d=new Date(($('nutritionDate').value||today())+'T12:00:00');d.setDate(d.getDate()-1);const prev=d.toISOString().slice(0,10),src=nutritionDay(prev);if(!src.entries.length)return toast('Aucun repas la veille');data.nutrition[$('nutritionDate').value]={entries:src.entries.map(x=>({...x,id:crypto.randomUUID()}))};save();toast('Journée copiée')};
 document.addEventListener('click',e=>{const b=e.target.closest('[data-delete]');if(!b)return;data[b.dataset.delete]=data[b.dataset.delete].filter(x=>x.id!==b.dataset.id);save()});$('scanBarcodeBtn').onclick=startBarcodeScan;$('barcodeManualBtn').onclick=()=>{const c=prompt('Saisis les chiffres du code-barres :');if(c)lookupBarcode(c)};
-$('garminImport').onchange=async e=>{const f=e.target.files?.[0];try{if(f)await importGarminFile(f)}finally{e.target.value=''}};
-$('photoForm').onsubmit=async e=>{e.preventDefault();const file=selectedPhotoFile;if(!file)return toast('Choisis une photo');const id=crypto.randomUUID(),meta={id,date:$('photoDate').value,pose:$('photoPose').value,weight:$('photoWeight').value,waist:$('photoWaist').value,note:$('photoNote').value.trim()};try{await storePhoto(meta,file);data.photos=[...(data.photos||[]),meta];save();e.target.reset();$('photoDate').value=today();renderPhotos();toast('Photo enregistrée sur cet appareil')}catch{toast('Impossible d’enregistrer la photo')}};
+$('garminImport').onchange=e=>{
+  const f=e.target.files?.[0];
+  selectedGarminFile=f||null;
+  if(!f){$('garminFilePreview').classList.add('hidden');return}
+  const ext=(f.name.split('.').pop()||'').toUpperCase();
+  $('garminFileName').textContent=f.name;
+  $('garminFileMeta').textContent=`${ext||'Fichier'} · ${Math.max(1,Math.round(f.size/1024))} Ko`;
+  $('garminFilePreview').classList.remove('hidden');
+  setOperationStatus('garminImportStatus','Fichier sélectionné. Appuie sur « Analyser et importer ».','working');
+};
+$('confirmGarminImport').onclick=async()=>{
+  if(!selectedGarminFile)return setOperationStatus('garminImportStatus','Choisis d’abord un fichier GPX, TCX ou CSV.','error');
+  const btn=$('confirmGarminImport');btn.disabled=true;btn.textContent='Analyse…';
+  try{const ok=await importGarminFile(selectedGarminFile);if(ok){selectedGarminFile=null;$('garminImport').value='';$('garminFilePreview').classList.add('hidden')}}finally{btn.disabled=false;btn.textContent='Analyser et importer'}
+};
+$('cancelGarminImport').onclick=()=>{selectedGarminFile=null;$('garminImport').value='';$('garminFilePreview').classList.add('hidden');setOperationStatus('garminImportStatus','')};
+$('photoForm').onsubmit=async e=>{
+  e.preventDefault();const file=selectedPhotoFile;if(!file)return toast('Choisis une photo');
+  const id=crypto.randomUUID(),meta={id,date:$('photoDate').value||today(),pose:$('photoPose').value,weight:$('photoWeight').value,waist:$('photoWaist').value,note:$('photoNote').value.trim()};
+  const submit=e.submitter||e.target.querySelector('button[type="submit"],button:not([type])');if(submit){submit.disabled=true;submit.textContent='Sauvegarde…'}
+  try{
+    await storePhoto(meta,file);data.photos=[...(data.photos||[]),meta];if(!save())throw new Error('Données non enregistrées');
+    e.target.reset();$('photoDate').value=today();clearProgressPhotoSelection();await renderPhotos();toast('Photo enregistrée et vérifiée');
+  }catch(err){console.error('Photo save',err);toast('Impossible d’enregistrer la photo')}
+  finally{if(submit){submit.disabled=false;submit.textContent='Enregistrer la photo'}}
+};
 $('photoGrid').onclick=async e=>{const b=e.target.closest('[data-photo-delete]');if(!b)return;await deletePhoto(b.dataset.photoDelete);data.photos=(data.photos||[]).filter(x=>x.id!==b.dataset.photoDelete);save();renderPhotos()};
 function blobToDataURL(blob){return new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=()=>no(r.error);r.readAsDataURL(blob)})}
 function dataURLToBlob(url){const [head,body]=url.split(',');const mime=(head.match(/data:(.*?);/)||[])[1]||'image/jpeg';const bin=atob(body),arr=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);return new Blob([arr],{type:mime})}
-async function fullBackupPayload(){const payload={format:'luis-transformation-full-backup',schemaVersion:SCHEMA_VERSION,exportedAt:new Date().toISOString(),origin:location.origin,data:normalizeData(data),photoFiles:[]};for(const meta of payload.data.photos||[]){try{const rec=await getPhoto(meta.id);if(rec?.blob)payload.photoFiles.push({id:meta.id,type:rec.blob.type||'image/jpeg,data',dataUrl:await blobToDataURL(rec.blob)})}catch(e){console.warn('Photo non exportée',meta.id,e)}}return payload}
+async function fullBackupPayload(){
+  const payload={format:'luis-transformation-full-backup',schemaVersion:SCHEMA_VERSION,exportedAt:new Date().toISOString(),origin:location.origin,data:normalizeData(data),photoFiles:[]};
+  for(const meta of payload.data.photos||[]){
+    try{const rec=await getPhoto(meta.id);const dataUrl=rec?.dataUrl||(rec?.blob?await blobToDataURL(rec.blob):'');if(dataUrl)payload.photoFiles.push({id:meta.id,type:rec?.mimeType||rec?.blob?.type||'image/jpeg',dataUrl})}
+    catch(e){console.warn('Photo non exportée',meta.id,e)}
+  }
+  return payload;
+}
 
-function selectProgressPhoto(file){if(!file)return;selectedPhotoFile=file;$('photoPreviewImage').src=URL.createObjectURL(file);$('photoPreview').classList.remove('hidden')}
-$('photoCameraFile').onchange=e=>selectProgressPhoto(e.target.files[0]);$('photoLibraryFile').onchange=e=>selectProgressPhoto(e.target.files[0]);$('openProgressOverview').onclick=()=>showView('history');
+function clearProgressPhotoSelection(){
+  selectedPhotoFile=null;
+  if(selectedPhotoPreviewUrl){URL.revokeObjectURL(selectedPhotoPreviewUrl);selectedPhotoPreviewUrl=''}
+  $('photoCameraFile').value='';$('photoLibraryFile').value='';$('photoPreviewImage').removeAttribute('src');$('photoPreview').classList.add('hidden');
+}
+function selectProgressPhoto(file){
+  if(!file)return;if(!file.type.startsWith('image/'))return toast('Choisis un fichier image');
+  selectedPhotoFile=file;if(selectedPhotoPreviewUrl)URL.revokeObjectURL(selectedPhotoPreviewUrl);selectedPhotoPreviewUrl=URL.createObjectURL(file);
+  $('photoPreviewImage').src=selectedPhotoPreviewUrl;$('photoPreviewMeta').textContent=`${file.name||'Photo'} · ${Math.max(1,Math.round(file.size/1024))} Ko`;$('photoPreview').classList.remove('hidden');
+}
+$('photoCameraFile').onchange=e=>selectProgressPhoto(e.target.files[0]);$('photoLibraryFile').onchange=e=>selectProgressPhoto(e.target.files[0]);$('clearProgressPhoto').onclick=clearProgressPhotoSelection;$('openProgressOverview').onclick=()=>showView('history');
 function coachBubble(role,text){const el=document.createElement('div');el.className='coach-bubble '+role;el.textContent=text;$('coachMessages').appendChild(el)}
 $('nutritionCoachForm').onsubmit=async e=>{e.preventDefault();const message=$('nutritionCoachInput').value.trim();if(!message)return;coachBubble('user',message);$('nutritionCoachInput').value='';const btn=e.target.querySelector('button');btn.disabled=true;try{const t=totals($('nutritionDate').value);const r=await fetch('/.netlify/functions/nutrition-coach',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message,context:{profile:data.profile,todayTotals:t}})});const j=await r.json();if(!r.ok)throw new Error(j.error||'Coach indisponible');coachBubble('assistant',j.answer)}catch(err){coachBubble('assistant',err.message)}finally{btn.disabled=false}};
 $('chartMetric').onchange=drawChart;
