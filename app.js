@@ -64,7 +64,7 @@ function renderWorkoutPreset(){const type=$('strengthType').value,preset=WORKOUT
 function collectWorkoutExercises(){return activeWorkoutExercises.map((e,i)=>({...e,weight:num(document.querySelector(`[data-exercise-weight="${i}"]`)?.value)}))}
 
 const initialData={daily:{},supplements:{},nutrition:{},strength:[],running:[],customFoods:[],photos:[],profile:{name:"Luis Sanchez",age:41,height:189,initialWeight:81.5,initialWaist:92,proteinGoal:170,calorieGoal:2400,creatineGoal:5}};
-let data=loadData(),selectedFood=null,deferredPrompt=null,selectedPhotoFile=null,selectedPhotoPreviewUrl='',selectedGarminFile=null;
+let data=loadData(),selectedFood=null,deferredPrompt=null,selectedPhotoFile=null,selectedPhotoPreviewUrl='',selectedGarminFile=null,selectedGarminPreview=null;
 const $=id=>document.getElementById(id),today=()=>{const d=new Date(),y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${day}`},num=(v,fb=0)=>Number.isFinite(Number(v))?Number(v):fb,fmt=n=>Math.round(n*10)/10;
 function clone(v){return JSON.parse(JSON.stringify(v))}
 function normalizeData(raw={}){const p=raw&&typeof raw==='object'?raw:{};return {...clone(initialData),...p,schemaVersion:SCHEMA_VERSION,daily:p.daily&&typeof p.daily==='object'?p.daily:{},supplements:p.supplements&&typeof p.supplements==='object'?p.supplements:{},nutrition:p.nutrition&&typeof p.nutrition==='object'?p.nutrition:{},strength:Array.isArray(p.strength)?p.strength:[],running:Array.isArray(p.running)?p.running:[],customFoods:Array.isArray(p.customFoods)?p.customFoods:[],photos:Array.isArray(p.photos)?p.photos:[],profile:{...initialData.profile,...(p.profile||{})}}}
@@ -130,48 +130,45 @@ function parseLocaleNumber(value){
   return num(s);
 }
 function xmlNodes(doc,name){return [...doc.getElementsByTagName(name),...doc.getElementsByTagNameNS('*',name)]}
-async function importGarminFile(file){
-  if(!file)return false;
-  const status='garminImportStatus',ext=(file.name.split('.').pop()||'').toLowerCase();
-  setOperationStatus(status,`Lecture de ${file.name}…`);
-  if(ext==='fit'){setOperationStatus(status,'Le FIT brut doit être exporté depuis Garmin Connect en GPX, TCX ou CSV.','error');return false}
-  try{
-    if(!['gpx','tcx','csv'].includes(ext))throw new Error('Format non pris en charge');
-    let run={id:crypto.randomUUID(),type:'Garmin',rpe:6,note:`Import Garmin · ${file.name}`,sourceFile:file.name};
-    if(['gpx','tcx'].includes(ext)){
-      const text=await file.text();if(!text.trim())throw new Error('Fichier vide');
-      const doc=new DOMParser().parseFromString(text,'application/xml');
-      if(doc.querySelector('parsererror'))throw new Error('XML invalide');
-      const time=xmlText(doc,['Time','time']);run.date=(time||today()).slice(0,10);
-      let pts=xmlNodes(doc,'trkpt').map(n=>({lat:+n.getAttribute('lat'),lon:+n.getAttribute('lon')})).filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon));
-      if(!pts.length)pts=xmlNodes(doc,'Trackpoint').map(n=>({lat:parseLocaleNumber(xmlText(n,['LatitudeDegrees'])),lon:parseLocaleNumber(xmlText(n,['LongitudeDegrees']))})).filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon)&&p.lat&&p.lon);
-      run.route=pts.filter((_,i)=>i%Math.max(1,Math.floor(pts.length/600))===0);
-      let dist=parseLocaleNumber(xmlText(doc,['DistanceMeters']))/1000;
-      if(!dist&&pts.length>1){for(let i=1;i<pts.length;i++){const a=pts[i-1],b=pts[i],R=6371,dLat=(b.lat-a.lat)*Math.PI/180,dLon=(b.lon-a.lon)*Math.PI/180,q=Math.sin(dLat/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLon/2)**2;dist+=2*R*Math.asin(Math.sqrt(q))}}
-      run.distance=fmt(dist);
-      let sec=parseLocaleNumber(xmlText(doc,['TotalTimeSeconds']));
-      if(!sec){const times=[...xmlNodes(doc,'time'),...xmlNodes(doc,'Time')].map(n=>Date.parse(n.textContent)).filter(Number.isFinite);if(times.length>1)sec=(Math.max(...times)-Math.min(...times))/1000}
-      run.duration=fmt(sec/60);run.hr=parseLocaleNumber(xmlText(doc,['AverageHeartRateBpm','Value']));run.elevation=parseLocaleNumber(xmlText(doc,['ElevationGain']));
-    }else{
-      const text=await file.text();const lines=text.split(/\r?\n/).filter(x=>x.trim());if(lines.length<2)throw new Error('CSV vide ou sans activité');
-      const candidates=[';',',','\t'];const sep=candidates.sort((a,b)=>lines[0].split(b).length-lines[0].split(a).length)[0];
-      const split=line=>line.split(sep).map(x=>x.replace(/^"|"$/g,'').trim());
-      const h=split(lines[0]).map(x=>x.toLowerCase());const v=split(lines[1]);
-      const get=(...keys)=>{const i=h.findIndex(x=>keys.some(k=>x.includes(k)));return i>=0?v[i]:''};
-      run.date=(get('date','début','start time')||today()).slice(0,10);
-      run.distance=parseLocaleNumber(get('distance'));if(run.distance>1000)run.distance/=1000;
-      run.duration=parseDuration(get('temps','time','durée','duration'));
-      run.hr=parseLocaleNumber(get('fréquence cardiaque moyenne','avg hr','fc moyenne','average heart rate'));
-      run.elevation=parseLocaleNumber(get('dénivelé','elevation gain','gain altitude'));
-    }
-    if(!run.distance||run.distance<=0)throw new Error('Distance introuvable dans le fichier');
-    if(!run.duration||run.duration<=0)run.duration=0;
-    data.running.push(run);
-    if(!save())throw new Error('Enregistrement local impossible');
-    setOperationStatus(status,`Activité importée : ${fmt(run.distance)} km${run.duration?` · ${Math.round(run.duration)} min`:''}.`,'success');
-    toast('Activité Garmin importée');return true;
-  }catch(err){console.error('Import Garmin',err);setOperationStatus(status,`Import impossible : ${err.message||'fichier non reconnu'}.`,'error');return false}
+async function analyzeGarminFile(file){
+  if(!file)throw new Error('Aucun fichier sélectionné');
+  const ext=(file.name.split('.').pop()||'').toLowerCase();
+  if(ext==='fit')throw new Error('Le FIT brut doit être exporté en GPX, TCX ou CSV');
+  if(!['gpx','tcx','csv'].includes(ext))throw new Error('Format non pris en charge');
+  let run={id:crypto.randomUUID(),type:'Garmin',rpe:6,note:`Import Garmin · ${file.name}`,sourceFile:file.name,route:[]};
+  if(['gpx','tcx'].includes(ext)){
+    const text=await file.text();if(!text.trim())throw new Error('Fichier vide');
+    const doc=new DOMParser().parseFromString(text,'application/xml');if(doc.querySelector('parsererror'))throw new Error('XML invalide');
+    const time=xmlText(doc,['Time','time']);run.date=(time||today()).slice(0,10);
+    let pts=xmlNodes(doc,'trkpt').map(n=>({lat:+n.getAttribute('lat'),lon:+n.getAttribute('lon')})).filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon));
+    if(!pts.length)pts=xmlNodes(doc,'Trackpoint').map(n=>({lat:parseLocaleNumber(xmlText(n,['LatitudeDegrees'])),lon:parseLocaleNumber(xmlText(n,['LongitudeDegrees']))})).filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon)&&p.lat&&p.lon);
+    run.route=pts.filter((_,i)=>i%Math.max(1,Math.floor(pts.length/600))===0);
+    let dist=parseLocaleNumber(xmlText(doc,['DistanceMeters']))/1000;
+    if(!dist&&pts.length>1){for(let i=1;i<pts.length;i++){const a=pts[i-1],b=pts[i],R=6371,dLat=(b.lat-a.lat)*Math.PI/180,dLon=(b.lon-a.lon)*Math.PI/180,q=Math.sin(dLat/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLon/2)**2;dist+=2*R*Math.asin(Math.sqrt(q))}}
+    run.distance=fmt(dist);
+    let sec=parseLocaleNumber(xmlText(doc,['TotalTimeSeconds']));
+    if(!sec){const times=[...xmlNodes(doc,'time'),...xmlNodes(doc,'Time')].map(n=>Date.parse(n.textContent)).filter(Number.isFinite);if(times.length>1)sec=(Math.max(...times)-Math.min(...times))/1000}
+    run.duration=fmt(sec/60);run.hr=parseLocaleNumber(xmlText(doc,['AverageHeartRateBpm','Value']));run.elevation=parseLocaleNumber(xmlText(doc,['ElevationGain']));
+  }else{
+    const text=await file.text();const lines=text.split(/\r?\n/).filter(x=>x.trim());if(lines.length<2)throw new Error('CSV vide ou sans activité');
+    const candidates=[';',',','\t'];const sep=candidates.sort((a,b)=>lines[0].split(b).length-lines[0].split(a).length)[0];
+    const split=line=>line.split(sep).map(x=>x.replace(/^"|"$/g,'').trim());const h=split(lines[0]).map(x=>x.toLowerCase());const v=split(lines[1]);
+    const get=(...keys)=>{const i=h.findIndex(x=>keys.some(k=>x.includes(k)));return i>=0?v[i]:''};
+    run.date=(get('date','début','start time')||today()).slice(0,10);run.distance=parseLocaleNumber(get('distance'));if(run.distance>1000)run.distance/=1000;
+    run.duration=parseDuration(get('temps','time','durée','duration'));run.hr=parseLocaleNumber(get('fréquence cardiaque moyenne','avg hr','fc moyenne','average heart rate'));run.elevation=parseLocaleNumber(get('dénivelé','elevation gain','gain altitude'));
+  }
+  if(!run.distance||run.distance<=0)throw new Error('Distance introuvable dans le fichier');
+  return run;
 }
+function showGarminPreview(run,file){
+  selectedGarminPreview=run;
+  $('garminPreviewDate').value=run.date||today();$('garminPreviewType').value=run.type||'Garmin';$('garminPreviewDistance').value=run.distance||'';$('garminPreviewDuration').value=run.duration||'';$('garminPreviewHr').value=run.hr||'';$('garminPreviewElevation').value=run.elevation||'';$('garminPreviewNote').value=run.note||'';
+  $('garminRouteSummary').textContent=run.route?.length?`${run.route.length} points GPS détectés · carte disponible après enregistrement`:'Aucun tracé GPS détecté dans ce fichier';
+  $('garminParsedPreview').classList.remove('hidden');
+  setOperationStatus('garminImportStatus',`Résumé prêt pour ${file.name}. Vérifie puis confirme l’enregistrement.`,'success');
+}
+function clearGarminSelection(){selectedGarminFile=null;selectedGarminPreview=null;$('garminImport').value='';$('garminFilePreview').classList.add('hidden');$('garminParsedPreview').classList.add('hidden')}
+
 const PHOTO_DB='luis-transformation-photos';
 function photoDB(){return new Promise((ok,no)=>{const r=indexedDB.open(PHOTO_DB,1);r.onupgradeneeded=()=>r.result.createObjectStore('photos',{keyPath:'id'});r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)})}
 async function storePhoto(meta,file){
@@ -199,6 +196,21 @@ async function renderPhotos(){
   host.innerHTML=cards.join('');
 }
 
+async function renderPhotoAnalysis(){
+  const host=$('photoAnalysis');if(!host)return;
+  const pose=$('comparePose')?.value||'Face';
+  const items=[...(data.photos||[])].filter(x=>x.pose===pose).sort((a,b)=>a.date.localeCompare(b.date));
+  if(items.length<2){host.innerHTML='<p class="muted">Ajoute deux photos de la même pose pour obtenir une comparaison.</p>';return}
+  const first=items[0],last=items.at(-1);
+  try{
+    const [a,b]=await Promise.all([getPhoto(first.id),getPhoto(last.id)]);
+    const au=a?.dataUrl||(a?.blob?URL.createObjectURL(a.blob):'');
+    const bu=b?.dataUrl||(b?.blob?URL.createObjectURL(b.blob):'');
+    const dw=num(last.weight)-num(first.weight),dc=num(last.waist)-num(first.waist);
+    host.innerHTML=`<div class="before-after-grid"><div>${au?`<img src="${au}" alt="Avant">`:'<div class="photo-missing">Photo avant indisponible</div>'}<strong>Avant · ${fmtDate(first.date)}</strong></div><div>${bu?`<img src="${bu}" alt="Après">`:'<div class="photo-missing">Photo après indisponible</div>'}<strong>Après · ${fmtDate(last.date)}</strong></div></div><div class="progress-summary"><span>${dw>0?'+':''}${fmt(dw)} kg</span><span>${dc>0?'+':''}${fmt(dc)} cm</span><p>${dc<-.5?'Belle évolution du tour de taille. Continue avec la même régularité.':dw<-.3?'Le poids évolue dans le bon sens. Garde ce rythme.':'La régularité fera ressortir les changements semaine après semaine.'}</p></div>`;
+  }catch(e){host.innerHTML='<p class="muted">Comparaison indisponible pour le moment.</p>'}
+}
+
 function renderAll(){renderProfile();renderDashboard();renderLists();if(document.querySelector('[data-view="nutrition"]').classList.contains('active'))renderNutrition();if(document.querySelector('[data-view="photos"]').classList.contains('active'))renderPhotos()}
 document.querySelectorAll('.nav-item').forEach(b=>b.addEventListener('click',()=>b.classList.contains('more-button')?$('moreSheet').classList.remove('hidden'):showView(b.dataset.target)));document.querySelectorAll('[data-go]').forEach(el=>{
   el.addEventListener('click',()=>showView(el.dataset.go));
@@ -214,29 +226,23 @@ $('foodResults').onclick=e=>{const el=e.target.closest('[data-food]');if(el)open
 $('customFoodForm').onsubmit=e=>{e.preventDefault();const f=new FormData(e.target),food={id:`custom-${Date.now()}`,name:f.get('name'),kcal:num(f.get('kcal')),protein:num(f.get('protein')),carbs:num(f.get('carbs')),fat:num(f.get('fat'))};data.customFoods.unshift(food);save();e.target.reset();e.target.classList.add('hidden');toast('Aliment créé')};
 $('mealSections').onclick=e=>{const b=e.target.closest('[data-food-delete]');if(!b)return;const d=$('nutritionDate').value,n=nutritionDay(d);n.entries=n.entries.filter(x=>x.id!==b.dataset.foodDelete);data.nutrition[d]=n;save()};$('copyYesterday').onclick=()=>{const d=new Date(($('nutritionDate').value||today())+'T12:00:00');d.setDate(d.getDate()-1);const prev=d.toISOString().slice(0,10),src=nutritionDay(prev);if(!src.entries.length)return toast('Aucun repas la veille');data.nutrition[$('nutritionDate').value]={entries:src.entries.map(x=>({...x,id:crypto.randomUUID()}))};save();toast('Journée copiée')};
 document.addEventListener('click',e=>{const b=e.target.closest('[data-delete]');if(!b)return;data[b.dataset.delete]=data[b.dataset.delete].filter(x=>x.id!==b.dataset.id);save()});$('scanBarcodeBtn').onclick=startBarcodeScan;$('barcodeManualBtn').onclick=()=>{const c=prompt('Saisis les chiffres du code-barres :');if(c)lookupBarcode(c)};
-$('garminImport').onchange=e=>{
-  const f=e.target.files?.[0];
-  selectedGarminFile=f||null;
-  if(!f){$('garminFilePreview').classList.add('hidden');return}
-  const ext=(f.name.split('.').pop()||'').toUpperCase();
-  $('garminFileName').textContent=f.name;
-  $('garminFileMeta').textContent=`${ext||'Fichier'} · ${Math.max(1,Math.round(f.size/1024))} Ko`;
-  $('garminFilePreview').classList.remove('hidden');
-  setOperationStatus('garminImportStatus','Fichier sélectionné. Appuie sur « Analyser et importer ».','working');
+$('garminImport').onchange=async e=>{
+  const f=e.target.files?.[0];selectedGarminFile=f||null;selectedGarminPreview=null;
+  if(!f){$('garminFilePreview').classList.add('hidden');$('garminParsedPreview').classList.add('hidden');return}
+  const ext=(f.name.split('.').pop()||'').toUpperCase();$('garminFileName').textContent=f.name;$('garminFileMeta').textContent=`${ext||'Fichier'} · ${Math.max(1,Math.round(f.size/1024))} Ko`;$('garminFilePreview').classList.remove('hidden');$('garminParsedPreview').classList.add('hidden');
+  setOperationStatus('garminImportStatus',`Analyse de ${f.name}…`,'working');
+  try{const run=await analyzeGarminFile(f);showGarminPreview(run,f)}catch(err){console.error(err);setOperationStatus('garminImportStatus',`Analyse impossible : ${err.message}.`,'error')}
 };
-$('confirmGarminImport').onclick=async()=>{
-  if(!selectedGarminFile)return setOperationStatus('garminImportStatus','Choisis d’abord un fichier GPX, TCX ou CSV.','error');
-  const btn=$('confirmGarminImport');btn.disabled=true;btn.textContent='Analyse…';
-  try{const ok=await importGarminFile(selectedGarminFile);if(ok){selectedGarminFile=null;$('garminImport').value='';$('garminFilePreview').classList.add('hidden')}}finally{btn.disabled=false;btn.textContent='Analyser et importer'}
-};
-$('cancelGarminImport').onclick=()=>{selectedGarminFile=null;$('garminImport').value='';$('garminFilePreview').classList.add('hidden');setOperationStatus('garminImportStatus','')};
+$('confirmGarminImport').onclick=()=>{if(!selectedGarminPreview)return setOperationStatus('garminImportStatus','Choisis et analyse d’abord un fichier.','error');const run={...selectedGarminPreview,date:$('garminPreviewDate').value||today(),type:$('garminPreviewType').value||'Garmin',distance:num($('garminPreviewDistance').value),duration:num($('garminPreviewDuration').value),hr:num($('garminPreviewHr').value),elevation:num($('garminPreviewElevation').value),note:$('garminPreviewNote').value.trim()};if(!run.distance)return setOperationStatus('garminImportStatus','La distance doit être renseignée.','error');data.running.push(run);if(save()){setOperationStatus('garminImportStatus',`Session enregistrée : ${fmt(run.distance)} km · ${Math.round(run.duration||0)} min.`,'success');toast('Course enregistrée');clearGarminSelection()}};
+$('cancelGarminImport').onclick=()=>{clearGarminSelection();setOperationStatus('garminImportStatus','')};
 $('photoForm').onsubmit=async e=>{
   e.preventDefault();const file=selectedPhotoFile;if(!file)return toast('Choisis une photo');
   const id=crypto.randomUUID(),meta={id,date:$('photoDate').value||today(),pose:$('photoPose').value,weight:$('photoWeight').value,waist:$('photoWaist').value,note:$('photoNote').value.trim()};
   const submit=e.submitter||e.target.querySelector('button[type="submit"],button:not([type])');if(submit){submit.disabled=true;submit.textContent='Sauvegarde…'}
   try{
-    await storePhoto(meta,file);data.photos=[...(data.photos||[]),meta];if(!save())throw new Error('Données non enregistrées');
-    e.target.reset();$('photoDate').value=today();clearProgressPhotoSelection();await renderPhotos();toast('Photo enregistrée et vérifiée');
+    setOperationStatus('photoImportStatus','Compression et sauvegarde de la photo…','working');
+    await storePhoto(meta,file);const check=await getPhoto(id);if(!check?.dataUrl&&!check?.blob)throw new Error('Vérification du fichier impossible');data.photos=[...(data.photos||[]),meta];if(!save())throw new Error('Données non enregistrées');
+    e.target.reset();$('photoDate').value=today();clearProgressPhotoSelection();await renderPhotos();setOperationStatus('photoImportStatus','Photo enregistrée et vérifiée.','success');toast('Photo enregistrée et vérifiée');
   }catch(err){console.error('Photo save',err);toast('Impossible d’enregistrer la photo')}
   finally{if(submit){submit.disabled=false;submit.textContent='Enregistrer la photo'}}
 };
@@ -253,14 +259,18 @@ async function fullBackupPayload(){
 }
 
 function clearProgressPhotoSelection(){
-  selectedPhotoFile=null;
-  if(selectedPhotoPreviewUrl){URL.revokeObjectURL(selectedPhotoPreviewUrl);selectedPhotoPreviewUrl=''}
-  $('photoCameraFile').value='';$('photoLibraryFile').value='';$('photoPreviewImage').removeAttribute('src');$('photoPreview').classList.add('hidden');
+  selectedPhotoFile=null;selectedPhotoPreviewUrl='';
+  $('photoCameraFile').value='';$('photoLibraryFile').value='';$('photoPreviewImage').removeAttribute('src');$('photoPreview').classList.add('hidden');setOperationStatus('photoImportStatus','');
 }
 function selectProgressPhoto(file){
-  if(!file)return;if(!file.type.startsWith('image/'))return toast('Choisis un fichier image');
-  selectedPhotoFile=file;if(selectedPhotoPreviewUrl)URL.revokeObjectURL(selectedPhotoPreviewUrl);selectedPhotoPreviewUrl=URL.createObjectURL(file);
-  $('photoPreviewImage').src=selectedPhotoPreviewUrl;$('photoPreviewMeta').textContent=`${file.name||'Photo'} · ${Math.max(1,Math.round(file.size/1024))} Ko`;$('photoPreview').classList.remove('hidden');
+  if(!file)return;
+  const looksImage=(file.type||'').startsWith('image/')||/\.(jpe?g|png|webp|heic|heif)$/i.test(file.name||'');
+  if(!looksImage){setOperationStatus('photoImportStatus','Ce fichier ne semble pas être une image.','error');return}
+  selectedPhotoFile=file;setOperationStatus('photoImportStatus',`Chargement de ${file.name||'la photo'}…`,'working');
+  const reader=new FileReader();
+  reader.onload=()=>{selectedPhotoPreviewUrl=String(reader.result||'');$('photoPreviewImage').src=selectedPhotoPreviewUrl;$('photoPreviewMeta').textContent=`${file.name||'Photo'} · ${Math.max(1,Math.round(file.size/1024))} Ko`;$('photoPreview').classList.remove('hidden');setOperationStatus('photoImportStatus','Photo prête. Vérifie l’aperçu puis confirme l’enregistrement.','success');$('photoPreview').scrollIntoView({behavior:'smooth',block:'center'})};
+  reader.onerror=()=>setOperationStatus('photoImportStatus','Impossible de lire cette photo. Essaie une image JPEG ou PNG.','error');
+  reader.readAsDataURL(file);
 }
 $('photoCameraFile').onchange=e=>selectProgressPhoto(e.target.files[0]);$('photoLibraryFile').onchange=e=>selectProgressPhoto(e.target.files[0]);$('clearProgressPhoto').onclick=clearProgressPhotoSelection;$('openProgressOverview').onclick=()=>showView('history');
 function coachBubble(role,text){const el=document.createElement('div');el.className='coach-bubble '+role;el.textContent=text;$('coachMessages').appendChild(el)}
