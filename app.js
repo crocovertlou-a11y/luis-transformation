@@ -121,7 +121,7 @@ async function renderProfile(){
   return `<section class="hero"><div class="profile-head"><svg class="big-logo" viewBox="0 0 64 64"><path d="M15 43.5A22 22 0 0 1 44.5 14" class="fluidity-arc"/><path d="M49.2 20.2A22 22 0 0 1 19.8 50" class="fluidity-arc"/></svg><div><div class="hello" style="font-size:28px;margin:0">${escapeHtml(state.profile.firstName)}</div><div class="subtle">${escapeHtml(state.profile.goal||'Ton évolution')}</div></div></div></section>
   <div class="card"><div class="card-kicker">Ce que tu sais de moi</div><div class="list"><div class="list-row"><div><strong>Objectif actuel</strong><div class="status">${escapeHtml(state.profile.goal||'À définir')}</div></div><span class="pill">Confirmé</span></div><div class="list-row"><div><strong>Alimentation</strong><div class="status">${state.profile.nutritionEnabled?'Accompagnement actif':'Masquée'}</div></div><span class="pill">Choix</span></div></div></div>
   <div class="card"><div class="switch-row"><div><strong>Accompagnement alimentation</strong><div class="status">Masqué lorsqu’il est désactivé.</div></div><input id="nutritionToggle" class="toggle" type="checkbox" ${state.profile.nutritionEnabled?'checked':''}></div></div>
-  <div class="card"><div class="card-kicker">Tes données</div><h3>Export / Import</h3><p class="subtle">Tes données restent récupérables.</p><div class="card-actions"><button class="action" id="exportBtn">Exporter JSON</button><label class="action secondary">Importer JSON<input id="importInput" type="file" accept="application/json" hidden></label></div></div><div class="version">Luis Transformation · Build 0.4.2</div>`;
+  <div class="card"><div class="card-kicker">Tes données</div><h3>Export / Import</h3><p class="subtle">Tes données restent récupérables.</p><div class="card-actions"><button class="action" id="exportBtn">Exporter JSON</button><label class="action secondary">Importer JSON<input id="importInput" type="file" accept="application/json" hidden></label></div></div><div class="version">Luis Transformation · Build 0.4.3</div>`;
 }
 function bindPage(){
   document.querySelectorAll('[data-home-view]').forEach(b=>b.addEventListener('click',()=>{state.homeView=b.dataset.homeView;render();}));
@@ -142,7 +142,7 @@ function openSheet(kind){
   if(kind==='cardio') return showSheet(`<h2>Ajouter une activité Cardio</h2><form id="cardioForm"><div class="field"><label>Type</label><select name="type"><option>Course</option><option>Vélo</option><option>Natation</option><option>Marche</option><option>Autre</option></select></div><div class="field"><label>Distance (km)</label><input name="distance" type="number" step="0.01" inputmode="decimal"></div><div class="duration-picker"><div><label>Heures</label><input name="hours" type="number" min="0" max="23" inputmode="numeric" value="0"></div><span>:</span><div><label>Minutes</label><input name="minutes" type="number" min="0" max="59" inputmode="numeric" value="40"></div><span>:</span><div><label>Secondes</label><input name="seconds" type="number" min="0" max="59" inputmode="numeric" value="0"></div></div><div class="range-row"><div class="field"><label>FC moyenne</label><input name="hr" type="number" inputmode="numeric"></div><div class="field"><label>Cadence moy.</label><input name="cadence" type="number" inputmode="numeric"></div></div><div class="range-row"><div class="field"><label>Dénivelé + (m)</label><input name="elevation" type="number" inputmode="numeric"></div><div class="field"><label>Calories (kcal)</label><input name="calories" type="number" inputmode="numeric"></div></div><button class="action" type="submit">Enregistrer</button></form>`);
   if(kind==='nutritionHub') return showSheet(`<h2>Alimentation</h2><div class="nutrition-actions"><button class="sheet-choice" data-sheet="food">＋<strong>Ajouter un repas</strong><span>Description + macros</span></button><button class="sheet-choice" data-sheet="barcode">▣<strong>Code-barres</strong><span>Préparer / saisir un produit</span></button><button class="sheet-choice" data-sheet="photoFood">◉<strong>Photo produit</strong><span>Prévisualisation avant validation</span></button><button class="sheet-choice" data-sheet="mealIdea">✦<strong>Idée de repas</strong><span>Selon ce qu’il te reste aujourd’hui</span></button></div>`);
   if(kind==='food') return showSheet(`<h2>Ajouter un repas</h2><form id="foodForm"><div class="field"><label>Décris simplement</label><textarea name="description" rows="3" placeholder="Poulet, riz, légumes et un yaourt"></textarea></div><div class="range-row"><div class="field"><label>Protéines (g)</label><input name="protein" type="number" step="0.1"></div><div class="field"><label>Calories</label><input name="calories" type="number"></div></div><div class="range-row"><div class="field"><label>Glucides (g)</label><input name="carbs" type="number" step="0.1"></div><div class="field"><label>Lipides (g)</label><input name="fat" type="number" step="0.1"></div></div><div class="field"><label>Eau (L)</label><input name="water" type="number" step="0.1"></div><label class="checkline"><input type="checkbox" name="classic"> Ajouter à mes classiques</label><button class="action" type="submit">Enregistrer</button></form>`);
-  if(kind==='barcode') return showSheet(`<h2>Code-barres</h2><p class="subtle">Build 0.4.2 prépare le parcours : saisie → prévisualisation → confirmation. Le scan caméra arrivera ensuite.</p><form id="barcodeForm"><div class="field"><label>Code</label><input name="barcode" inputmode="numeric" placeholder="7612345678901"></div><div class="field"><label>Produit</label><input name="product" placeholder="Nom du produit"></div><button class="action" type="submit">Prévisualiser</button></form>`);
+  if(kind==='barcode') return showSheet(`<h2>Code-barres</h2><p class="subtle">Build 0.4.3 prépare le parcours : saisie → prévisualisation → confirmation. Le scan caméra arrivera ensuite.</p><form id="barcodeForm"><div class="field"><label>Code</label><input name="barcode" inputmode="numeric" placeholder="7612345678901"></div><div class="field"><label>Produit</label><input name="product" placeholder="Nom du produit"></div><button class="action" type="submit">Prévisualiser</button></form>`);
   if(kind==='photoFood') return showSheet(`<h2>Photographier un aliment</h2><p class="subtle">Prends une photo ou choisis-en une dans ta photothèque.</p><label class="action photo-action">Prendre une photo<input id="foodPhotoInput" type="file" accept="image/*" capture="environment" hidden></label><label class="action secondary photo-action">Photothèque<input id="foodLibraryInput" type="file" accept="image/*" hidden></label><div id="foodPhotoPreview" class="photo-preview empty">La photo apparaîtra ici avant confirmation.</div>`);
   if(kind==='mealIdea') return mealIdeaSheet();
   if(kind==='details') return showSheet(`<h2>Données détaillées</h2><p class="subtle">Les graphiques restent volontairement derrière Évolution. Ce niveau sera enrichi sans changer l’écran principal.</p><button class="action secondary" data-close>Fermer</button>`);
@@ -189,7 +189,68 @@ function bindSheet(){
 }
 function updateAllRanges(){ document.querySelectorAll('input[type="range"]').forEach(updateRange); }
 function updateRange(r){ const out=document.querySelector(`[data-output="${r.name}"]`); if(out) out.value=`${r.value}${r.dataset.rangeUnit||''}`; }
-async function saveCheckin(e){e.preventDefault(); const f=new FormData(e.currentTarget); const row={id:todayKey(),date:todayKey(),sleep:num(f.get('sleep')),energy:num(f.get('energy')),stress:num(f.get('stress')),hunger:num(f.get('hunger')),weight:num(f.get('weight')),waist:num(f.get('waist')),updatedAt:new Date().toISOString()}; await LTDB.put('checkins',row); $('#sheet').close(); toast('Point du jour enregistré'); render();}
-async function saveWorkout(e){e.preventDefault(); const f=new FormData(e.currentTarget); const parsed=parseDuration(f.get('duration')); const exerciseEntries=String(f.get('exercises')||'').split(/\n+/).map(line=>line.trim()).filter(Boolean).map(line=>{const [name,...rest]=line.split('|');return {name:name.trim(),performance:rest.join('|').trim()||''}}); await LTDB.put('workouts',{id:uid(),date:todayKey(),name:f.get('name')||'Séance Force',durationSeconds:parsed.seconds,durationLabel:parsed.label,effort:num(f.get('effort')),exerciseEntries,notes:f.get('notes')||'',source:'manual',createdAt:new Date().toISOString()}); $('#sheet').close(); toast('Séance Force enregistrée'); render();}
-async function saveCardio(e){e.preventDefault(); const f=new FormData(e.currentTarget); const parsed=parseDuration(f.get('duration')); await LTDB.put('cardio',{id:uid(),date:todayKey(),type:f.get('type'),distance:num(f.get('distance')),durationSeconds:parsed.seconds,durationLabel:parsed.label,heartRateAvg:num(f.get('hr')),cadenceAvg:num(f.get('cadence')),elevationGain:num(f.get('elevation')),calories:num(f.get('calories')),source:'manual',createdAt:new Date().toISOString()}); $('#sheet').close(); toast('Activité Cardio enregistrée'); render();}
+async function saveCheckin(e){e.preventDefault(); const f=new FormData(e.currentTarget); const row={id:todayKey(),date:todayKey(),sleep:num(f.get('sleep')),energy:num(f.get('energy')),stress:num(f.get('stress')),hunger:num(f.get('hunger')),weight:num(f.get('weight')),waist:num(f.get('waist')),source:'manual',updatedAt:new Date().toISOString()}; await LTDB.put('checkins',row); $('#sheet').close(); toast('Point du jour enregistré'); render();}
+async function saveWorkout(e){
+  e.preventDefault();
+  const f=new FormData(e.currentTarget);
+  const specs=[
+    ['Développé couché',4,6,'2 min'],
+    ['Tractions',4,8,'90 s'],
+    ['Rowing',3,10,'90 s'],
+    ['Développé épaules',3,10,'75 s'],
+    ['Gainage',3,'45 s','45 s']
+  ];
+  const exerciseEntries=specs.map((spec,i)=>({
+    name:spec[0], sets:spec[1], reps:spec[2], rest:spec[3],
+    weight:num(f.get('weight'+i)),
+    performance:f.get('weight'+i)?`${f.get('weight'+i)} kg`:'réalisé'
+  }));
+  const mins=num(f.get('durationMin'))||40;
+  await LTDB.put('workouts',{
+    id:uid(),date:todayKey(),name:'Haut du corps',
+    durationSeconds:mins*60,durationLabel:`${mins}:00`,
+    effort:num(f.get('effort')),exerciseEntries,
+    source:'manual',createdAt:new Date().toISOString()
+  });
+  $('#sheet').close();
+  toast('Séance Force enregistrée');
+  render();
+}
+async function saveCardio(e){
+  e.preventDefault();
+  const f=new FormData(e.currentTarget);
+  const totalSeconds=(num(f.get('hours'))||0)*3600+(num(f.get('minutes'))||0)*60+(num(f.get('seconds'))||0);
+  const h=Math.floor(totalSeconds/3600);
+  const m=Math.floor((totalSeconds%3600)/60);
+  const s=totalSeconds%60;
+  const durationLabel=h?`${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`:`${m}:${String(s).padStart(2,'0')}`;
+  await LTDB.put('cardio',{
+    id:uid(),date:todayKey(),type:f.get('type'),
+    distance:num(f.get('distance')),durationSeconds:totalSeconds,durationLabel,
+    heartRateAvg:num(f.get('hr')),cadenceAvg:num(f.get('cadence')),
+    elevationGain:num(f.get('elevation')),calories:num(f.get('calories')),
+    source:'manual',createdAt:new Date().toISOString()
+  });
+  $('#sheet').close();
+  toast('Activité Cardio enregistrée');
+  render();
+}
 async function saveFood(e){e.preventDefault();const f=new FormData(e.currentTarget);await LTDB.put('food',{id:uid(),date:todayKey(),description:f.get('description'),protein:num(f.get('protein')),calories:num(f.get('calories')),carbs:num(f.get('carbs')),fat:num(f.get('fat')),classic:f.get('classic')==='on',source:'companion',confidence:'user_confirmed',createdAt:new Date().toISOString()});$('#sheet').close();toast('Repas enregistré · visible dans Alimentation');render();}
+
+function showFatalBootError(err){
+  console.error('Boot error',err);
+  const main=document.querySelector('#main');
+  if(main){
+    main.innerHTML=`<section class="hero"><div class="hello">Luis Transformation</div>
+      <div class="subtle">Le démarrage a rencontré un problème.</div></section>
+      <div class="card"><h3>L’app reste récupérable.</h3>
+      <p class="subtle">Aucune donnée n’a été supprimée. Recharge la page. Une erreur de démarrage ne laissera plus un écran blanc.</p></div>`;
+  }
+}
+
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded',()=>init().catch(showFatalBootError),{once:true});
+}else{
+  init().catch(showFatalBootError);
+}
+
