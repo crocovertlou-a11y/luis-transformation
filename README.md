@@ -121,3 +121,6 @@ Les anciennes variables OpenAI peuvent rester dans Netlify, elles ne sont pas ut
 Tous les fichiers sont fournis directement à la racine du ZIP. `netlify.toml`
 copie automatiquement `analyze-food.js` et `product-lookup.js` dans un dossier
 temporaire de Functions pendant le build Netlify.
+
+## Build 0.6.2
+Scanner caméra EAN/UPC local + Open Food Facts. Saisie manuelle conservée en fallback. Aucun LLM pour le scan.

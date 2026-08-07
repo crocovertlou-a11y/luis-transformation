@@ -195,7 +195,7 @@ async function renderProfile(){
   return `<section class="hero"><div class="profile-head"><svg class="big-logo" viewBox="0 0 64 64"><path d="M15 43.5A22 22 0 0 1 44.5 14" class="fluidity-arc"/><path d="M49.2 20.2A22 22 0 0 1 19.8 50" class="fluidity-arc"/></svg><div><div class="hello" style="font-size:28px;margin:0">${escapeHtml(state.profile.firstName)}</div><div class="subtle">${escapeHtml(state.profile.goal||'Ton évolution')}</div></div></div></section>
   <div class="card"><div class="card-kicker">Ce que tu sais de moi</div><div class="list"><div class="list-row"><div><strong>Objectif actuel</strong><div class="status">${escapeHtml(state.profile.goal||'À définir')}</div></div><span class="pill">Confirmé</span></div><div class="list-row"><div><strong>Alimentation</strong><div class="status">${state.profile.nutritionEnabled?'Accompagnement actif':'Masquée'}</div></div><span class="pill">Choix</span></div></div></div>
   <div class="card"><div class="switch-row"><div><strong>Accompagnement alimentation</strong><div class="status">Masqué lorsqu’il est désactivé.</div></div><input id="nutritionToggle" class="toggle" type="checkbox" ${state.profile.nutritionEnabled?'checked':''}></div></div>
-  <div class="card"><div class="card-kicker">Tes données</div><h3>Export / Import</h3><p class="subtle">Tes données restent récupérables.</p><div class="card-actions"><button class="action" id="exportBtn">Exporter JSON</button><label class="action secondary">Importer JSON<input id="importInput" type="file" accept="application/json" hidden></label></div></div><div class="version">Luis Transformation · Build 0.6.1</div>`;
+  <div class="card"><div class="card-kicker">Tes données</div><h3>Export / Import</h3><p class="subtle">Tes données restent récupérables.</p><div class="card-actions"><button class="action" id="exportBtn">Exporter JSON</button><label class="action secondary">Importer JSON<input id="importInput" type="file" accept="application/json" hidden></label></div></div><div class="version">Luis Transformation · Build 0.6.2</div>`;
 }
 function bindPage(){
   document.querySelectorAll('[data-home-view]').forEach(b=>b.addEventListener('click',()=>{state.homeView=b.dataset.homeView;render();}));
@@ -217,7 +217,7 @@ function openSheet(kind){
   if(kind==='cardio') return showSheet(`<h2>Ajouter une activité Cardio</h2><form id="cardioForm">${dateField('date',todayKey())}<div class="field"><label>Type</label><select name="type"><option>Course</option><option>Vélo</option><option>Natation</option><option>Marche</option><option>Autre</option></select></div><div class="field"><label>Distance (km)</label><input name="distance" type="number" step="0.01" inputmode="decimal"></div><div class="duration-picker"><div><label>Heures</label><input name="hours" type="number" min="0" max="23" inputmode="numeric" value="0"></div><span>:</span><div><label>Minutes</label><input name="minutes" type="number" min="0" max="59" inputmode="numeric" value="40"></div><span>:</span><div><label>Secondes</label><input name="seconds" type="number" min="0" max="59" inputmode="numeric" value="0"></div></div><div class="range-row"><div class="field"><label>FC moyenne</label><input name="hr" type="number" inputmode="numeric"></div><div class="field"><label>Cadence moy.</label><input name="cadence" type="number" inputmode="numeric"></div></div><div class="range-row"><div class="field"><label>Dénivelé + (m)</label><input name="elevation" type="number" inputmode="numeric"></div><div class="field"><label>Calories (kcal)</label><input name="calories" type="number" inputmode="numeric"></div></div><button class="action" type="submit">Enregistrer</button></form>`);
   if(kind==='nutritionHub') return nutritionHubSheet();
   if(kind==='food') return showSheet(`<h2>Ajouter un repas</h2><form id="foodForm">${dateField('date',todayKey())}<div class="field"><label>Moment</label><select name="mealType">${mealTypeOptions('lunch')}</select></div><div class="field"><label>Décris simplement</label><textarea name="description" rows="3" placeholder="Poulet, riz, légumes et un yaourt"></textarea></div><div class="range-row"><div class="field"><label>Protéines (g)</label><input name="protein" type="number" step="0.1"></div><div class="field"><label>Calories</label><input name="calories" type="number"></div></div><div class="range-row"><div class="field"><label>Glucides (g)</label><input name="carbs" type="number" step="0.1"></div><div class="field"><label>Lipides (g)</label><input name="fat" type="number" step="0.1"></div></div><div class="field"><label>Eau (L)</label><input name="water" type="number" step="0.1"></div><label class="checkline"><input type="checkbox" name="classic"> Ajouter à mes classiques</label><button class="action" type="submit">Enregistrer</button></form>`);
-  if(kind==='barcode') return showSheet(`<h2>Code-barres</h2><p class="subtle">Recherche dans la base produit. Tu confirmes toujours avant l’enregistrement.</p><form id="barcodeForm">${dateField('date',todayKey())}<div class="field"><label>Moment</label><select name="mealType">${mealTypeOptions('lunch')}</select></div><div class="field"><label>Code-barres</label><input name="barcode" inputmode="numeric" autocomplete="off" placeholder="7612345678901" required></div><button class="action" type="submit" id="barcodeLookupBtn">Rechercher le produit</button></form><div class="ai-note">Source produit : Open Food Facts. Les valeurs restent vérifiables avant ajout.</div>`);
+  if(kind==='barcode') return showSheet(`<h2>Scanner un produit</h2><p class="subtle">Cadre le code-barres avec l’appareil photo. Dès qu’il est reconnu, le produit est recherché.</p><div class="barcode-scanner"><video id="barcodeVideo" playsinline muted></video><div class="barcode-frame"><span></span></div><div id="barcodeScanStatus" class="ai-status">Appuie sur « Ouvrir la caméra ».</div></div><button class="action" type="button" id="startBarcodeCamera">Ouvrir la caméra</button><button class="text-action" type="button" id="toggleManualBarcode">Saisir le code manuellement</button><form id="barcodeForm" class="manual-barcode hidden">${dateField('date',todayKey())}<div class="field"><label>Moment</label><select name="mealType">${mealTypeOptions('lunch')}</select></div><div class="field"><label>Code-barres</label><input name="barcode" inputmode="numeric" autocomplete="off" placeholder="7612345678901" required></div><button class="action secondary" type="submit" id="barcodeLookupBtn">Rechercher</button></form><div class="ai-note">Le scan est traité sur ton téléphone. Seul le numéro du code-barres est envoyé à Open Food Facts.</div>`);
   if(kind==='photoFood') return showSheet(`<h2>Photo aliment / repas</h2><p class="subtle">Prends une photo ou choisis-en une. Le Compagnon propose ce qu’il reconnaît, puis tu corriges ou confirmes.</p>${dateField('photoDate',todayKey())}<div class="field"><label>Moment</label><select id="photoMealType">${mealTypeOptions('lunch')}</select></div><div class="photo-actions"><label class="action photo-action">Prendre une photo<input id="foodPhotoInput" type="file" accept="image/*" capture="environment" hidden></label><label class="action secondary photo-action">Photothèque<input id="foodLibraryInput" type="file" accept="image/*" hidden></label></div><div id="foodPhotoPreview" class="photo-preview empty">Aucune photo sélectionnée.</div><div id="foodAIStatus" class="ai-status"></div>`);
   if(kind==='mealIdea') return mealIdeaSheet();
   if(kind==='details') return showSheet(`<h2>Données détaillées</h2><p class="subtle">Les graphiques restent volontairement derrière Évolution. Ce niveau sera enrichi sans changer l’écran principal.</p><button class="action secondary" data-close>Fermer</button>`);
@@ -329,7 +329,7 @@ function bindSheet(){
   document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>$('#sheet').close()));
   document.querySelectorAll('[data-pick-workout]').forEach(b=>b.addEventListener('click',()=>{openSheet('workout'); setTimeout(()=>{const f=$('#workoutForm'); if(f) f.elements.name.value=b.dataset.pickWorkout;},0)}));
   document.querySelectorAll('input[type="range"]').forEach(r=>r.addEventListener('input',()=>updateRange(r)));
-  $('#checkinForm')?.addEventListener('submit',saveCheckin); $('#workoutForm')?.addEventListener('submit',saveWorkout); $('#cardioForm')?.addEventListener('submit',saveCardio); $('#foodForm')?.addEventListener('submit',saveFood); $('#barcodeForm')?.addEventListener('submit',lookupBarcode); $('#barcodeConfirmForm')?.addEventListener('submit',saveBarcodeFood); $('#aiFoodConfirmForm')?.addEventListener('submit',saveAIFood);
+  $('#checkinForm')?.addEventListener('submit',saveCheckin); $('#workoutForm')?.addEventListener('submit',saveWorkout); $('#cardioForm')?.addEventListener('submit',saveCardio); $('#foodForm')?.addEventListener('submit',saveFood); $('#barcodeForm')?.addEventListener('submit',lookupBarcode); $('#startBarcodeCamera')?.addEventListener('click',startBarcodeCamera); $('#toggleManualBarcode')?.addEventListener('click',()=>$('#barcodeForm')?.classList.toggle('hidden')); $('#barcodeConfirmForm')?.addEventListener('submit',saveBarcodeFood); $('#aiFoodConfirmForm')?.addEventListener('submit',saveAIFood);
   $('#foodPhotoInput')?.addEventListener('change',previewFoodPhoto);
   $('#foodLibraryInput')?.addEventListener('change',previewFoodPhoto);
   $('#barcodeGrams')?.addEventListener('input',updateBarcodePortion);
@@ -363,21 +363,33 @@ async function saveFood(e){e.preventDefault(); const f=new FormData(e.currentTar
 
 let pendingFoodImageData=null;
 
+let barcodeStream=null,barcodeScanning=false;
+function stopBarcodeCamera(){barcodeScanning=false;if(barcodeStream){barcodeStream.getTracks().forEach(t=>t.stop());barcodeStream=null}const v=$('#barcodeVideo');if(v)v.srcObject=null}
+async function startBarcodeCamera(){
+ const status=$('#barcodeScanStatus'),video=$('#barcodeVideo');
+ if(!navigator.mediaDevices?.getUserMedia){if(status)status.textContent='Caméra indisponible. Utilise la saisie manuelle.';return}
+ if(!('BarcodeDetector' in window)){if(status)status.textContent='Scan automatique indisponible sur ce navigateur. Utilise la saisie manuelle.';$('#barcodeForm')?.classList.remove('hidden');return}
+ try{
+  stopBarcodeCamera();barcodeStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
+  video.srcObject=barcodeStream;await video.play();if(status)status.textContent='Cadre le code-barres…';barcodeScanning=true;scanBarcodeFrame();
+ }catch(err){console.error(err);if(status)status.textContent='Impossible d’ouvrir la caméra. Vérifie son autorisation.';$('#barcodeForm')?.classList.remove('hidden')}
+}
+async function scanBarcodeFrame(){
+ if(!barcodeScanning)return;const video=$('#barcodeVideo');if(!video||video.readyState<2){requestAnimationFrame(scanBarcodeFrame);return}
+ try{
+  const detector=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e']});
+  const codes=await detector.detect(video);const raw=String(codes?.[0]?.rawValue||'').replace(/\D/g,'');
+  if(raw){stopBarcodeCamera();const status=$('#barcodeScanStatus');if(status)status.textContent=`Code détecté : ${raw} · recherche…`;await lookupBarcodeCode(raw,todayKey(),$('#barcodeForm [name="mealType"]')?.value||'lunch');return}
+ }catch(err){console.error(err)}
+ if(barcodeScanning)setTimeout(scanBarcodeFrame,180);
+}
+async function lookupBarcodeCode(code,date=todayKey(),mealType='lunch'){
+ try{const response=await fetch(`/api/product?code=${encodeURIComponent(code)}`);const data=await response.json();if(!response.ok)throw new Error(data.error||'LOOKUP_FAILED');showBarcodeConfirmation(data,date,mealType)}
+ catch(err){console.error(err);toast(err.message==='PRODUCT_NOT_FOUND'?'Produit non trouvé':'Recherche produit impossible');const form=$('#barcodeForm');if(form){form.classList.remove('hidden');form.elements.barcode.value=code}const status=$('#barcodeScanStatus');if(status)status.textContent='Vérifie ou saisis le code manuellement.'}
+}
 async function lookupBarcode(e){
-  e.preventDefault();
-  const f=new FormData(e.currentTarget), code=String(f.get('barcode')||'').replace(/\D/g,'');
-  const button=$('#barcodeLookupBtn');
-  if(button){button.disabled=true;button.textContent='Recherche…';}
-  try{
-    const response=await fetch(`/api/product?code=${encodeURIComponent(code)}`);
-    const data=await response.json();
-    if(!response.ok) throw new Error(data.error||'LOOKUP_FAILED');
-    showBarcodeConfirmation(data,f.get('date')||todayKey(),f.get('mealType')||'lunch');
-  }catch(err){
-    console.error(err);
-    toast(err.message==='PRODUCT_NOT_FOUND'?'Produit non trouvé':'Recherche produit impossible');
-    if(button){button.disabled=false;button.textContent='Rechercher le produit';}
-  }
+ e.preventDefault();const f=new FormData(e.currentTarget),code=String(f.get('barcode')||'').replace(/\D/g,'');const button=$('#barcodeLookupBtn');
+ if(button){button.disabled=true;button.textContent='Recherche…'}await lookupBarcodeCode(code,f.get('date')||todayKey(),f.get('mealType')||'lunch');if(button){button.disabled=false;button.textContent='Rechercher'}
 }
 function macroForPortion(value,grams){const n=Number(value);return Number.isFinite(n)?Math.round((n*grams/100)*10)/10:0}
 function showBarcodeConfirmation(data,date,mealType){
