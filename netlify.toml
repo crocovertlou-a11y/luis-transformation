@@ -1,5 +1,5 @@
 [build]
-  command = "mkdir -p .netlify-functions && cp analyze-food.js product-lookup.js .netlify-functions/"
+  command = "mkdir -p .netlify-functions && cp analyze-food-v2.js product-lookup.js .netlify-functions/"
   functions = ".netlify-functions"
   publish = "."
 
@@ -14,6 +14,6 @@
   status = 200
 
 [[redirects]]
-  from = "/api/analyze-food"
-  to = "/.netlify/functions/analyze-food"
+  from = "/api/analyze-food-v2"
+  to = "/.netlify/functions/analyze-food-v2"
   status = 200

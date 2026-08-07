@@ -17,3 +17,22 @@ Tous les fichiers de ce package sont destinés à la racine du dépôt.
 
 ## Build 0.6.4.1
 Diagnostic IA: affiche le code HTTP, le code d'erreur et le détail renvoyé par Netlify/Gemini. Aucun changement du scanner.
+
+
+## Build 0.6.4.2 — Gemini 3
+- Base exacte : 0.6.4.1 Diagnostic IA.
+- Modèle Gemini par défaut : `gemini-3-flash-preview`.
+- Diagnostic HTTP/erreur détaillé conservé.
+- Scanner code-barres / Open Food Facts inchangé.
+- Nouveau cache PWA : `luis-build-0.6.4.2-gemini3`.
+- Si `GEMINI_MODEL` existe dans Netlify, sa valeur reste prioritaire : la supprimer ou la régler sur `gemini-3-flash-preview`.
+
+
+## Build 0.6.4.3 — Gemini endpoint neuf
+- Nouveau fichier Netlify Function : `analyze-food-v2.js`.
+- Nouveau endpoint : `/api/analyze-food-v2`.
+- Modèle verrouillé dans cette release : `gemini-3-flash-preview`.
+- `GEMINI_MODEL` n'est plus lu : aucune ancienne variable ne peut forcer un modèle obsolète.
+- Le diagnostic renvoie aussi le modèle réellement appelé.
+- Scanner code-barres / Open Food Facts inchangé.
+- Nouveau cache PWA : `luis-build-0.6.4.3-gemini3fresh`.

@@ -506,7 +506,7 @@ async function analyzeFoodPhoto(){
   if(button){button.disabled=true;button.textContent='Analyse en cours…';}
   if(status)status.textContent='Le Compagnon examine la photo…';
   try{
-    const response=await fetch('/api/analyze-food',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:pendingFoodImageData})});
+    const response=await fetch('/api/analyze-food-v2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:pendingFoodImageData})});
     const raw=await response.text();
     let data={};
     try{data=raw?JSON.parse(raw):{};}catch(_){data={error:'NON_JSON_RESPONSE',detail:raw.slice(0,240)};}
