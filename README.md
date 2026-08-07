@@ -54,3 +54,13 @@ Diagnostic IA: affiche le code HTTP, le code d'erreur et le détail renvoyé par
 - Gemini reste verrouillé sur `gemini-3-flash-preview`.
 - Scanner code-barres / Open Food Facts inchangé.
 - Cache PWA renouvelé.
+
+
+## Build 0.6.4.6 — Functions à la racine
+- Tous les fichiers sont à nouveau à la racine du ZIP.
+- `analyze-food-v2.js` et `product-lookup.js` sont copiés automatiquement dans `.netlify-functions` pendant le build.
+- Cette méthode a déjà été validée par un déploiement Netlify avec 2 Functions.
+- L'app appelle directement `/.netlify/functions/analyze-food-v2`.
+- Aucun redirect custom.
+- Gemini : `gemini-3-flash-preview`.
+- Nouveau cache PWA.
