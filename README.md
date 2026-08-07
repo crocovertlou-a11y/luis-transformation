@@ -13,3 +13,7 @@
 Conserver `GEMINI_API_KEY` en variable d’environnement Production. Optionnel : `GEMINI_MODEL`; sinon `gemini-2.5-flash-lite` est utilisé. Ne jamais mettre la clé dans GitHub.
 
 Tous les fichiers de ce package sont destinés à la racine du dépôt.
+
+
+## Build 0.6.4.1
+Diagnostic IA: affiche le code HTTP, le code d'erreur et le détail renvoyé par Netlify/Gemini. Aucun changement du scanner.

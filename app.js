@@ -507,17 +507,25 @@ async function analyzeFoodPhoto(){
   if(status)status.textContent='Le Compagnon examine la photo…';
   try{
     const response=await fetch('/api/analyze-food',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:pendingFoodImageData})});
-    const data=await response.json();
+    const raw=await response.text();
+    let data={};
+    try{data=raw?JSON.parse(raw):{};}catch(_){data={error:'NON_JSON_RESPONSE',detail:raw.slice(0,240)};}
     if(!response.ok){
-      if(data.error==='AI_NOT_CONFIGURED') throw new Error('AI_NOT_CONFIGURED');
-      throw new Error(data.error||'AI_FAILED');
+      const err=new Error(data.error||`HTTP_${response.status}`);
+      err.status=response.status; err.detail=data.detail||data.message||'';
+      throw err;
     }
     const date=$('#photoDate')?.value||todayKey(), mealType=$('#photoMealType')?.value||'lunch';
     showAIConfirmation(data,date,mealType);
   }catch(err){
-    console.error(err);
-    if(status)status.textContent=err.message==='AI_NOT_CONFIGURED'?'Gemini n’est pas configuré sur Netlify.':'Analyse impossible pour le moment.';
-    toast(err.message==='AI_NOT_CONFIGURED'?'Clé Gemini à configurer dans Netlify':'Analyse IA impossible');
+    console.error('Nutrition AI diagnostic',err);
+    const code=err.message||'AI_FAILED';
+    const detail=String(err.detail||'').trim();
+    const http=err.status?`HTTP ${err.status} · `:'';
+    const labels={AI_NOT_CONFIGURED:'GEMINI_API_KEY absente dans Netlify.',INVALID_IMAGE:'Format d’image refusé.',IMAGE_TOO_LARGE:'Image trop volumineuse.',AI_SERVICE_ERROR:'Gemini a refusé la requête.',AI_INVALID_RESPONSE:'Gemini a répondu dans un format inattendu.',AI_ANALYSIS_FAILED:'Erreur interne de la fonction Netlify.',NON_JSON_RESPONSE:'La fonction Netlify n’a pas renvoyé de JSON.'};
+    const message=labels[code]||`Erreur IA : ${code}`;
+    if(status)status.textContent=`Diagnostic : ${http}${message}${detail?` — ${detail}`:''}`;
+    toast(`${http}${message}`);
     if(button){button.disabled=false;button.textContent='Analyser avec le Compagnon';}
   }
 }

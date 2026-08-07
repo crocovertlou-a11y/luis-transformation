@@ -5,12 +5,12 @@ function extractText(payload){
 
 exports.handler = async function(event) {
   if (event.httpMethod !== 'POST') {
-    return { statusCode:405, body:JSON.stringify({error:'METHOD_NOT_ALLOWED'}) };
+    return { statusCode:405, headers:{'Content-Type':'application/json','Cache-Control':'no-store'}, body:JSON.stringify({error:'METHOD_NOT_ALLOWED'}) };
   }
 
   const apiKey=process.env.GEMINI_API_KEY;
   if(!apiKey){
-    return { statusCode:503, body:JSON.stringify({error:'AI_NOT_CONFIGURED',message:'GEMINI_API_KEY is missing'}) };
+    return { statusCode:503, headers:{'Content-Type':'application/json','Cache-Control':'no-store'}, body:JSON.stringify({error:'AI_NOT_CONFIGURED',message:'GEMINI_API_KEY is missing'}) };
   }
 
   try{
@@ -18,10 +18,10 @@ exports.handler = async function(event) {
     const imageData=body.image;
     const match=String(imageData||'').match(/^data:image\/(jpeg|png|webp);base64,(.+)$/);
     if(!match){
-      return { statusCode:400, body:JSON.stringify({error:'INVALID_IMAGE'}) };
+      return { statusCode:400, headers:{'Content-Type':'application/json','Cache-Control':'no-store'}, body:JSON.stringify({error:'INVALID_IMAGE'}) };
     }
     if(imageData.length > 2_800_000){
-      return { statusCode:413, body:JSON.stringify({error:'IMAGE_TOO_LARGE'}) };
+      return { statusCode:413, headers:{'Content-Type':'application/json','Cache-Control':'no-store'}, body:JSON.stringify({error:'IMAGE_TOO_LARGE'}) };
     }
 
     const mimeType=`image/${match[1]}`;
@@ -69,7 +69,7 @@ Si tu n'es pas assez sûr d'un aliment, signale-le dans notes au lieu d'inventer
     const payload=await response.json();
     if(!response.ok){
       console.error('Gemini error',JSON.stringify(payload));
-      return {statusCode:502,body:JSON.stringify({error:'AI_SERVICE_ERROR',detail:payload?.error?.message||''})};
+      return {statusCode:502,headers:{'Content-Type':'application/json','Cache-Control':'no-store'},body:JSON.stringify({error:'AI_SERVICE_ERROR',detail:payload?.error?.message||'',geminiStatus:response.status,model})};
     }
 
     const text=extractText(payload);
@@ -78,7 +78,7 @@ Si tu n'es pas assez sûr d'un aliment, signale-le dans notes au lieu d'inventer
       parsed=JSON.parse(text.replace(/^```json\s*/i,'').replace(/```$/,'').trim());
     }catch(err){
       console.error('Gemini parse error',text);
-      return {statusCode:502,body:JSON.stringify({error:'AI_INVALID_RESPONSE'})};
+      return {statusCode:502,headers:{'Content-Type':'application/json','Cache-Control':'no-store'},body:JSON.stringify({error:'AI_INVALID_RESPONSE',detail:'Réponse Gemini non JSON',model})};
     }
 
     const safeNum=v=>Number.isFinite(Number(v)) ? Math.max(0,Number(v)) : 0;
@@ -112,6 +112,6 @@ Si tu n'es pas assez sûr d'un aliment, signale-le dans notes au lieu d'inventer
     };
   }catch(err){
     console.error(err);
-    return {statusCode:500,body:JSON.stringify({error:'AI_ANALYSIS_FAILED'})};
+    return {statusCode:500,headers:{'Content-Type':'application/json','Cache-Control':'no-store'},body:JSON.stringify({error:'AI_ANALYSIS_FAILED',detail:String(err?.message||err).slice(0,300)})};
   }
 };
