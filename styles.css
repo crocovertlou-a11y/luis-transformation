@@ -48,3 +48,8 @@
   .sheet{max-height:82dvh}
   #sheetContent{max-height:78dvh}
 }
+
+/* Build 0.5.2 — consolidation Force legacy + repas */
+.nutrition-entry>div{min-width:0}
+.nutrition-entry strong{line-height:1.25}
+.nutrition-entry small{max-width:44%;line-height:1.3}

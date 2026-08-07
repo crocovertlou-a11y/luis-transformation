@@ -53,6 +53,21 @@ async function renderHome(){
 function dateField(name='date',value=todayKey(),label='Date'){
   return `<div class="field date-field"><label>${label}</label><input name="${name}" type="date" value="${value||todayKey()}"></div>`;
 }
+
+function defaultForceEntries(){
+  return [
+    {name:'Développé couché',sets:4,targetReps:6,rest:'2 min'},
+    {name:'Tractions',sets:4,targetReps:8,rest:'90 s'},
+    {name:'Rowing',sets:3,targetReps:10,rest:'90 s'},
+    {name:'Développé épaules',sets:3,targetReps:10,rest:'75 s'},
+    {name:'Gainage',sets:3,targetReps:null,reps:'45 s',rest:'45 s'}
+  ].map(e=>({...e,series:Array.from({length:e.sets},(_,i)=>({set:i+1,reps:e.targetReps,weight:null}))}));
+}
+function editableForceEntries(workout){
+  const entries=(workout.exerciseEntries||[]).filter(e=>e&&e.name);
+  return entries.length ? entries : defaultForceEntries();
+}
+
 function normalizedForceSeries(e){
   if((e.series||[]).length) return e.series;
   const count=Number(e.sets)||1;
@@ -66,8 +81,33 @@ function normalizedForceSeries(e){
 }
 
 function companionMark(cls='companion-mark'){return `<svg class="${cls}" viewBox="0 0 64 64" aria-hidden="true"><path d="M15 43.5A22 22 0 0 1 44.5 14" class="fluidity-arc arc-a"/><path d="M49.2 20.2A22 22 0 0 1 19.8 50" class="fluidity-arc arc-b"/></svg>`}
-function nutritionEntry(x){return `<button class="nutrition-entry nutrition-entry-button" data-edit-food="${x.id}"><div><strong>${escapeHtml(x.description||'Repas')}</strong><span>${[x.protein?Math.round(x.protein)+' g protéines':'',x.calories?Math.round(x.calories)+' kcal':''].filter(Boolean).join(' · ')||'Repas enregistré'}</span></div><small>Source : ${x.source==='companion'?'Compagnon':'Saisie manuelle'} · Modifier ›</small></button>`}
 
+function mealTypeLabel(type){
+  return ({breakfast:'Petit-déjeuner',lunch:'Déjeuner',dinner:'Dîner',snack:'Collation'})[type] || 'Repas';
+}
+function mealTypeOptions(selected=''){
+  return [
+    ['breakfast','Petit-déjeuner'],
+    ['lunch','Déjeuner'],
+    ['dinner','Dîner'],
+    ['snack','Collation']
+  ].map(([v,l])=>`<option value="${v}" ${selected===v?'selected':''}>${l}</option>`).join('');
+}
+function displayDate(date){
+  if(!date) return '';
+  const d=new Date(`${date}T12:00:00`);
+  return new Intl.DateTimeFormat('fr-CH',{day:'numeric',month:'short',year:'numeric'}).format(d);
+}
+
+function nutritionEntry(x){
+  return `<button class="nutrition-entry nutrition-entry-button" data-edit-food="${x.id}">
+    <div>
+      <strong>${mealTypeLabel(x.mealType)} · ${escapeHtml(x.description||'Repas')}</strong>
+      <span>${[displayDate(x.date),x.protein?Math.round(x.protein)+' g protéines':'',x.calories?Math.round(x.calories)+' kcal':''].filter(Boolean).join(' · ')||'Repas enregistré'}</span>
+    </div>
+    <small>Source : ${x.source==='companion'?'Compagnon':'Saisie manuelle'} · Modifier ›</small>
+  </button>`;
+}
 function renderToday(today,todayWorkout,todayCardio,protein,calories,foodCount){
   const attention=today ? recoveryText(today) : null;
   const target=state.profile.proteinTarget||170;
@@ -155,7 +195,7 @@ async function renderProfile(){
   return `<section class="hero"><div class="profile-head"><svg class="big-logo" viewBox="0 0 64 64"><path d="M15 43.5A22 22 0 0 1 44.5 14" class="fluidity-arc"/><path d="M49.2 20.2A22 22 0 0 1 19.8 50" class="fluidity-arc"/></svg><div><div class="hello" style="font-size:28px;margin:0">${escapeHtml(state.profile.firstName)}</div><div class="subtle">${escapeHtml(state.profile.goal||'Ton évolution')}</div></div></div></section>
   <div class="card"><div class="card-kicker">Ce que tu sais de moi</div><div class="list"><div class="list-row"><div><strong>Objectif actuel</strong><div class="status">${escapeHtml(state.profile.goal||'À définir')}</div></div><span class="pill">Confirmé</span></div><div class="list-row"><div><strong>Alimentation</strong><div class="status">${state.profile.nutritionEnabled?'Accompagnement actif':'Masquée'}</div></div><span class="pill">Choix</span></div></div></div>
   <div class="card"><div class="switch-row"><div><strong>Accompagnement alimentation</strong><div class="status">Masqué lorsqu’il est désactivé.</div></div><input id="nutritionToggle" class="toggle" type="checkbox" ${state.profile.nutritionEnabled?'checked':''}></div></div>
-  <div class="card"><div class="card-kicker">Tes données</div><h3>Export / Import</h3><p class="subtle">Tes données restent récupérables.</p><div class="card-actions"><button class="action" id="exportBtn">Exporter JSON</button><label class="action secondary">Importer JSON<input id="importInput" type="file" accept="application/json" hidden></label></div></div><div class="version">Luis Transformation · Build 0.5.1</div>`;
+  <div class="card"><div class="card-kicker">Tes données</div><h3>Export / Import</h3><p class="subtle">Tes données restent récupérables.</p><div class="card-actions"><button class="action" id="exportBtn">Exporter JSON</button><label class="action secondary">Importer JSON<input id="importInput" type="file" accept="application/json" hidden></label></div></div><div class="version">Luis Transformation · Build 0.5.2</div>`;
 }
 function bindPage(){
   document.querySelectorAll('[data-home-view]').forEach(b=>b.addEventListener('click',()=>{state.homeView=b.dataset.homeView;render();}));
@@ -176,7 +216,7 @@ function openSheet(kind){
   if(kind==='workoutIdeas') return showSheet(`<h2>Suggestions Force</h2><div class="suggestion-list"><button class="suggestion-card" data-pick-workout="Haut du corps"><strong>Haut du corps · 40 min</strong><span>Développé couché · Tractions · Rowing · Épaules · Abdos</span></button><button class="suggestion-card" data-pick-workout="Full body"><strong>Full body · 40 min</strong><span>Squat · Développé couché · Rowing · Épaules · Gainage</span></button><button class="suggestion-card" data-pick-workout="Bas du corps"><strong>Bas du corps + abdos · 40 min</strong><span>Squat · Fentes · Hip hinge · Mollets · Gainage</span></button></div>`);
   if(kind==='cardio') return showSheet(`<h2>Ajouter une activité Cardio</h2><form id="cardioForm">${dateField('date',todayKey())}<div class="field"><label>Type</label><select name="type"><option>Course</option><option>Vélo</option><option>Natation</option><option>Marche</option><option>Autre</option></select></div><div class="field"><label>Distance (km)</label><input name="distance" type="number" step="0.01" inputmode="decimal"></div><div class="duration-picker"><div><label>Heures</label><input name="hours" type="number" min="0" max="23" inputmode="numeric" value="0"></div><span>:</span><div><label>Minutes</label><input name="minutes" type="number" min="0" max="59" inputmode="numeric" value="40"></div><span>:</span><div><label>Secondes</label><input name="seconds" type="number" min="0" max="59" inputmode="numeric" value="0"></div></div><div class="range-row"><div class="field"><label>FC moyenne</label><input name="hr" type="number" inputmode="numeric"></div><div class="field"><label>Cadence moy.</label><input name="cadence" type="number" inputmode="numeric"></div></div><div class="range-row"><div class="field"><label>Dénivelé + (m)</label><input name="elevation" type="number" inputmode="numeric"></div><div class="field"><label>Calories (kcal)</label><input name="calories" type="number" inputmode="numeric"></div></div><button class="action" type="submit">Enregistrer</button></form>`);
   if(kind==='nutritionHub') return nutritionHubSheet();
-  if(kind==='food') return showSheet(`<h2>Ajouter un repas</h2><form id="foodForm">${dateField('date',todayKey())}<div class="field"><label>Décris simplement</label><textarea name="description" rows="3" placeholder="Poulet, riz, légumes et un yaourt"></textarea></div><div class="range-row"><div class="field"><label>Protéines (g)</label><input name="protein" type="number" step="0.1"></div><div class="field"><label>Calories</label><input name="calories" type="number"></div></div><div class="range-row"><div class="field"><label>Glucides (g)</label><input name="carbs" type="number" step="0.1"></div><div class="field"><label>Lipides (g)</label><input name="fat" type="number" step="0.1"></div></div><div class="field"><label>Eau (L)</label><input name="water" type="number" step="0.1"></div><label class="checkline"><input type="checkbox" name="classic"> Ajouter à mes classiques</label><button class="action" type="submit">Enregistrer</button></form>`);
+  if(kind==='food') return showSheet(`<h2>Ajouter un repas</h2><form id="foodForm">${dateField('date',todayKey())}<div class="field"><label>Moment</label><select name="mealType">${mealTypeOptions('lunch')}</select></div><div class="field"><label>Décris simplement</label><textarea name="description" rows="3" placeholder="Poulet, riz, légumes et un yaourt"></textarea></div><div class="range-row"><div class="field"><label>Protéines (g)</label><input name="protein" type="number" step="0.1"></div><div class="field"><label>Calories</label><input name="calories" type="number"></div></div><div class="range-row"><div class="field"><label>Glucides (g)</label><input name="carbs" type="number" step="0.1"></div><div class="field"><label>Lipides (g)</label><input name="fat" type="number" step="0.1"></div></div><div class="field"><label>Eau (L)</label><input name="water" type="number" step="0.1"></div><label class="checkline"><input type="checkbox" name="classic"> Ajouter à mes classiques</label><button class="action" type="submit">Enregistrer</button></form>`);
   if(kind==='barcode') return showSheet(`<h2>Code-barres</h2><p class="subtle">Build 0.2 prépare le parcours : saisie → prévisualisation → confirmation. Le scan caméra arrivera ensuite.</p><form id="barcodeForm"><div class="field"><label>Code</label><input name="barcode" inputmode="numeric" placeholder="7612345678901"></div><div class="field"><label>Produit</label><input name="product" placeholder="Nom du produit"></div><button class="action" type="submit">Prévisualiser</button></form>`);
   if(kind==='photoFood') return showSheet(`<h2>Photographier un aliment</h2><p class="subtle">Prends une photo ou choisis-en une dans ta photothèque.</p><label class="action photo-action">Prendre une photo<input id="foodPhotoInput" type="file" accept="image/*" capture="environment" hidden></label><label class="action secondary photo-action">Photothèque<input id="foodLibraryInput" type="file" accept="image/*" hidden></label><div id="foodPhotoPreview" class="photo-preview empty">La photo apparaîtra ici avant confirmation.</div>`);
   if(kind==='mealIdea') return mealIdeaSheet();
@@ -200,6 +240,7 @@ async function editFoodSheet(id){
   showSheet(`<h2>Modifier le repas</h2><form id="foodEditForm">
     <input type="hidden" name="id" value="${x.id}">
     ${dateField('date',x.date||todayKey())}
+    <div class="field"><label>Moment</label><select name="mealType">${mealTypeOptions(x.mealType||'')}</select></div>
     <div class="field"><label>Description</label><textarea name="description" rows="3">${escapeHtml(x.description||'')}</textarea></div>
     <div class="range-row"><div class="field"><label>Protéines (g)</label><input name="protein" type="number" step="0.1" value="${x.protein??''}"></div><div class="field"><label>Calories</label><input name="calories" type="number" value="${x.calories??''}"></div></div>
     <div class="range-row"><div class="field"><label>Glucides (g)</label><input name="carbs" type="number" step="0.1" value="${x.carbs??''}"></div><div class="field"><label>Lipides (g)</label><input name="fat" type="number" step="0.1" value="${x.fat??''}"></div></div>
@@ -209,7 +250,7 @@ async function editFoodSheet(id){
 }
 async function updateFood(e){
   e.preventDefault(); const f=new FormData(e.currentTarget); const old=await LTDB.get('food',f.get('id')); if(!old)return;
-  await LTDB.put('food',{...old,date:f.get('date')||old.date||todayKey(),description:f.get('description')||'Repas',protein:num(f.get('protein')),calories:num(f.get('calories')),carbs:num(f.get('carbs')),fat:num(f.get('fat')),water:num(f.get('water')),updatedAt:new Date().toISOString()});
+  await LTDB.put('food',{...old,date:f.get('date')||old.date||todayKey(),mealType:f.get('mealType')||old.mealType||'lunch',description:f.get('description')||'Repas',protein:num(f.get('protein')),calories:num(f.get('calories')),carbs:num(f.get('carbs')),fat:num(f.get('fat')),water:num(f.get('water')),updatedAt:new Date().toISOString()});
   toast('Repas modifié'); await nutritionHubSheet(); render();
 }
 async function deleteFood(id){
@@ -247,7 +288,7 @@ async function editActivitySheet(kind,id){
       <div class="range-row"><div class="field"><label>Dénivelé +</label><input name="elevation" type="number" value="${x.elevationGain??''}"></div><div class="field"><label>Calories</label><input name="calories" type="number" value="${x.calories??''}"></div></div>
       <div class="edit-actions"><button class="action" type="submit">Enregistrer</button><button class="action danger" type="button" id="deleteActivity">Supprimer</button></div></form>`);
   }
-  const entries=x.exerciseEntries||[];
+  const entries=editableForceEntries(x);
   return showSheet(`<h2>Modifier la séance Force</h2><form id="activityEditForm"><input type="hidden" name="kind" value="Force"><input type="hidden" name="id" value="${id}">
     ${dateField('date',x.date||todayKey())}
     <div class="edit-force-list">${entries.map((e,i)=>{
@@ -266,7 +307,7 @@ async function updateActivity(e){
     const label=h?`${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`:`${m}:${String(s).padStart(2,'0')}`;
     await LTDB.put(store,{...old,date,type:f.get('type'),distance:num(f.get('distance')),durationSeconds:seconds,durationLabel:label,heartRateAvg:num(f.get('hr')),cadenceAvg:num(f.get('cadence')),elevationGain:num(f.get('elevation')),calories:num(f.get('calories')),updatedAt:new Date().toISOString()});
   } else {
-    const entries=(old.exerciseEntries||[]).map((e,i)=>{
+    const entries=editableForceEntries(old).map((e,i)=>{
       const base=normalizedForceSeries(e);
       const series=base.map((s,j)=>({...s,set:j+1,reps:num(f.get(`editreps_${i}_${j}`))??s.reps,weight:num(f.get(`editweight_${i}_${j}`))}));
       const weights=series.map(v=>v.weight).filter(v=>v!=null);
@@ -317,7 +358,7 @@ async function saveWorkout(e){
   $('#sheet').close(); toast('Séance Force enregistrée'); render();
 }
 async function saveCardio(e){e.preventDefault(); const f=new FormData(e.currentTarget); const date=f.get('date')||todayKey(); const seconds=(num(f.get('hours'))||0)*3600+(num(f.get('minutes'))||0)*60+(num(f.get('seconds'))||0); const h=Math.floor(seconds/3600),m=Math.floor((seconds%3600)/60),s=seconds%60; const label=h?`${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`:`${m}:${String(s).padStart(2,'0')}`; await LTDB.put('cardio',{id:uid(),date,type:f.get('type'),distance:num(f.get('distance')),durationSeconds:seconds,durationLabel:label,heartRateAvg:num(f.get('hr')),cadenceAvg:num(f.get('cadence')),elevationGain:num(f.get('elevation')),calories:num(f.get('calories')),source:'manual',createdAt:new Date().toISOString()}); $('#sheet').close(); toast('Activité Cardio enregistrée'); render();}
-async function saveFood(e){e.preventDefault(); const f=new FormData(e.currentTarget); const date=f.get('date')||todayKey(); await LTDB.put('food',{id:uid(),date,dateTime:new Date().toISOString(),description:f.get('description')||'Repas',protein:num(f.get('protein')),calories:num(f.get('calories')),carbs:num(f.get('carbs')),fat:num(f.get('fat')),water:num(f.get('water')),classic:f.get('classic')==='on',source:'companion',confidence:'user',createdAt:new Date().toISOString()}); toast('Repas enregistré · visible dans Alimentation'); if(date===todayKey()) await nutritionHubSheet(); else $('#sheet').close(); render();}
+async function saveFood(e){e.preventDefault(); const f=new FormData(e.currentTarget); const date=f.get('date')||todayKey(); await LTDB.put('food',{id:uid(),date,dateTime:new Date().toISOString(),mealType:f.get('mealType')||'lunch',description:f.get('description')||'Repas',protein:num(f.get('protein')),calories:num(f.get('calories')),carbs:num(f.get('carbs')),fat:num(f.get('fat')),water:num(f.get('water')),classic:f.get('classic')==='on',source:'companion',confidence:'user',createdAt:new Date().toISOString()}); toast('Repas enregistré · visible dans Alimentation'); if(date===todayKey()) await nutritionHubSheet(); else $('#sheet').close(); render();}
 
 function previewBarcode(e){e.preventDefault(); const f=new FormData(e.currentTarget); const code=f.get('barcode')||'—', product=f.get('product')||'Produit à identifier'; showSheet(`<h2>Prévisualisation produit</h2><div class="card"><div class="card-kicker">Code-barres</div><h3>${escapeHtml(product)}</h3><p class="subtle">${escapeHtml(code)}</p><p>Le parcours de confirmation est en place. La recherche automatique des valeurs sera branchée avec le backend nutrition.</p><div class="card-actions"><button class="action secondary" data-close>Fermer</button></div></div>`);}
 function previewFoodPhoto(e){ const file=e.target.files?.[0]; if(!file)return; const url=URL.createObjectURL(file); const box=$('#foodPhotoPreview'); box.className='photo-preview'; box.innerHTML=`<img src="${url}" alt="Prévisualisation du produit"><div class="card-actions"><button class="action secondary" data-close>Annuler</button><button class="action" type="button" id="confirmPhoto">Confirmer la photo</button></div>`; $('#confirmPhoto')?.addEventListener('click',()=>{toast('Photo confirmée'); $('#sheet').close(); URL.revokeObjectURL(url);}); }
