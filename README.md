@@ -1,34 +1,49 @@
-# Luis Transformation v8
+# Luis Transformation — Build 0.1
 
-Ajoute photo depuis photothèque, coach nutrition IA, vidéos techniques et synthèse positive des progrès.
+Première fondation exécutable issue du Product Book : PWA mobile-first, Fluidité/Connexion, Aujourd’hui ↔ Évolution, Entraînement, Compagnon local, Profil, IndexedDB, offline et export/import JSON.
 
-Configurer `OPENAI_API_KEY` dans Netlify > Site configuration > Environment variables. Ne jamais mettre la clé dans GitHub.
+## Tester localement
 
-## Version 9 — Nutrition IA visuelle
+Servir le dossier avec un serveur HTTP (un service worker ne fonctionne pas correctement via `file://`). Exemple :
 
-Nouveau parcours dans Nutrition :
+```bash
+python3 -m http.server 8080
+```
 
-1. saisir le nom/la marque, photographier le produit ou choisir une photo enregistrée ;
-2. analyse via une fonction Netlify protégée ;
-3. recherche web et lecture de l’étiquette par le modèle ;
-4. fiche préremplie avec marque, portion, calories et macros ;
-5. confirmation ou correction manuelle avant ajout au repas ;
-6. mémorisation du produit dans les aliments personnels.
+Puis ouvrir `http://localhost:8080`.
 
-### Variables Netlify
+## Déployer sur Netlify
 
-Obligatoire : `OPENAI_API_KEY`
+Glisser-déposer le contenu de ce dossier dans Netlify Drop, ou connecter ce dossier/repository. Aucun build npm n’est nécessaire pour Build 0.1.
 
-Facultatives :
-- `OPENAI_MODEL` pour le coach repas ;
-- `OPENAI_VISION_MODEL` pour l’identification alimentaire visuelle.
+## iPhone / PWA
 
-Par défaut, les fonctions utilisent `gpt-5-mini`.
+1. Ouvrir l’URL Netlify dans Safari.
+2. Partager.
+3. Ajouter à l’écran d’accueil.
+4. L’app se lance ensuite en mode standalone.
 
-La clé API reste exclusivement côté serveur dans Netlify. Ne jamais la placer dans `app.js` ou dans GitHub.
+## Données
 
+- Stockage : IndexedDB.
+- Offline : service worker + shell caché.
+- Export : Profil > Exporter JSON.
+- Import : Profil > Importer JSON.
+- Une migration best-effort capture d’anciens snapshots localStorage si certaines anciennes clés sont présentes sur le même domaine.
 
-## v9.2 Import & Backup Safe
-- Import global avec progression, validation, rollback et restauration des photos.
-- Import Garmin GPX/TCX/CSV avec statut visible et erreurs explicites.
-- Export complet vérifié et résumé du contenu.
+## Ce que Build 0.1 fait déjà
+
+- identité Fluidité/Connexion + initiales ;
+- présence du Compagnon sur les écrans principaux ;
+- Aujourd’hui et Évolution ;
+- saisie quotidienne ;
+- Force et Cardio simples ;
+- Alimentation optionnelle ;
+- Compagnon local transparent (pas encore d’API IA distante) ;
+- « Je ne sais pas » plutôt qu’une fausse réponse ;
+- export/import ;
+- fonctionnement offline.
+
+## Build suivant
+
+0.2 : onboarding complet, graphes niveau 3, preview avant imports sportifs, mémoire modifiable plus riche, backend/API IA et contexte météo.
