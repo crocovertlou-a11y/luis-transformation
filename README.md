@@ -64,3 +64,14 @@ Diagnostic IA: affiche le code HTTP, le code d'erreur et le détail renvoyé par
 - Aucun redirect custom.
 - Gemini : `gemini-3-flash-preview`.
 - Nouveau cache PWA.
+
+
+## Build 0.7 — Compagnon intelligent v1 + Journal Photos
+- Évolution > Photos : caméra ou photothèque.
+- Recadrage 3:4 avec zoom, déplacement tactile et guides.
+- Historisation locale par date et vue Face / Profil / Dos.
+- Petites vignettes regroupées par date, consultation et suppression.
+- Compagnon : résumé contextuel local + réponses Gemini à partir des données réellement enregistrées.
+- Fallback local si Gemini est indisponible.
+- Architecture Functions 0.6.4.6 conservée, avec ajout de `companion-v1.js`.
+- Scanner et IA Nutrition inchangés.

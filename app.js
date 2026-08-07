@@ -154,10 +154,16 @@ async function renderEvolution(checkins,workouts,cardio){
   const waistDelta=first?.waist&&last?.waist?+(last.waist-first.waist).toFixed(1):null;
   const activities=workouts.filter(x=>daysAgo(x.date)<=30).length+cardio.filter(x=>daysAgo(x.date)<=30).length;
   const reading=sorted.length<2?'Je n’ai pas encore assez de recul pour lire une tendance fiable.':'Ton évolution reste cohérente avec ce que tu suis actuellement.';
+  const photos=(await LTDB.all('photos')).sort((x,y)=>(y.date+y.createdAt).localeCompare(x.date+x.createdAt));
+  const groups={}; photos.forEach(p=>(groups[p.date]??=[]).push(p));
+  const gallery=Object.entries(groups).slice(0,12).map(([date,items])=>`<div class="photo-date-group"><div class="photo-date">${formatPhotoDate(date)}</div><div class="photo-thumbs">${items.map(p=>`<button class="photo-thumb" data-photo-view="${p.id}" aria-label="${escapeHtml(p.view||'Photo')} ${date}"><img src="${p.image}" alt="${escapeHtml(p.view||'Photo évolution')}"><span>${escapeHtml(p.view||'Photo')}</span></button>`).join('')}</div></div>`).join('');
   return `<div class="trend-hero"><div class="trend-mark"><svg viewBox="0 0 64 64"><path d="M13 44A23 23 0 0 1 45 12" class="fluidity-arc" style="stroke-width:6"/><path d="M51 19A23 23 0 0 1 20 52" class="fluidity-arc" style="stroke-width:6"/></svg><span class="initials" style="font-size:14px">${escapeHtml(state.profile.initials)}</span></div><div class="trend-copy">${reading}</div><p class="subtle">Le sens d’abord. Les graphiques seulement si tu veux creuser.</p></div>
   <div class="signals"><div class="signal"><strong>${weightDelta===null?'—':signed(weightDelta)+' kg'}</strong><span>Poids</span></div><div class="signal"><strong>${waistDelta===null?'—':signed(waistDelta)+' cm'}</strong><span>Tour de taille</span></div><div class="signal"><strong>${activities}</strong><span>Activités · 30 j</span></div></div>
+  <div class="card photo-journal"><div class="card-kicker">Photos</div><div class="photo-title-row"><div><h3>Voir le changement</h3><p class="subtle">Même cadrage, même vue, une date. L’analyse IA viendra ensuite.</p></div><button class="action compact" data-open="progressPhoto">Ajouter</button></div>${gallery||'<div class="empty">Tes photos d’évolution apparaîtront ici en petites vignettes, classées par date.</div>'}</div>
   <div class="card" style="margin-top:14px"><div class="card-kicker">Comprendre</div><h3>Pourquoi cette lecture ?</h3><p class="subtle">Les graphiques et l’historique détaillé restent au niveau suivant.</p><div class="card-actions"><button class="action secondary" data-open="details">Explorer les données</button></div></div>`;
 }
+function formatPhotoDate(d){try{return new Intl.DateTimeFormat('fr-CH',{day:'2-digit',month:'short',year:'numeric'}).format(new Date(d+'T12:00:00'))}catch{return d}}
+
 async function renderTraining(){
   const workouts=(await LTDB.all('workouts')).sort((a,b)=>b.date.localeCompare(a.date));
   const cardio=(await LTDB.all('cardio')).sort((a,b)=>b.date.localeCompare(a.date));
@@ -191,22 +197,41 @@ function exerciseJournal(workouts){
   }
   return rows.join('');
 }
-async function renderCompanion(){
-  const messages=await LTDB.all('events'); const chat=messages.filter(x=>x.type==='CHAT').slice(-8);
-  return `<section class="hero"><div class="companion-page-mark">${companionMark("companion-mark-large")}</div><div class="hello">Compagnon</div><div class="subtle">Présent partout. Bavard seulement quand cela mérite de l’être.</div></section>
-  <div class="card primary-card"><div class="attention">${companionMark("companion-mark-large")}<div><h3>Je suis là.</h3><p>Je peux déjà lire le contexte local. Quand je n’ai pas assez d’éléments, je te le dis.</p></div></div></div>
-  <div class="card chat" id="chat">${chat.length?chat.map(x=>`<div class="bubble ${x.role==='user'?'user':'companion'}">${escapeHtml(x.text)}</div>`).join(''):'<div class="bubble companion">Je préfère commencer par ce que je sais vraiment.</div>'}</div><div class="chatbar"><input id="chatInput" placeholder="Écris une question…"><button id="sendChat">Envoyer</button></div>`;
+async function companionSnapshot(){
+  const [checkins,workouts,cardio,food]=await Promise.all(['checkins','workouts','cardio','food'].map(s=>LTDB.all(s)));
+  const today=todayKey(), recent=checkins.filter(x=>daysAgo(x.date)<=7).sort((a,b)=>b.date.localeCompare(a.date));
+  const latest=recent[0]; const todayFood=food.filter(x=>x.date===today);
+  const protein=todayFood.reduce((s,x)=>s+(Number(x.protein)||0),0), calories=todayFood.reduce((s,x)=>s+(Number(x.calories)||0),0);
+  const acts=[...workouts,...cardio].filter(x=>daysAgo(x.date)<=7).length;
+  let headline='Je construis encore ton contexte.';
+  if(latest){
+    const bits=[];
+    if(latest.energy<=2)bits.push('énergie basse');
+    if(latest.stress>=4)bits.push('stress élevé');
+    if(latest.sleep&&latest.sleep<6.5)bits.push('sommeil court');
+    if(protein)bits.push(`${Math.round(protein)} g de protéines aujourd’hui`);
+    if(acts)bits.push(`${acts} entraînement${acts>1?'s':''} sur 7 jours`);
+    headline=bits.length?`Je vois ${bits.join(', ')}.`:'Tes signaux du moment sont plutôt stables.';
+  }
+  return {headline,context:{today,goal:state.profile.goal,proteinTarget:state.profile.proteinTarget||170,latestCheckin:latest||null,proteinToday:protein,caloriesToday:calories,activities7d:acts,recentCheckins:recent.slice(0,7)}};
 }
+async function renderCompanion(){
+  const messages=await LTDB.all('events'),chat=messages.filter(x=>x.type==='CHAT').slice(-8),snap=await companionSnapshot();
+  return `<section class="hero"><div class="companion-page-mark">${companionMark("companion-mark-large")}</div><div class="hello">Compagnon</div><div class="subtle">Je lis tes données utiles avant de te répondre.</div></section>
+  <div class="card primary-card"><div class="attention">${companionMark("companion-mark-large")}<div><h3>${escapeHtml(snap.headline)}</h3><p>Je m’appuie sur ce que tu as réellement enregistré. Pas sur une supposition.</p></div></div></div>
+  <div class="card chat" id="chat">${chat.length?chat.map(x=>`<div class="bubble ${x.role==='user'?'user':'companion'}">${escapeHtml(x.text)}</div>`).join(''):'<div class="bubble companion">Demande-moi par exemple ce que je pense de ta journée ou ce que tu devrais privilégier demain.</div>'}</div><div class="chatbar"><input id="chatInput" placeholder="Écris une question…"><button id="sendChat">Envoyer</button></div>`;
+}
+
 async function renderProfile(){
   return `<section class="hero"><div class="profile-head"><svg class="big-logo" viewBox="0 0 64 64"><path d="M15 43.5A22 22 0 0 1 44.5 14" class="fluidity-arc"/><path d="M49.2 20.2A22 22 0 0 1 19.8 50" class="fluidity-arc"/></svg><div><div class="hello" style="font-size:28px;margin:0">${escapeHtml(state.profile.firstName)}</div><div class="subtle">${escapeHtml(state.profile.goal||'Ton évolution')}</div></div></div></section>
   <div class="card"><div class="card-kicker">Ce que tu sais de moi</div><div class="list"><div class="list-row"><div><strong>Objectif actuel</strong><div class="status">${escapeHtml(state.profile.goal||'À définir')}</div></div><span class="pill">Confirmé</span></div><div class="list-row"><div><strong>Alimentation</strong><div class="status">${state.profile.nutritionEnabled?'Accompagnement actif':'Masquée'}</div></div><span class="pill">Choix</span></div></div></div>
   <div class="card"><div class="switch-row"><div><strong>Accompagnement alimentation</strong><div class="status">Masqué lorsqu’il est désactivé.</div></div><input id="nutritionToggle" class="toggle" type="checkbox" ${state.profile.nutritionEnabled?'checked':''}></div></div>
-  <div class="card"><div class="card-kicker">Tes données</div><h3>Export / Import</h3><p class="subtle">Tes données restent récupérables.</p><div class="card-actions"><button class="action" id="exportBtn">Exporter JSON</button><label class="action secondary">Importer JSON<input id="importInput" type="file" accept="application/json" hidden></label></div></div><div class="version">Luis Transformation · Build 0.6.4</div>`;
+  <div class="card"><div class="card-kicker">Tes données</div><h3>Export / Import</h3><p class="subtle">Tes données restent récupérables.</p><div class="card-actions"><button class="action" id="exportBtn">Exporter JSON</button><label class="action secondary">Importer JSON<input id="importInput" type="file" accept="application/json" hidden></label></div></div><div class="version">Luis Transformation · Build 0.7</div>`;
 }
 function bindPage(){
   document.querySelectorAll('[data-home-view]').forEach(b=>b.addEventListener('click',()=>{state.homeView=b.dataset.homeView;render();}));
   document.querySelectorAll('[data-route-card]').forEach(b=>b.addEventListener('click',()=>navigate(b.dataset.routeCard)));
-  document.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>openSheet(b.dataset.open)));
+  document.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>openSheet(b.dataset.open))); document.querySelectorAll('[data-photo-view]').forEach(b=>b.addEventListener('click',()=>viewProgressPhoto(b.dataset.photoView)));
   document.querySelectorAll('[data-edit-activity]').forEach(b=>b.addEventListener('click',()=>{const [kind,id]=b.dataset.editActivity.split(':'); editActivitySheet(kind,id);}));
   $('#sendChat')?.addEventListener('click',sendChat); $('#chatInput')?.addEventListener('keydown',e=>{if(e.key==='Enter')sendChat();});
   $('#nutritionToggle')?.addEventListener('change',async e=>{state.profile.nutritionEnabled=e.target.checked; await LTDB.put('profile',state.profile); toast(e.target.checked?'Alimentation activée':'Alimentation masquée'); render();});
@@ -220,6 +245,7 @@ function openSheet(kind){
   if(kind==='checkin') return showSheet(`<h2>Comment vas-tu aujourd’hui ?</h2><form id="checkinForm">${dateField('date',todayKey())}${slider('sleep','Sommeil','0','12','0.25','7',' h')}${slider('energy','Énergie','1','5','1','3','/5')}${slider('stress','Stress','1','5','1','2','/5')}${slider('hunger','Faim','1','5','1','3','/5')}<div class="field"><label>Poids (kg)</label><input name="weight" type="number" min="20" max="300" step="0.1" inputmode="decimal" placeholder="80.4"></div><div class="field"><label>Tour de taille (cm)</label><input name="waist" type="number" min="30" max="250" step="0.1" inputmode="decimal" placeholder="90.0"></div><button class="action" type="submit">Enregistrer</button></form>`);
   if(kind==='workout') return showSheet(`<h2>Ta séance Force</h2><form id="workoutForm"><input type="hidden" name="name" value="Haut du corps">${dateField('date',todayKey())}${forceExerciseInput('Développé couché',4,6,'2 min')}${forceExerciseInput('Tractions',4,8,'90 s')}${forceExerciseInput('Rowing',3,10,'90 s')}${forceExerciseInput('Développé épaules',3,10,'75 s')}${forceExerciseInput('Gainage',3,'45 s','45 s')}<div class="field"><label>Durée totale (min)</label><input name="durationMin" type="number" inputmode="numeric" value="40"></div>${slider('effort','Ressenti','1','5','1','3','/5')}<button class="action" type="submit">Terminer la séance</button></form>`);
   if(kind==='workoutIdeas') return showSheet(`<h2>Suggestions Force</h2><div class="suggestion-list"><button class="suggestion-card" data-pick-workout="Haut du corps"><strong>Haut du corps · 40 min</strong><span>Développé couché · Tractions · Rowing · Épaules · Abdos</span></button><button class="suggestion-card" data-pick-workout="Full body"><strong>Full body · 40 min</strong><span>Squat · Développé couché · Rowing · Épaules · Gainage</span></button><button class="suggestion-card" data-pick-workout="Bas du corps"><strong>Bas du corps + abdos · 40 min</strong><span>Squat · Fentes · Hip hinge · Mollets · Gainage</span></button></div>`);
+  if(kind==='progressPhoto') return showSheet(`<h2>Photo d’évolution</h2><p class="subtle">Prends une photo ou choisis-en une, puis recadre-la avant de l’enregistrer.</p>${dateField('photoDate',todayKey())}<div class="field"><label>Vue</label><select id="progressPhotoView"><option>Face</option><option>Profil</option><option>Dos</option></select></div><div class="photo-source-actions"><label class="action">Prendre une photo<input id="progressCameraInput" type="file" accept="image/*" capture="environment" hidden></label><label class="action secondary">Photothèque<input id="progressLibraryInput" type="file" accept="image/*" hidden></label></div><div class="photo-guide-note">Conseil : même lumière, même distance et posture détendue pour rendre les comparaisons utiles.</div>`);
   if(kind==='cardio') return showSheet(`<h2>Ajouter une activité Cardio</h2><form id="cardioForm">${dateField('date',todayKey())}<div class="field"><label>Type</label><select name="type"><option>Course</option><option>Vélo</option><option>Natation</option><option>Marche</option><option>Autre</option></select></div><div class="field"><label>Distance (km)</label><input name="distance" type="number" step="0.01" inputmode="decimal"></div><div class="duration-picker"><div><label>Heures</label><input name="hours" type="number" min="0" max="23" inputmode="numeric" value="0"></div><span>:</span><div><label>Minutes</label><input name="minutes" type="number" min="0" max="59" inputmode="numeric" value="40"></div><span>:</span><div><label>Secondes</label><input name="seconds" type="number" min="0" max="59" inputmode="numeric" value="0"></div></div><div class="range-row"><div class="field"><label>FC moyenne</label><input name="hr" type="number" inputmode="numeric"></div><div class="field"><label>Cadence moy.</label><input name="cadence" type="number" inputmode="numeric"></div></div><div class="range-row"><div class="field"><label>Dénivelé + (m)</label><input name="elevation" type="number" inputmode="numeric"></div><div class="field"><label>Calories (kcal)</label><input name="calories" type="number" inputmode="numeric"></div></div><button class="action" type="submit">Enregistrer</button></form>`);
   if(kind==='nutritionHub') return nutritionHubSheet();
   if(kind==='food') return showSheet(`<h2>Ajouter un repas</h2><form id="foodForm">${dateField('date',todayKey())}<div class="field"><label>Moment</label><select name="mealType">${mealTypeOptions('lunch')}</select></div><div class="field"><label>Décris simplement</label><textarea name="description" rows="3" placeholder="Poulet, riz, légumes et un yaourt"></textarea></div><div class="range-row"><div class="field"><label>Protéines (g)</label><input name="protein" type="number" step="0.1"></div><div class="field"><label>Calories</label><input name="calories" type="number"></div></div><div class="range-row"><div class="field"><label>Glucides (g)</label><input name="carbs" type="number" step="0.1"></div><div class="field"><label>Lipides (g)</label><input name="fat" type="number" step="0.1"></div></div><div class="field"><label>Eau (L)</label><input name="water" type="number" step="0.1"></div><label class="checkline"><input type="checkbox" name="classic"> Ajouter à mes classiques</label><button class="action" type="submit">Enregistrer</button></form>`);
@@ -337,7 +363,7 @@ function bindSheet(){
   document.querySelectorAll('input[type="range"]').forEach(r=>r.addEventListener('input',()=>updateRange(r)));
   $('#checkinForm')?.addEventListener('submit',saveCheckin); $('#workoutForm')?.addEventListener('submit',saveWorkout); $('#cardioForm')?.addEventListener('submit',saveCardio); $('#foodForm')?.addEventListener('submit',saveFood); $('#barcodeForm')?.addEventListener('submit',lookupBarcode); $('#startBarcodeCamera')?.addEventListener('click',startBarcodeCamera); $('#toggleManualBarcode')?.addEventListener('click',()=>$('#barcodeForm')?.classList.toggle('hidden')); $('#barcodeConfirmForm')?.addEventListener('submit',saveBarcodeFood); $('#aiFoodConfirmForm')?.addEventListener('submit',saveAIFood);
   $('#foodPhotoInput')?.addEventListener('change',previewFoodPhoto);
-  $('#foodLibraryInput')?.addEventListener('change',previewFoodPhoto);
+  $('#foodLibraryInput')?.addEventListener('change',previewFoodPhoto); $('#progressCameraInput')?.addEventListener('change',prepareProgressPhoto); $('#progressLibraryInput')?.addEventListener('change',prepareProgressPhoto);
   $('#barcodeGrams')?.addEventListener('input',updateBarcodePortion);
   $('#nextMealIdea')?.addEventListener('click',()=>{mealIdeaIndex++; mealIdeaSheet();});
   document.querySelectorAll('[data-technique]').forEach(b=>b.addEventListener('click',()=>showTechnique(b.dataset.technique)));
@@ -550,8 +576,61 @@ async function saveAIFood(e){
   pendingFoodImageData=null; toast('Analyse confirmée et enregistrée'); await nutritionHubSheet(); render();
 }
 
-async function sendChat(){const input=$('#chatInput'); const text=input?.value.trim(); if(!text)return; await LTDB.put('events',{id:uid(),type:'CHAT',role:'user',text,createdAt:new Date().toISOString()}); const context=await localCompanion(text); await LTDB.put('events',{id:uid(),type:'CHAT',role:'companion',text:context,createdAt:new Date().toISOString()}); render();}
-async function localCompanion(text){const low=text.toLowerCase(); const checkins=await LTDB.all('checkins'); const latest=checkins.sort((a,b)=>b.date.localeCompare(a.date))[0]; if(/(comment|vais|aujourd)/.test(low)){ if(!latest) return 'Je ne sais pas encore suffisamment bien. Donne-moi simplement ton ressenti du jour et je pourrai commencer à te répondre avec plus de contexte.'; return `Aujourd’hui, tu as indiqué ${latest.sleep?latest.sleep+' h de sommeil, ':''}${latest.energy?'une énergie de '+latest.energy+'/5 et ':''}${latest.stress?'un stress de '+latest.stress+'/5.':''} Je garde le constat simple pour le moment.`; } if(/(sais|connais|mémoire)/.test(low)) return `Je sais ce que tu m’as explicitement donné : ton objectif « ${state.profile.goal} » et les données enregistrées ici. Je ne transforme pas une supposition en fait.`; return 'Je peux utiliser ton contexte local, mais je préfère te dire clairement quand je ne sais pas encore.';}
+
+let progressCrop={src:null,img:null,scale:1,x:0,y:0};
+async function prepareProgressPhoto(e){
+  const file=e.target.files?.[0]; if(!file)return;
+  const data=await fileToDataURL(file); const img=new Image();
+  img.onload=()=>{progressCrop={src:data,img,scale:1,x:0,y:0};showProgressCrop();}; img.src=data;
+}
+function showProgressCrop(){
+  const date=$('#sheetContent [name="photoDate"]')?.value||todayKey();
+  const view=$('#progressPhotoView')?.value||'Face';
+  showSheet(`<h2>Recadrer</h2><p class="subtle">Déplace la photo et ajuste le zoom. Le cadre vertical sera conservé dans l’historique.</p><div class="crop-stage" id="cropStage"><img id="cropImage" src="${progressCrop.src}"><div class="crop-guide"><i></i><i></i><i></i></div></div><div class="field"><label>Zoom</label><input id="cropZoom" type="range" min="1" max="3" step="0.01" value="1"></div><div class="crop-nudge"><button type="button" data-nudge="0,-20">↑</button><button type="button" data-nudge="-20,0">←</button><button type="button" data-nudge="20,0">→</button><button type="button" data-nudge="0,20">↓</button></div><button class="action" id="saveProgressPhoto" type="button">Enregistrer la photo</button><div class="status">Date : ${date} · ${view}</div>`);
+  const im=$('#cropImage'); progressCrop.x=0;progressCrop.y=0;progressCrop.scale=1; applyCropTransform();
+  $('#cropZoom')?.addEventListener('input',e=>{progressCrop.scale=Number(e.target.value);applyCropTransform()});
+  document.querySelectorAll('[data-nudge]').forEach(b=>b.addEventListener('click',()=>{const [dx,dy]=b.dataset.nudge.split(',').map(Number);progressCrop.x+=dx;progressCrop.y+=dy;applyCropTransform()}));
+  let sx=0,sy=0,ox=0,oy=0;
+  $('#cropStage')?.addEventListener('pointerdown',e=>{sx=e.clientX;sy=e.clientY;ox=progressCrop.x;oy=progressCrop.y;e.currentTarget.setPointerCapture(e.pointerId)});
+  $('#cropStage')?.addEventListener('pointermove',e=>{if(!e.currentTarget.hasPointerCapture(e.pointerId))return;progressCrop.x=ox+e.clientX-sx;progressCrop.y=oy+e.clientY-sy;applyCropTransform()});
+  $('#saveProgressPhoto')?.addEventListener('click',()=>saveProgressPhoto(date,view));
+}
+function applyCropTransform(){const im=$('#cropImage');if(im)im.style.transform=`translate(${progressCrop.x}px,${progressCrop.y}px) scale(${progressCrop.scale})`}
+async function saveProgressPhoto(date,view){
+  const img=progressCrop.img;if(!img)return;
+  const canvas=document.createElement('canvas');canvas.width=720;canvas.height=960;const c=canvas.getContext('2d');
+  const stage=$('#cropStage'), rect=stage.getBoundingClientRect();
+  const base=Math.max(720/img.naturalWidth,960/img.naturalHeight);
+  const scale=base*progressCrop.scale;
+  const dw=img.naturalWidth*scale,dh=img.naturalHeight*scale;
+  const dx=(720-dw)/2+(progressCrop.x/rect.width)*720,dy=(960-dh)/2+(progressCrop.y/rect.height)*960;
+  c.drawImage(img,dx,dy,dw,dh);
+  const image=canvas.toDataURL('image/jpeg',0.78);
+  await LTDB.put('photos',{id:uid(),date,view,image,createdAt:new Date().toISOString()});
+  $('#sheet').close();toast('Photo ajoutée à ton évolution');render();
+}
+async function viewProgressPhoto(id){
+  const p=await LTDB.get('photos',id);if(!p)return;
+  showSheet(`<h2>${escapeHtml(p.view||'Photo')} · ${formatPhotoDate(p.date)}</h2><img class="progress-photo-large" src="${p.image}" alt="Photo évolution"><div class="edit-actions"><button class="action danger" type="button" id="deleteProgressPhoto">Supprimer</button></div>`);
+  $('#deleteProgressPhoto')?.addEventListener('click',async()=>{await LTDB.del('photos',id);$('#sheet').close();toast('Photo supprimée');render()});
+}
+async function sendChat(){
+  const input=$('#chatInput'),text=input?.value.trim();if(!text)return;
+  input.disabled=true;$('#sendChat').disabled=true;
+  await LTDB.put('events',{id:uid(),type:'CHAT',role:'user',text,createdAt:new Date().toISOString()});
+  const snap=await companionSnapshot(); let answer='';
+  try{
+    const r=await fetch('/.netlify/functions/companion-v1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:text,context:snap.context})});
+    const data=await r.json(); if(!r.ok)throw new Error(data.detail||data.error||'IA indisponible'); answer=data.answer||'Je n’ai pas de réponse utile pour le moment.';
+  }catch(err){console.error(err);answer=await localCompanion(text)}
+  await LTDB.put('events',{id:uid(),type:'CHAT',role:'companion',text:answer,createdAt:new Date().toISOString()});render();
+}
+async function localCompanion(text){
+  const snap=await companionSnapshot(),c=snap.context;
+  if(c.latestCheckin)return `${snap.headline} Pour l’instant je te conseille de rester simple : adapte l’intensité à ton énergie et garde ton repère protéines en vue.`;
+  return 'Je n’ai pas encore assez de données pour te conseiller proprement. Donne-moi ton ressenti du jour et je commencerai à construire le contexte.';
+}
+
 async function exportData(){const dump=await LTDB.dump(); const blob=new Blob([JSON.stringify(dump,null,2)],{type:'application/json'}); const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`luis-transformation-${todayKey()}.json`;a.click();URL.revokeObjectURL(a.href);toast('Export préparé');}
 async function importData(e){const file=e.target.files?.[0]; if(!file)return; try{const payload=JSON.parse(await file.text()); await LTDB.restore(payload); state.profile=await LTDB.get('profile','me')||state.profile; toast('Import terminé'); render();}catch(err){toast('Import impossible · fichier invalide');}}
 function recoveryText(x){ if(x.energy&&x.energy<=2)return {title:'Une chose mérite ton attention.',text:'Ton énergie est basse aujourd’hui. Je garderais la journée simple et j’adapterais seulement si ton ressenti le confirme.'}; if(x.sleep&&x.sleep<6)return {title:'Nuit courte.',text:'Une seule nuit ne suffit pas à modifier ton programme. Je la garde simplement en contexte.'}; return null; }

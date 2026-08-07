@@ -110,3 +110,20 @@
 .companion-mark-large{width:44px!important;height:44px!important}
 .companion-mark-mini{width:24px!important;height:24px!important}
 .choice-companion{width:22px!important;height:22px!important}
+
+/* Build 0.7 — Journal photos + Compagnon intelligent */
+.photo-title-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.action.compact{width:auto;padding:10px 14px;min-height:42px}
+.photo-date-group{margin-top:16px}.photo-date{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em}
+.photo-thumbs{display:flex;gap:9px;overflow-x:auto;padding-bottom:4px}
+.photo-thumb{position:relative;flex:0 0 76px;height:102px;padding:0;border:0;border-radius:13px;overflow:hidden;background:#eee}
+.photo-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.photo-thumb span{position:absolute;left:5px;right:5px;bottom:5px;background:rgba(0,0,0,.55);color:#fff;border-radius:7px;font-size:10px;padding:3px}
+.photo-source-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0}.photo-guide-note{font-size:12px;color:var(--muted);padding:10px 12px;background:rgba(0,0,0,.035);border-radius:12px}
+.crop-stage{position:relative;width:min(100%,330px);aspect-ratio:3/4;margin:12px auto;overflow:hidden;border-radius:18px;background:#151515;touch-action:none}
+.crop-stage>img{width:100%;height:100%;object-fit:cover;transform-origin:center;will-change:transform;user-select:none;-webkit-user-drag:none}
+.crop-guide{position:absolute;inset:0;pointer-events:none;border:1px solid rgba(255,255,255,.8);box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}
+.crop-guide:before{content:"";position:absolute;left:50%;top:7%;bottom:7%;border-left:1px dashed rgba(255,255,255,.5)}
+.crop-guide i{position:absolute;left:12%;right:12%;border-top:1px dashed rgba(255,255,255,.35)}.crop-guide i:nth-child(1){top:25%}.crop-guide i:nth-child(2){top:50%}.crop-guide i:nth-child(3){top:75%}
+.crop-nudge{display:flex;justify-content:center;gap:8px;margin:8px 0 14px}.crop-nudge button{width:42px;height:38px;border:0;border-radius:10px;background:rgba(0,0,0,.06);font-size:18px}
+.progress-photo-large{display:block;width:100%;max-height:68vh;object-fit:contain;border-radius:16px;background:#111}

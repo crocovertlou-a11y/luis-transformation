@@ -1,7 +1,7 @@
 const LTDB = (() => {
   const DB_NAME = 'luis-transformation';
-  const DB_VERSION = 1;
-  const stores = ['profile','checkins','workouts','cardio','food','memory','settings','events'];
+  const DB_VERSION = 2;
+  const stores = ['profile','checkins','workouts','cardio','food','memory','settings','events','photos'];
   let dbPromise;
 
   function open(){
