@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="Luis" />
-  <title>Luis Transformation — Build 0.1</title>
+  <title>Luis Transformation — Build 0.2</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
   <link rel="stylesheet" href="styles.css" />
@@ -18,46 +18,20 @@
       <button class="identity" id="identityButton" aria-label="Ouvrir le profil">
         <span class="fluidity-wrap" aria-hidden="true">
           <svg class="fluidity" viewBox="0 0 64 64" role="img" aria-label="Fluidité">
-            <defs>
-              <linearGradient id="fluidityGradient" x1="8" x2="56" y1="10" y2="54" gradientUnits="userSpaceOnUse">
-                <stop offset="0" stop-color="#7c5cff"/>
-                <stop offset="1" stop-color="#ff6b3d"/>
-              </linearGradient>
-            </defs>
+            <defs><linearGradient id="fluidityGradient" x1="8" x2="56" y1="10" y2="54" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#7c5cff"/><stop offset="1" stop-color="#ff6b3d"/></linearGradient></defs>
             <path d="M15 43.5A22 22 0 0 1 44.5 14" class="fluidity-arc arc-a" />
             <path d="M49.2 20.2A22 22 0 0 1 19.8 50" class="fluidity-arc arc-b" />
-          </svg>
-          <span class="initials" id="initials">LS</span>
+          </svg><span class="initials" id="initials">LS</span>
         </span>
       </button>
-      <div class="brand-copy">
-        <div class="eyebrow">BUILD 0.1</div>
-        <div class="brand-title">Luis Transformation</div>
-      </div>
-      <button class="icon-btn" id="companionButton" aria-label="Ouvrir le Compagnon">
-        <span class="companion-dot"></span>
-        <span>✦</span>
-      </button>
+      <div class="brand-copy"><div class="brand-title">Aujourd’hui</div></div>
+      <button class="icon-btn" id="companionButton" aria-label="Ouvrir le Compagnon"><span class="companion-dot"></span><span>✦</span></button>
     </header>
-
     <main id="main" class="main-content" tabindex="-1"></main>
-
-    <nav class="bottom-nav" aria-label="Navigation principale">
-      <button class="nav-item active" data-route="home"><span>⌂</span><small>Accueil</small></button>
-      <button class="nav-item" data-route="training"><span>◎</span><small>Entraînement</small></button>
-      <button class="nav-item nav-plus" data-action="quickAdd" aria-label="Ajouter"><span>＋</span></button>
-      <button class="nav-item" data-route="companion"><span>✦</span><small>Compagnon</small></button>
-      <button class="nav-item" data-route="profile"><span>◌</span><small>Profil</small></button>
-    </nav>
+    <nav class="bottom-nav" aria-label="Navigation principale"><button class="nav-item active" data-route="home"><span>⌂</span><small>Accueil</small></button><button class="nav-item" data-route="training"><span>◎</span><small>Entraînement</small></button><button class="nav-item nav-plus" data-action="quickAdd" aria-label="Ajouter"><span>＋</span></button><button class="nav-item" data-route="companion"><span>✦</span><small>Compagnon</small></button><button class="nav-item" data-route="profile"><span>◌</span><small>Profil</small></button></nav>
   </div>
-
-  <dialog id="sheet" class="sheet">
-    <div class="sheet-handle"></div>
-    <div id="sheetContent"></div>
-  </dialog>
-
+  <dialog id="sheet" class="sheet"><div class="sheet-handle"></div><div id="sheetContent"></div></dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="db.js"></script>
-  <script src="app.js"></script>
+  <script src="db.js"></script><script src="app.js"></script>
 </body>
 </html>

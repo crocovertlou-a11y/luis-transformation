@@ -1,4 +1,4 @@
-# Luis Transformation — Build 0.1
+# Luis Transformation — Build 0.2
 
 Première fondation exécutable issue du Product Book : PWA mobile-first, Fluidité/Connexion, Aujourd’hui ↔ Évolution, Entraînement, Compagnon local, Profil, IndexedDB, offline et export/import JSON.
 
@@ -14,7 +14,7 @@ Puis ouvrir `http://localhost:8080`.
 
 ## Déployer sur Netlify
 
-Glisser-déposer le contenu de ce dossier dans Netlify Drop, ou connecter ce dossier/repository. Aucun build npm n’est nécessaire pour Build 0.1.
+Glisser-déposer le contenu de ce dossier dans Netlify Drop, ou connecter ce dossier/repository. Aucun build npm n’est nécessaire pour Build 0.2.
 
 ## iPhone / PWA
 
@@ -31,7 +31,7 @@ Glisser-déposer le contenu de ce dossier dans Netlify Drop, ou connecter ce dos
 - Import : Profil > Importer JSON.
 - Une migration best-effort capture d’anciens snapshots localStorage si certaines anciennes clés sont présentes sur le même domaine.
 
-## Ce que Build 0.1 fait déjà
+## Ce que Build 0.2 fait déjà
 
 - identité Fluidité/Connexion + initiales ;
 - présence du Compagnon sur les écrans principaux ;
