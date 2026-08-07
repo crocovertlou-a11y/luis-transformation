@@ -53,3 +53,13 @@
 .nutrition-entry>div{min-width:0}
 .nutrition-entry strong{line-height:1.25}
 .nutrition-entry small{max-width:44%;line-height:1.3}
+
+/* Build 0.6 — IA Nutrition v1 */
+.ai-note,.ai-status{font-size:12px;color:var(--muted);line-height:1.45;margin:12px 2px}
+.photo-actions{display:flex;gap:8px;flex-wrap:wrap}
+.identified-product{display:flex;gap:14px;align-items:center;padding:14px;border:1px solid var(--border);border-radius:18px;background:#faf7f3;margin-bottom:12px}
+.identified-product img{width:70px;height:70px;object-fit:contain;border-radius:12px;background:#fff}
+.identified-product h3{margin:3px 0}.identified-product p{margin:0;color:var(--muted);font-size:12px}
+.confidence-box{padding:13px;border-radius:16px;background:#f7f3ee;margin:12px 0}.confidence-box strong,.confidence-box span{display:block}.confidence-box span{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.4}
+.ai-result-head{display:flex;gap:12px;align-items:center;margin-bottom:14px}.ai-result-head h3{margin:3px 0}.ai-result-head p{font-size:12px;color:var(--muted);margin:0}
+.detected-items{display:grid;gap:7px;margin:10px 0 16px}.detected-items>div{padding:11px 12px;border-radius:14px;background:#faf7f3}.detected-items strong,.detected-items span{display:block}.detected-items span{font-size:11px;color:var(--muted);margin-top:3px}

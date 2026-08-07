@@ -105,7 +105,7 @@ function nutritionEntry(x){
       <strong>${mealTypeLabel(x.mealType)} · ${escapeHtml(x.description||'Repas')}</strong>
       <span>${[displayDate(x.date),x.protein?Math.round(x.protein)+' g protéines':'',x.calories?Math.round(x.calories)+' kcal':''].filter(Boolean).join(' · ')||'Repas enregistré'}</span>
     </div>
-    <small>Source : ${x.source==='companion'?'Compagnon':'Saisie manuelle'} · Modifier ›</small>
+    <small>Source : ${x.source==='companion-ai'?'Compagnon IA':x.source==='open-food-facts'?'Open Food Facts':x.source==='companion'?'Compagnon':'Saisie manuelle'} · Modifier ›</small>
   </button>`;
 }
 function renderToday(today,todayWorkout,todayCardio,protein,calories,foodCount){
@@ -195,7 +195,7 @@ async function renderProfile(){
   return `<section class="hero"><div class="profile-head"><svg class="big-logo" viewBox="0 0 64 64"><path d="M15 43.5A22 22 0 0 1 44.5 14" class="fluidity-arc"/><path d="M49.2 20.2A22 22 0 0 1 19.8 50" class="fluidity-arc"/></svg><div><div class="hello" style="font-size:28px;margin:0">${escapeHtml(state.profile.firstName)}</div><div class="subtle">${escapeHtml(state.profile.goal||'Ton évolution')}</div></div></div></section>
   <div class="card"><div class="card-kicker">Ce que tu sais de moi</div><div class="list"><div class="list-row"><div><strong>Objectif actuel</strong><div class="status">${escapeHtml(state.profile.goal||'À définir')}</div></div><span class="pill">Confirmé</span></div><div class="list-row"><div><strong>Alimentation</strong><div class="status">${state.profile.nutritionEnabled?'Accompagnement actif':'Masquée'}</div></div><span class="pill">Choix</span></div></div></div>
   <div class="card"><div class="switch-row"><div><strong>Accompagnement alimentation</strong><div class="status">Masqué lorsqu’il est désactivé.</div></div><input id="nutritionToggle" class="toggle" type="checkbox" ${state.profile.nutritionEnabled?'checked':''}></div></div>
-  <div class="card"><div class="card-kicker">Tes données</div><h3>Export / Import</h3><p class="subtle">Tes données restent récupérables.</p><div class="card-actions"><button class="action" id="exportBtn">Exporter JSON</button><label class="action secondary">Importer JSON<input id="importInput" type="file" accept="application/json" hidden></label></div></div><div class="version">Luis Transformation · Build 0.5.2</div>`;
+  <div class="card"><div class="card-kicker">Tes données</div><h3>Export / Import</h3><p class="subtle">Tes données restent récupérables.</p><div class="card-actions"><button class="action" id="exportBtn">Exporter JSON</button><label class="action secondary">Importer JSON<input id="importInput" type="file" accept="application/json" hidden></label></div></div><div class="version">Luis Transformation · Build 0.6</div>`;
 }
 function bindPage(){
   document.querySelectorAll('[data-home-view]').forEach(b=>b.addEventListener('click',()=>{state.homeView=b.dataset.homeView;render();}));
@@ -217,8 +217,8 @@ function openSheet(kind){
   if(kind==='cardio') return showSheet(`<h2>Ajouter une activité Cardio</h2><form id="cardioForm">${dateField('date',todayKey())}<div class="field"><label>Type</label><select name="type"><option>Course</option><option>Vélo</option><option>Natation</option><option>Marche</option><option>Autre</option></select></div><div class="field"><label>Distance (km)</label><input name="distance" type="number" step="0.01" inputmode="decimal"></div><div class="duration-picker"><div><label>Heures</label><input name="hours" type="number" min="0" max="23" inputmode="numeric" value="0"></div><span>:</span><div><label>Minutes</label><input name="minutes" type="number" min="0" max="59" inputmode="numeric" value="40"></div><span>:</span><div><label>Secondes</label><input name="seconds" type="number" min="0" max="59" inputmode="numeric" value="0"></div></div><div class="range-row"><div class="field"><label>FC moyenne</label><input name="hr" type="number" inputmode="numeric"></div><div class="field"><label>Cadence moy.</label><input name="cadence" type="number" inputmode="numeric"></div></div><div class="range-row"><div class="field"><label>Dénivelé + (m)</label><input name="elevation" type="number" inputmode="numeric"></div><div class="field"><label>Calories (kcal)</label><input name="calories" type="number" inputmode="numeric"></div></div><button class="action" type="submit">Enregistrer</button></form>`);
   if(kind==='nutritionHub') return nutritionHubSheet();
   if(kind==='food') return showSheet(`<h2>Ajouter un repas</h2><form id="foodForm">${dateField('date',todayKey())}<div class="field"><label>Moment</label><select name="mealType">${mealTypeOptions('lunch')}</select></div><div class="field"><label>Décris simplement</label><textarea name="description" rows="3" placeholder="Poulet, riz, légumes et un yaourt"></textarea></div><div class="range-row"><div class="field"><label>Protéines (g)</label><input name="protein" type="number" step="0.1"></div><div class="field"><label>Calories</label><input name="calories" type="number"></div></div><div class="range-row"><div class="field"><label>Glucides (g)</label><input name="carbs" type="number" step="0.1"></div><div class="field"><label>Lipides (g)</label><input name="fat" type="number" step="0.1"></div></div><div class="field"><label>Eau (L)</label><input name="water" type="number" step="0.1"></div><label class="checkline"><input type="checkbox" name="classic"> Ajouter à mes classiques</label><button class="action" type="submit">Enregistrer</button></form>`);
-  if(kind==='barcode') return showSheet(`<h2>Code-barres</h2><p class="subtle">Build 0.2 prépare le parcours : saisie → prévisualisation → confirmation. Le scan caméra arrivera ensuite.</p><form id="barcodeForm"><div class="field"><label>Code</label><input name="barcode" inputmode="numeric" placeholder="7612345678901"></div><div class="field"><label>Produit</label><input name="product" placeholder="Nom du produit"></div><button class="action" type="submit">Prévisualiser</button></form>`);
-  if(kind==='photoFood') return showSheet(`<h2>Photographier un aliment</h2><p class="subtle">Prends une photo ou choisis-en une dans ta photothèque.</p><label class="action photo-action">Prendre une photo<input id="foodPhotoInput" type="file" accept="image/*" capture="environment" hidden></label><label class="action secondary photo-action">Photothèque<input id="foodLibraryInput" type="file" accept="image/*" hidden></label><div id="foodPhotoPreview" class="photo-preview empty">La photo apparaîtra ici avant confirmation.</div>`);
+  if(kind==='barcode') return showSheet(`<h2>Code-barres</h2><p class="subtle">Recherche dans la base produit. Tu confirmes toujours avant l’enregistrement.</p><form id="barcodeForm">${dateField('date',todayKey())}<div class="field"><label>Moment</label><select name="mealType">${mealTypeOptions('lunch')}</select></div><div class="field"><label>Code-barres</label><input name="barcode" inputmode="numeric" autocomplete="off" placeholder="7612345678901" required></div><button class="action" type="submit" id="barcodeLookupBtn">Rechercher le produit</button></form><div class="ai-note">Source produit : Open Food Facts. Les valeurs restent vérifiables avant ajout.</div>`);
+  if(kind==='photoFood') return showSheet(`<h2>Photo aliment / repas</h2><p class="subtle">Prends une photo ou choisis-en une. Le Compagnon propose ce qu’il reconnaît, puis tu corriges ou confirmes.</p>${dateField('photoDate',todayKey())}<div class="field"><label>Moment</label><select id="photoMealType">${mealTypeOptions('lunch')}</select></div><div class="photo-actions"><label class="action photo-action">Prendre une photo<input id="foodPhotoInput" type="file" accept="image/*" capture="environment" hidden></label><label class="action secondary photo-action">Photothèque<input id="foodLibraryInput" type="file" accept="image/*" hidden></label></div><div id="foodPhotoPreview" class="photo-preview empty">Aucune photo sélectionnée.</div><div id="foodAIStatus" class="ai-status"></div>`);
   if(kind==='mealIdea') return mealIdeaSheet();
   if(kind==='details') return showSheet(`<h2>Données détaillées</h2><p class="subtle">Les graphiques restent volontairement derrière Évolution. Ce niveau sera enrichi sans changer l’écran principal.</p><button class="action secondary" data-close>Fermer</button>`);
 }
@@ -231,7 +231,7 @@ async function nutritionHubSheet(){
   const remain=Math.max(0,target-protein);
   return showSheet(`<h2>Alimentation</h2>
     <div class="nutrition-summary"><div class="card-kicker">Aujourd’hui</div><div class="nutrition-total"><strong>${Math.round(protein)} / ${target} g</strong><span>protéines</span></div><div class="nutrition-bar"><i style="width:${Math.min(100,(protein/target)*100)}%"></i></div><p>${protein?`${Math.round(remain)} g restent sur ton repère${calories?` · ${Math.round(calories)} kcal saisies`:''}.`:'Ajoute simplement ce que tu manges. Je garde le fil de la journée.'}</p></div>
-    <div class="nutrition-actions"><button class="sheet-choice" data-sheet="food">＋<strong>Ajouter un repas</strong><span>Description + macros</span></button><button class="sheet-choice" data-sheet="photoFood">◉<strong>Photo produit</strong><span>Prendre une photo ou photothèque</span></button><button class="sheet-choice" data-sheet="mealIdea">${companionMark("choice-companion")}<strong>Idée du Compagnon</strong><span>Selon ta journée</span></button><button class="sheet-choice" data-sheet="barcode">▣<strong>Code-barres</strong><span>Préparer / saisir un produit</span></button></div>
+    <div class="nutrition-actions"><button class="sheet-choice" data-sheet="food">＋<strong>Ajouter un repas</strong><span>Description + macros</span></button><button class="sheet-choice" data-sheet="photoFood">◉<strong>Photo aliment / repas</strong><span>Le Compagnon analyse puis tu confirmes</span></button><button class="sheet-choice" data-sheet="mealIdea">${companionMark("choice-companion")}<strong>Idée du Compagnon</strong><span>Selon ta journée</span></button><button class="sheet-choice" data-sheet="barcode">▣<strong>Code-barres</strong><span>Préparer / saisir un produit</span></button></div>
     <div class="nutrition-history"><div class="card-kicker">Ce que tu as saisi</div>${food.length?food.map(nutritionEntry).join(''):'<div class="empty">Aucun repas enregistré aujourd’hui.</div>'}</div>`);
 }
 
@@ -329,9 +329,10 @@ function bindSheet(){
   document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>$('#sheet').close()));
   document.querySelectorAll('[data-pick-workout]').forEach(b=>b.addEventListener('click',()=>{openSheet('workout'); setTimeout(()=>{const f=$('#workoutForm'); if(f) f.elements.name.value=b.dataset.pickWorkout;},0)}));
   document.querySelectorAll('input[type="range"]').forEach(r=>r.addEventListener('input',()=>updateRange(r)));
-  $('#checkinForm')?.addEventListener('submit',saveCheckin); $('#workoutForm')?.addEventListener('submit',saveWorkout); $('#cardioForm')?.addEventListener('submit',saveCardio); $('#foodForm')?.addEventListener('submit',saveFood); $('#barcodeForm')?.addEventListener('submit',previewBarcode);
+  $('#checkinForm')?.addEventListener('submit',saveCheckin); $('#workoutForm')?.addEventListener('submit',saveWorkout); $('#cardioForm')?.addEventListener('submit',saveCardio); $('#foodForm')?.addEventListener('submit',saveFood); $('#barcodeForm')?.addEventListener('submit',lookupBarcode); $('#barcodeConfirmForm')?.addEventListener('submit',saveBarcodeFood); $('#aiFoodConfirmForm')?.addEventListener('submit',saveAIFood);
   $('#foodPhotoInput')?.addEventListener('change',previewFoodPhoto);
   $('#foodLibraryInput')?.addEventListener('change',previewFoodPhoto);
+  $('#barcodeGrams')?.addEventListener('input',updateBarcodePortion);
   $('#nextMealIdea')?.addEventListener('click',()=>{mealIdeaIndex++; mealIdeaSheet();});
   document.querySelectorAll('[data-technique]').forEach(b=>b.addEventListener('click',()=>showTechnique(b.dataset.technique)));
   document.querySelectorAll('[data-edit-food]').forEach(b=>b.addEventListener('click',()=>editFoodSheet(b.dataset.editFood)));
@@ -360,8 +361,128 @@ async function saveWorkout(e){
 async function saveCardio(e){e.preventDefault(); const f=new FormData(e.currentTarget); const date=f.get('date')||todayKey(); const seconds=(num(f.get('hours'))||0)*3600+(num(f.get('minutes'))||0)*60+(num(f.get('seconds'))||0); const h=Math.floor(seconds/3600),m=Math.floor((seconds%3600)/60),s=seconds%60; const label=h?`${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`:`${m}:${String(s).padStart(2,'0')}`; await LTDB.put('cardio',{id:uid(),date,type:f.get('type'),distance:num(f.get('distance')),durationSeconds:seconds,durationLabel:label,heartRateAvg:num(f.get('hr')),cadenceAvg:num(f.get('cadence')),elevationGain:num(f.get('elevation')),calories:num(f.get('calories')),source:'manual',createdAt:new Date().toISOString()}); $('#sheet').close(); toast('Activité Cardio enregistrée'); render();}
 async function saveFood(e){e.preventDefault(); const f=new FormData(e.currentTarget); const date=f.get('date')||todayKey(); await LTDB.put('food',{id:uid(),date,dateTime:new Date().toISOString(),mealType:f.get('mealType')||'lunch',description:f.get('description')||'Repas',protein:num(f.get('protein')),calories:num(f.get('calories')),carbs:num(f.get('carbs')),fat:num(f.get('fat')),water:num(f.get('water')),classic:f.get('classic')==='on',source:'companion',confidence:'user',createdAt:new Date().toISOString()}); toast('Repas enregistré · visible dans Alimentation'); if(date===todayKey()) await nutritionHubSheet(); else $('#sheet').close(); render();}
 
-function previewBarcode(e){e.preventDefault(); const f=new FormData(e.currentTarget); const code=f.get('barcode')||'—', product=f.get('product')||'Produit à identifier'; showSheet(`<h2>Prévisualisation produit</h2><div class="card"><div class="card-kicker">Code-barres</div><h3>${escapeHtml(product)}</h3><p class="subtle">${escapeHtml(code)}</p><p>Le parcours de confirmation est en place. La recherche automatique des valeurs sera branchée avec le backend nutrition.</p><div class="card-actions"><button class="action secondary" data-close>Fermer</button></div></div>`);}
-function previewFoodPhoto(e){ const file=e.target.files?.[0]; if(!file)return; const url=URL.createObjectURL(file); const box=$('#foodPhotoPreview'); box.className='photo-preview'; box.innerHTML=`<img src="${url}" alt="Prévisualisation du produit"><div class="card-actions"><button class="action secondary" data-close>Annuler</button><button class="action" type="button" id="confirmPhoto">Confirmer la photo</button></div>`; $('#confirmPhoto')?.addEventListener('click',()=>{toast('Photo confirmée'); $('#sheet').close(); URL.revokeObjectURL(url);}); }
+let pendingFoodImageData=null;
+
+async function lookupBarcode(e){
+  e.preventDefault();
+  const f=new FormData(e.currentTarget), code=String(f.get('barcode')||'').replace(/\D/g,'');
+  const button=$('#barcodeLookupBtn');
+  if(button){button.disabled=true;button.textContent='Recherche…';}
+  try{
+    const response=await fetch(`/api/product?code=${encodeURIComponent(code)}`);
+    const data=await response.json();
+    if(!response.ok) throw new Error(data.error||'LOOKUP_FAILED');
+    showBarcodeConfirmation(data,f.get('date')||todayKey(),f.get('mealType')||'lunch');
+  }catch(err){
+    console.error(err);
+    toast(err.message==='PRODUCT_NOT_FOUND'?'Produit non trouvé':'Recherche produit impossible');
+    if(button){button.disabled=false;button.textContent='Rechercher le produit';}
+  }
+}
+function macroForPortion(value,grams){const n=Number(value);return Number.isFinite(n)?Math.round((n*grams/100)*10)/10:0}
+function showBarcodeConfirmation(data,date,mealType){
+  const grams=Number(data.servingGrams)||100;
+  const p=data.per100||{};
+  showSheet(`<h2>Confirmer le produit</h2>
+    <div class="identified-product">${data.image?`<img src="${escapeHtml(data.image)}" alt="">`:''}<div><div class="card-kicker">Trouvé par code-barres</div><h3>${escapeHtml(data.name||'Produit')}</h3><p>${escapeHtml(data.brands||'')}${data.quantity?` · ${escapeHtml(data.quantity)}`:''}</p></div></div>
+    <form id="barcodeConfirmForm">
+      <input type="hidden" name="barcode" value="${escapeHtml(data.code||'')}">
+      <input type="hidden" name="date" value="${escapeHtml(date)}">
+      <input type="hidden" name="mealType" value="${escapeHtml(mealType)}">
+      <input type="hidden" name="pCalories" value="${p.calories??0}"><input type="hidden" name="pProtein" value="${p.protein??0}"><input type="hidden" name="pCarbs" value="${p.carbs??0}"><input type="hidden" name="pFat" value="${p.fat??0}">
+      <div class="field"><label>Produit</label><input name="description" value="${escapeHtml(data.name||'Produit')}"></div>
+      <div class="field"><label>Quantité consommée (g)</label><input id="barcodeGrams" name="grams" type="number" step="1" min="1" value="${grams}"></div>
+      <div class="range-row"><div class="field"><label>Protéines (g)</label><input id="barcodeProtein" name="protein" type="number" step="0.1" value="${macroForPortion(p.protein,grams)}"></div><div class="field"><label>Calories</label><input id="barcodeCalories" name="calories" type="number" step="1" value="${Math.round(macroForPortion(p.calories,grams))}"></div></div>
+      <div class="range-row"><div class="field"><label>Glucides (g)</label><input id="barcodeCarbs" name="carbs" type="number" step="0.1" value="${macroForPortion(p.carbs,grams)}"></div><div class="field"><label>Lipides (g)</label><input id="barcodeFat" name="fat" type="number" step="0.1" value="${macroForPortion(p.fat,grams)}"></div></div>
+      <div class="confidence-box"><strong>Source : Open Food Facts</strong><span>Valeurs produit pour la quantité indiquée. Tu peux les corriger.</span></div>
+      <button class="action" type="submit">Confirmer et enregistrer</button>
+    </form>`);
+}
+function updateBarcodePortion(){
+  const f=$('#barcodeConfirmForm'); if(!f)return;
+  const grams=Number(f.elements.grams.value)||0;
+  const set=(id,per100,round=false)=>{const el=$(id);if(el)el.value=round?Math.round(macroForPortion(per100,grams)):macroForPortion(per100,grams)};
+  set('#barcodeCalories',f.elements.pCalories.value,true);
+  set('#barcodeProtein',f.elements.pProtein.value);
+  set('#barcodeCarbs',f.elements.pCarbs.value);
+  set('#barcodeFat',f.elements.pFat.value);
+}
+async function saveBarcodeFood(e){
+  e.preventDefault(); const f=new FormData(e.currentTarget);
+  await LTDB.put('food',{id:uid(),date:f.get('date')||todayKey(),dateTime:new Date().toISOString(),mealType:f.get('mealType')||'lunch',description:f.get('description')||'Produit',protein:num(f.get('protein')),calories:num(f.get('calories')),carbs:num(f.get('carbs')),fat:num(f.get('fat')),water:null,classic:false,source:'open-food-facts',confidence:'database',barcode:f.get('barcode')||'',createdAt:new Date().toISOString()});
+  toast('Produit enregistré'); await nutritionHubSheet(); render();
+}
+
+async function fileToNutritionImage(file){
+  return new Promise((resolve,reject)=>{
+    const img=new Image(), url=URL.createObjectURL(file);
+    img.onload=()=>{
+      try{
+        const max=1280, scale=Math.min(1,max/Math.max(img.width,img.height));
+        const canvas=document.createElement('canvas');
+        canvas.width=Math.max(1,Math.round(img.width*scale)); canvas.height=Math.max(1,Math.round(img.height*scale));
+        canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+        const data=canvas.toDataURL('image/jpeg',0.78);
+        URL.revokeObjectURL(url); resolve(data);
+      }catch(err){URL.revokeObjectURL(url);reject(err)}
+    };
+    img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('IMAGE_READ_FAILED'))};
+    img.src=url;
+  });
+}
+async function previewFoodPhoto(e){
+  const file=e.target.files?.[0]; if(!file)return;
+  const box=$('#foodPhotoPreview'), status=$('#foodAIStatus');
+  try{
+    pendingFoodImageData=await fileToNutritionImage(file);
+    box.className='photo-preview';
+    box.innerHTML=`<img src="${pendingFoodImageData}" alt="Photo à analyser"><button class="action" type="button" id="analyzeFoodPhoto">Analyser avec le Compagnon</button>`;
+    if(status)status.textContent='La photo n’est envoyée à l’IA qu’après avoir appuyé sur Analyser.';
+    $('#analyzeFoodPhoto')?.addEventListener('click',analyzeFoodPhoto);
+  }catch(err){console.error(err);toast('Photo illisible')}
+}
+async function analyzeFoodPhoto(){
+  if(!pendingFoodImageData)return;
+  const button=$('#analyzeFoodPhoto'), status=$('#foodAIStatus');
+  if(button){button.disabled=true;button.textContent='Analyse en cours…';}
+  if(status)status.textContent='Le Compagnon examine la photo…';
+  try{
+    const response=await fetch('/api/analyze-food',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:pendingFoodImageData})});
+    const data=await response.json();
+    if(!response.ok){
+      if(data.error==='AI_NOT_CONFIGURED') throw new Error('AI_NOT_CONFIGURED');
+      throw new Error(data.error||'AI_FAILED');
+    }
+    const date=$('#photoDate')?.value||todayKey(), mealType=$('#photoMealType')?.value||'lunch';
+    showAIConfirmation(data,date,mealType);
+  }catch(err){
+    console.error(err);
+    if(status)status.textContent=err.message==='AI_NOT_CONFIGURED'?'IA non configurée sur Netlify.':'Analyse impossible pour le moment.';
+    toast(err.message==='AI_NOT_CONFIGURED'?'Clé IA à configurer dans Netlify':'Analyse IA impossible');
+    if(button){button.disabled=false;button.textContent='Analyser avec le Compagnon';}
+  }
+}
+function showAIConfirmation(data,date,mealType){
+  const confidence=Math.round((Number(data.confidence)||0)*100);
+  const t=data.totals||{};
+  showSheet(`<h2>Voilà ce que j’ai compris</h2>
+    <div class="ai-result-head"><div>${companionMark("companion-mark-large")}</div><div><div class="card-kicker">${data.kind==='meal'?'Repas détecté':'Aliment détecté'}</div><h3>${escapeHtml(data.name||'Analyse')}</h3><p>Confiance : ${confidence}%</p></div></div>
+    <div class="detected-items">${(data.items||[]).map(i=>`<div><strong>${escapeHtml(i.name)}</strong><span>≈ ${Math.round(Number(i.estimated_grams)||0)} g · ${Math.round(Number(i.calories)||0)} kcal · ${Math.round((Number(i.protein)||0)*10)/10} g prot.</span></div>`).join('')||'<div class="empty">Aucun élément détaillé.</div>'}</div>
+    <form id="aiFoodConfirmForm">
+      <input type="hidden" name="date" value="${escapeHtml(date)}"><input type="hidden" name="mealType" value="${escapeHtml(mealType)}"><input type="hidden" name="confidence" value="${Number(data.confidence)||0}">
+      <div class="field"><label>Nom / description</label><input name="description" value="${escapeHtml(data.name||'Repas analysé')}"></div>
+      <div class="range-row"><div class="field"><label>Protéines (g)</label><input name="protein" type="number" step="0.1" value="${Math.round((Number(t.protein)||0)*10)/10}"></div><div class="field"><label>Calories</label><input name="calories" type="number" value="${Math.round(Number(t.calories)||0)}"></div></div>
+      <div class="range-row"><div class="field"><label>Glucides (g)</label><input name="carbs" type="number" step="0.1" value="${Math.round((Number(t.carbs)||0)*10)/10}"></div><div class="field"><label>Lipides (g)</label><input name="fat" type="number" step="0.1" value="${Math.round((Number(t.fat)||0)*10)/10}"></div></div>
+      <div class="confidence-box"><strong>Source : Compagnon IA · estimation</strong><span>${escapeHtml(data.notes||'Vérifie les portions avant de confirmer.')}</span></div>
+      <button class="action" type="submit">Confirmer et enregistrer</button>
+    </form>`);
+}
+async function saveAIFood(e){
+  e.preventDefault(); const f=new FormData(e.currentTarget);
+  await LTDB.put('food',{id:uid(),date:f.get('date')||todayKey(),dateTime:new Date().toISOString(),mealType:f.get('mealType')||'lunch',description:f.get('description')||'Repas analysé',protein:num(f.get('protein')),calories:num(f.get('calories')),carbs:num(f.get('carbs')),fat:num(f.get('fat')),water:null,classic:false,source:'companion-ai',confidence:num(f.get('confidence')),createdAt:new Date().toISOString()});
+  pendingFoodImageData=null; toast('Analyse confirmée et enregistrée'); await nutritionHubSheet(); render();
+}
+
 async function sendChat(){const input=$('#chatInput'); const text=input?.value.trim(); if(!text)return; await LTDB.put('events',{id:uid(),type:'CHAT',role:'user',text,createdAt:new Date().toISOString()}); const context=await localCompanion(text); await LTDB.put('events',{id:uid(),type:'CHAT',role:'companion',text:context,createdAt:new Date().toISOString()}); render();}
 async function localCompanion(text){const low=text.toLowerCase(); const checkins=await LTDB.all('checkins'); const latest=checkins.sort((a,b)=>b.date.localeCompare(a.date))[0]; if(/(comment|vais|aujourd)/.test(low)){ if(!latest) return 'Je ne sais pas encore suffisamment bien. Donne-moi simplement ton ressenti du jour et je pourrai commencer à te répondre avec plus de contexte.'; return `Aujourd’hui, tu as indiqué ${latest.sleep?latest.sleep+' h de sommeil, ':''}${latest.energy?'une énergie de '+latest.energy+'/5 et ':''}${latest.stress?'un stress de '+latest.stress+'/5.':''} Je garde le constat simple pour le moment.`; } if(/(sais|connais|mémoire)/.test(low)) return `Je sais ce que tu m’as explicitement donné : ton objectif « ${state.profile.goal} » et les données enregistrées ici. Je ne transforme pas une supposition en fait.`; return 'Je peux utiliser ton contexte local, mais je préfère te dire clairement quand je ne sais pas encore.';}
 async function exportData(){const dump=await LTDB.dump(); const blob=new Blob([JSON.stringify(dump,null,2)],{type:'application/json'}); const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`luis-transformation-${todayKey()}.json`;a.click();URL.revokeObjectURL(a.href);toast('Export préparé');}

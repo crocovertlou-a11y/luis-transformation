@@ -1,7 +1,19 @@
 [build]
+  functions = "netlify/functions"
   publish = "."
 
 [[headers]]
   for = "/sw.js"
   [headers.values]
     Cache-Control = "no-cache"
+
+
+[[redirects]]
+  from = "/api/product"
+  to = "/.netlify/functions/product-lookup"
+  status = 200
+
+[[redirects]]
+  from = "/api/analyze-food"
+  to = "/.netlify/functions/analyze-food"
+  status = 200
