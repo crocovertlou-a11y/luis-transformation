@@ -226,7 +226,7 @@ async function renderProfile(){
   return `<section class="hero"><div class="profile-head"><svg class="big-logo" viewBox="0 0 64 64"><path d="M15 43.5A22 22 0 0 1 44.5 14" class="fluidity-arc"/><path d="M49.2 20.2A22 22 0 0 1 19.8 50" class="fluidity-arc"/></svg><div><div class="hello" style="font-size:28px;margin:0">${escapeHtml(state.profile.firstName)}</div><div class="subtle">${escapeHtml(state.profile.goal||'Ton évolution')}</div></div></div></section>
   <div class="card"><div class="card-kicker">Ce que tu sais de moi</div><div class="list"><div class="list-row"><div><strong>Objectif actuel</strong><div class="status">${escapeHtml(state.profile.goal||'À définir')}</div></div><span class="pill">Confirmé</span></div><div class="list-row"><div><strong>Alimentation</strong><div class="status">${state.profile.nutritionEnabled?'Accompagnement actif':'Masquée'}</div></div><span class="pill">Choix</span></div></div></div>
   <div class="card"><div class="switch-row"><div><strong>Accompagnement alimentation</strong><div class="status">Masqué lorsqu’il est désactivé.</div></div><input id="nutritionToggle" class="toggle" type="checkbox" ${state.profile.nutritionEnabled?'checked':''}></div></div>
-  <div class="card"><div class="card-kicker">Tes données</div><h3>Export / Import</h3><p class="subtle">Tes données restent récupérables.</p><div class="card-actions"><button class="action" id="exportBtn">Exporter JSON</button><label class="action secondary">Importer JSON<input id="importInput" type="file" accept="application/json" hidden></label></div></div><div class="version">Luis Transformation · Build 0.7.1</div>`;
+  <div class="card"><div class="card-kicker">Tes données</div><h3>Export / Import</h3><p class="subtle">Tes données restent récupérables.</p><div class="card-actions"><button class="action" id="exportBtn">Exporter JSON</button><label class="action secondary">Importer JSON<input id="importInput" type="file" accept="application/json" hidden></label></div></div><div class="version">Luis Transformation · Build 0.7.2</div>`;
 }
 function bindPage(){
   document.querySelectorAll('[data-home-view]').forEach(b=>b.addEventListener('click',()=>{state.homeView=b.dataset.homeView;render();}));
@@ -238,14 +238,14 @@ function bindPage(){
   $('#exportBtn')?.addEventListener('click',exportData); $('#importInput')?.addEventListener('change',importData);
 }
 async function quickAdd(){ openSheet('quick'); }
-function showSheet(html){ stopBarcodeCamera(); $('#sheetContent').innerHTML=`<button class="sheet-x" type="button" data-close aria-label="Fermer">×</button>${html}`; $('#sheet').showModal(); bindSheet(); updateAllRanges(); }
+function showSheet(html){ stopBarcodeCamera(); stopProgressCamera(); $('#sheetContent').innerHTML=`<button class="sheet-x" type="button" data-close aria-label="Fermer">×</button>${html}`; $('#sheet').showModal(); bindSheet(); updateAllRanges(); }
 function slider(name,label,min,max,step,value,unit=''){ return `<div class="slider-line"><div class="slider-head"><label>${label}</label><output data-output="${name}">${value}${unit}</output></div><input type="range" name="${name}" min="${min}" max="${max}" step="${step}" value="${value}" data-range-unit="${unit}"></div>`; }
 function openSheet(kind){
   if(kind==='quick') return showSheet(`<h2>Donner quelque chose</h2><div class="sheet-grid"><button class="sheet-choice" data-sheet="checkin">◌<strong>Ressenti</strong></button><button class="sheet-choice" data-sheet="workout">◎<strong>Force</strong></button><button class="sheet-choice" data-sheet="cardio">⌁<strong>Cardio</strong></button>${state.profile.nutritionEnabled?'<button class="sheet-choice" data-sheet="nutritionHub">◒<strong>Alimentation</strong></button>':''}</div>`);
   if(kind==='checkin') return showSheet(`<h2>Comment vas-tu aujourd’hui ?</h2><form id="checkinForm">${dateField('date',todayKey())}${slider('sleep','Sommeil','0','12','0.25','7',' h')}${slider('energy','Énergie','1','5','1','3','/5')}${slider('stress','Stress','1','5','1','2','/5')}${slider('hunger','Faim','1','5','1','3','/5')}<div class="field"><label>Poids (kg)</label><input name="weight" type="number" min="20" max="300" step="0.1" inputmode="decimal" placeholder="80.4"></div><div class="field"><label>Tour de taille (cm)</label><input name="waist" type="number" min="30" max="250" step="0.1" inputmode="decimal" placeholder="90.0"></div><button class="action" type="submit">Enregistrer</button></form>`);
   if(kind==='workout') return showSheet(`<h2>Ta séance Force</h2><form id="workoutForm"><input type="hidden" name="name" value="Haut du corps">${dateField('date',todayKey())}${forceExerciseInput('Développé couché',4,6,'2 min')}${forceExerciseInput('Tractions',4,8,'90 s')}${forceExerciseInput('Rowing',3,10,'90 s')}${forceExerciseInput('Développé épaules',3,10,'75 s')}${forceExerciseInput('Gainage',3,'45 s','45 s')}<div class="field"><label>Durée totale (min)</label><input name="durationMin" type="number" inputmode="numeric" value="40"></div>${slider('effort','Ressenti','1','5','1','3','/5')}<button class="action" type="submit">Terminer la séance</button></form>`);
   if(kind==='workoutIdeas') return showSheet(`<h2>Suggestions Force</h2><div class="suggestion-list"><button class="suggestion-card" data-pick-workout="Haut du corps"><strong>Haut du corps · 40 min</strong><span>Développé couché · Tractions · Rowing · Épaules · Abdos</span></button><button class="suggestion-card" data-pick-workout="Full body"><strong>Full body · 40 min</strong><span>Squat · Développé couché · Rowing · Épaules · Gainage</span></button><button class="suggestion-card" data-pick-workout="Bas du corps"><strong>Bas du corps + abdos · 40 min</strong><span>Squat · Fentes · Hip hinge · Mollets · Gainage</span></button></div>`);
-  if(kind==='progressPhoto') return showSheet(`<h2>Photo d’évolution</h2><p class="subtle">Prends une photo ou choisis-en une, puis recadre-la avant de l’enregistrer.</p>${dateField('photoDate',todayKey())}<div class="field"><label>Vue</label><select id="progressPhotoView"><option>Face</option><option>Profil</option><option>Dos</option></select></div><div class="photo-source-actions"><label class="action" for="progressCameraInput">Prendre une photo<input id="progressCameraInput" type="file" accept="image/*" capture="environment" class="visually-hidden-file"></label><label class="action secondary" for="progressLibraryInput">Photothèque<input id="progressLibraryInput" type="file" accept="image/*" class="visually-hidden-file"></label></div><div class="photo-guide-note">Conseil : même lumière, même distance et posture détendue pour rendre les comparaisons utiles.</div>`);
+  if(kind==='progressPhoto') return showSheet(`<h2>Photo d’évolution</h2><p class="subtle">Prends une photo ou choisis-en une, puis recadre-la avant de l’enregistrer.</p>${dateField('photoDate',todayKey())}<div class="field"><label>Vue</label><select id="progressPhotoView"><option>Face</option><option>Profil</option><option>Dos</option></select></div><div class="photo-source-actions"><button class="action" id="openProgressCamera" type="button">Prendre une photo</button><label class="action secondary">Photothèque<input id="progressLibraryInput" type="file" accept="image/*" hidden></label></div><div class="photo-guide-note">Conseil : même lumière, même distance et posture détendue pour rendre les comparaisons utiles.</div>`);
   if(kind==='cardio') return showSheet(`<h2>Ajouter une activité Cardio</h2><form id="cardioForm">${dateField('date',todayKey())}<div class="field"><label>Type</label><select name="type"><option>Course</option><option>Vélo</option><option>Natation</option><option>Marche</option><option>Autre</option></select></div><div class="field"><label>Distance (km)</label><input name="distance" type="number" step="0.01" inputmode="decimal"></div><div class="duration-picker"><div><label>Heures</label><input name="hours" type="number" min="0" max="23" inputmode="numeric" value="0"></div><span>:</span><div><label>Minutes</label><input name="minutes" type="number" min="0" max="59" inputmode="numeric" value="40"></div><span>:</span><div><label>Secondes</label><input name="seconds" type="number" min="0" max="59" inputmode="numeric" value="0"></div></div><div class="range-row"><div class="field"><label>FC moyenne</label><input name="hr" type="number" inputmode="numeric"></div><div class="field"><label>Cadence moy.</label><input name="cadence" type="number" inputmode="numeric"></div></div><div class="range-row"><div class="field"><label>Dénivelé + (m)</label><input name="elevation" type="number" inputmode="numeric"></div><div class="field"><label>Calories (kcal)</label><input name="calories" type="number" inputmode="numeric"></div></div><button class="action" type="submit">Enregistrer</button></form>`);
   if(kind==='nutritionHub') return nutritionHubSheet();
   if(kind==='food') return showSheet(`<h2>Ajouter un repas</h2><form id="foodForm">${dateField('date',todayKey())}<div class="field"><label>Moment</label><select name="mealType">${mealTypeOptions('lunch')}</select></div><div class="field"><label>Décris simplement</label><textarea name="description" rows="3" placeholder="Poulet, riz, légumes et un yaourt"></textarea></div><div class="range-row"><div class="field"><label>Protéines (g)</label><input name="protein" type="number" step="0.1"></div><div class="field"><label>Calories</label><input name="calories" type="number"></div></div><div class="range-row"><div class="field"><label>Glucides (g)</label><input name="carbs" type="number" step="0.1"></div><div class="field"><label>Lipides (g)</label><input name="fat" type="number" step="0.1"></div></div><div class="field"><label>Eau (L)</label><input name="water" type="number" step="0.1"></div><label class="checkline"><input type="checkbox" name="classic"> Ajouter à mes classiques</label><button class="action" type="submit">Enregistrer</button></form>`);
@@ -358,12 +358,13 @@ function showTechnique(name){
 
 function bindSheet(){
   document.querySelectorAll('[data-sheet]').forEach(b=>b.addEventListener('click',()=>openSheet(b.dataset.sheet)));
-  document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>{stopBarcodeCamera();$('#sheet').close()}));
+  document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>{stopBarcodeCamera();stopProgressCamera();$('#sheet').close()}));
   document.querySelectorAll('[data-pick-workout]').forEach(b=>b.addEventListener('click',()=>{openSheet('workout'); setTimeout(()=>{const f=$('#workoutForm'); if(f) f.elements.name.value=b.dataset.pickWorkout;},0)}));
   document.querySelectorAll('input[type="range"]').forEach(r=>r.addEventListener('input',()=>updateRange(r)));
   $('#checkinForm')?.addEventListener('submit',saveCheckin); $('#workoutForm')?.addEventListener('submit',saveWorkout); $('#cardioForm')?.addEventListener('submit',saveCardio); $('#foodForm')?.addEventListener('submit',saveFood); $('#barcodeForm')?.addEventListener('submit',lookupBarcode); $('#startBarcodeCamera')?.addEventListener('click',startBarcodeCamera); $('#toggleManualBarcode')?.addEventListener('click',()=>$('#barcodeForm')?.classList.toggle('hidden')); $('#barcodeConfirmForm')?.addEventListener('submit',saveBarcodeFood); $('#aiFoodConfirmForm')?.addEventListener('submit',saveAIFood);
   $('#foodPhotoInput')?.addEventListener('change',previewFoodPhoto);
-  $('#foodLibraryInput')?.addEventListener('change',previewFoodPhoto); $('#progressCameraInput')?.addEventListener('change',prepareProgressPhoto); $('#progressLibraryInput')?.addEventListener('change',prepareProgressPhoto);
+  $('#foodLibraryInput')?.addEventListener('change',previewFoodPhoto);
+  $('#openProgressCamera')?.addEventListener('click',openProgressCamera); $('#progressLibraryInput')?.addEventListener('click',rememberProgressPhotoMeta); $('#progressLibraryInput')?.addEventListener('change',prepareProgressPhoto);
   $('#barcodeGrams')?.addEventListener('input',updateBarcodePortion);
   $('#nextMealIdea')?.addEventListener('click',()=>{mealIdeaIndex++; mealIdeaSheet();});
   document.querySelectorAll('[data-technique]').forEach(b=>b.addEventListener('click',()=>showTechnique(b.dataset.technique)));
@@ -577,65 +578,107 @@ async function saveAIFood(e){
 }
 
 
-let progressCrop={src:null,img:null,scale:1,x:0,y:0};
-async function prepareProgressPhoto(e){
-  const input=e.currentTarget;
-  const file=input?.files?.[0];
-  if(!file){ toast('Aucune photo sélectionnée'); return; }
-
-  // iOS Safari/PWA: copy the values BEFORE replacing the sheet.
-  const date=$('#sheetContent [name="photoDate"]')?.value||todayKey();
-  const view=$('#progressPhotoView')?.value||'Face';
-
-  try{
-    const data=await readProgressPhotoFile(file);
-    const img=new Image();
-    img.onload=()=>{
-      progressCrop={src:data,img,scale:1,x:0,y:0,date,view};
-      showProgressCrop(date,view);
-    };
-    img.onerror=()=>toast('Impossible de prévisualiser cette photo');
-    img.src=data;
-  }catch(err){
-    console.error('Progress photo read failed',err);
-    toast('Impossible de charger cette photo');
-  }finally{
-    // Allows choosing the same photo again on iOS.
-    if(input) input.value='';
-  }
-}
-function readProgressPhotoFile(file){
+function fileToProgressDataURL(file){
   return new Promise((resolve,reject)=>{
-    const reader=new FileReader();
-    reader.onload=()=>resolve(reader.result);
-    reader.onerror=()=>reject(reader.error||new Error('FILE_READ_FAILED'));
-    reader.onabort=()=>reject(new Error('FILE_READ_ABORTED'));
-    reader.readAsDataURL(file);
+    const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(r.error||new Error('FILE_READ_FAILED'));r.readAsDataURL(file);
   });
 }
-function showProgressCrop(date=progressCrop.date||todayKey(),view=progressCrop.view||'Face'){
-  showSheet(`<h2>Recadrer</h2><p class="subtle">Déplace la photo et ajuste le zoom. Le cadre vertical sera conservé dans l’historique.</p><div class="crop-stage" id="cropStage"><img id="cropImage" src="${progressCrop.src}"><div class="crop-guide"><i></i><i></i><i></i></div></div><div class="field"><label>Zoom</label><input id="cropZoom" type="range" min="1" max="3" step="0.01" value="1"></div><div class="crop-nudge"><button type="button" data-nudge="0,-20">↑</button><button type="button" data-nudge="-20,0">←</button><button type="button" data-nudge="20,0">→</button><button type="button" data-nudge="0,20">↓</button></div><button class="action" id="saveProgressPhoto" type="button">Enregistrer la photo</button><div class="status">Date : ${date} · ${view}</div>`);
-  const im=$('#cropImage'); progressCrop.x=0;progressCrop.y=0;progressCrop.scale=1; applyCropTransform();
-  $('#cropZoom')?.addEventListener('input',e=>{progressCrop.scale=Number(e.target.value);applyCropTransform()});
-  document.querySelectorAll('[data-nudge]').forEach(b=>b.addEventListener('click',()=>{const [dx,dy]=b.dataset.nudge.split(',').map(Number);progressCrop.x+=dx;progressCrop.y+=dy;applyCropTransform()}));
-  let sx=0,sy=0,ox=0,oy=0;
-  $('#cropStage')?.addEventListener('pointerdown',e=>{sx=e.clientX;sy=e.clientY;ox=progressCrop.x;oy=progressCrop.y;e.currentTarget.setPointerCapture(e.pointerId)});
-  $('#cropStage')?.addEventListener('pointermove',e=>{if(!e.currentTarget.hasPointerCapture(e.pointerId))return;progressCrop.x=ox+e.clientX-sx;progressCrop.y=oy+e.clientY-sy;applyCropTransform()});
-  $('#saveProgressPhoto')?.addEventListener('click',()=>saveProgressPhoto(date,view));
+let progressCrop={src:null,img:null,scale:1,x:0,y:0,date:null,view:null};
+let progressCameraStream=null;
+let pendingProgressPhotoMeta={date:null,view:null};
+
+function rememberProgressPhotoMeta(){
+  pendingProgressPhotoMeta={
+    date:$('#sheetContent [name="photoDate"]')?.value||todayKey(),
+    view:$('#progressPhotoView')?.value||'Face'
+  };
 }
-function applyCropTransform(){const im=$('#cropImage');if(im)im.style.transform=`translate(${progressCrop.x}px,${progressCrop.y}px) scale(${progressCrop.scale})`}
+function stopProgressCamera(){
+  if(progressCameraStream){progressCameraStream.getTracks().forEach(t=>t.stop());progressCameraStream=null}
+}
+async function openProgressCamera(){
+  rememberProgressPhotoMeta();
+  if(!navigator.mediaDevices?.getUserMedia){toast('Caméra non disponible');return}
+  try{
+    stopProgressCamera();
+    showSheet(`<h2>Prendre la photo</h2><div class="progress-live-camera"><video id="progressCameraVideo" playsinline muted autoplay></video><div class="body-guide"></div></div><div class="camera-help">Place-toi dans le cadre puis déclenche.</div><button class="action sticky-photo-action" id="captureProgressPhoto" type="button">Prendre la photo</button>`);
+    const video=$('#progressCameraVideo');
+    progressCameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}},audio:false});
+    video.srcObject=progressCameraStream;await video.play();
+    $('#captureProgressPhoto')?.addEventListener('click',captureProgressPhoto);
+  }catch(err){
+    console.error(err);stopProgressCamera();toast('Impossible d’ouvrir la caméra. Vérifie son autorisation.');
+    openSheet('progressPhoto');
+  }
+}
+function captureProgressPhoto(){
+  const video=$('#progressCameraVideo');if(!video||video.videoWidth<1){toast('La caméra n’est pas prête');return}
+  const canvas=document.createElement('canvas');canvas.width=video.videoWidth;canvas.height=video.videoHeight;
+  canvas.getContext('2d').drawImage(video,0,0);const data=canvas.toDataURL('image/jpeg',0.9);
+  stopProgressCamera();loadProgressPhotoData(data,pendingProgressPhotoMeta.date||todayKey(),pendingProgressPhotoMeta.view||'Face');
+}
+async function prepareProgressPhoto(e){
+  const input=e.currentTarget||e.target,file=input?.files?.[0];if(!file)return;
+  rememberProgressPhotoMeta();
+  try{
+    const data=await fileToProgressDataURL(file);
+    loadProgressPhotoData(data,pendingProgressPhotoMeta.date||todayKey(),pendingProgressPhotoMeta.view||'Face');
+    try{input.value=''}catch{}
+  }catch(err){console.error(err);toast('Impossible de charger cette photo')}
+}
+function loadProgressPhotoData(data,date,view){
+  const img=new Image();
+  img.onload=()=>{progressCrop={src:data,img,scale:1,x:0,y:0,date,view};showProgressCrop()};
+  img.onerror=()=>toast('Impossible de lire cette photo');
+  img.src=data;
+}
+function showProgressCrop(){
+  const date=progressCrop.date||todayKey(),view=progressCrop.view||'Face';
+  showSheet(`<h2>Recadrer</h2><p class="subtle">Glisse la photo dans le cadre et utilise le zoom.</p><div class="crop-stage" id="cropStage"><img id="cropImage" src="${progressCrop.src}" draggable="false"><div class="crop-guide"><i></i><i></i><i></i></div></div><div class="crop-control-card"><div class="slider-head"><label>Zoom</label><output id="cropZoomValue">100 %</output></div><input id="cropZoom" type="range" min="1" max="3" step="0.01" value="1"><div class="crop-reset-row"><button class="action secondary compact" id="resetCrop" type="button">Recentrer</button><span>${formatPhotoDate(date)} · ${escapeHtml(view)}</span></div></div><div class="sticky-photo-footer"><button class="action" id="saveProgressPhoto" type="button">Enregistrer la photo</button></div>`);
+  progressCrop.scale=1;progressCrop.x=0;progressCrop.y=0;applyCropTransform();
+
+  const zoom=$('#cropZoom');
+  zoom?.addEventListener('input',e=>{
+    progressCrop.scale=Number(e.target.value);
+    const out=$('#cropZoomValue');if(out)out.textContent=`${Math.round(progressCrop.scale*100)} %`;
+    applyCropTransform();
+  });
+  $('#resetCrop')?.addEventListener('click',()=>{progressCrop.scale=1;progressCrop.x=0;progressCrop.y=0;if(zoom)zoom.value='1';const out=$('#cropZoomValue');if(out)out.textContent='100 %';applyCropTransform()});
+  $('#saveProgressPhoto')?.addEventListener('click',()=>saveProgressPhoto(date,view));
+
+  const stage=$('#cropStage');
+  let active=false,sx=0,sy=0,ox=0,oy=0;
+  const begin=(x,y)=>{active=true;sx=x;sy=y;ox=progressCrop.x;oy=progressCrop.y};
+  const move=(x,y)=>{if(!active)return;progressCrop.x=ox+(x-sx);progressCrop.y=oy+(y-sy);applyCropTransform()};
+  const finish=()=>{active=false};
+  stage?.addEventListener('pointerdown',e=>{begin(e.clientX,e.clientY);stage.setPointerCapture?.(e.pointerId);e.preventDefault()});
+  stage?.addEventListener('pointermove',e=>{move(e.clientX,e.clientY);if(active)e.preventDefault()});
+  stage?.addEventListener('pointerup',finish);stage?.addEventListener('pointercancel',finish);
+  stage?.addEventListener('touchstart',e=>{const t=e.touches[0];if(t)begin(t.clientX,t.clientY);e.preventDefault()},{passive:false});
+  stage?.addEventListener('touchmove',e=>{const t=e.touches[0];if(t)move(t.clientX,t.clientY);e.preventDefault()},{passive:false});
+  stage?.addEventListener('touchend',finish,{passive:false});
+}
+function applyCropTransform(){
+  const im=$('#cropImage');if(im)im.style.transform=`translate3d(${progressCrop.x}px,${progressCrop.y}px,0) scale(${progressCrop.scale})`;
+}
 async function saveProgressPhoto(date,view){
-  const img=progressCrop.img;if(!img)return;
-  const canvas=document.createElement('canvas');canvas.width=720;canvas.height=960;const c=canvas.getContext('2d');
-  const stage=$('#cropStage'), rect=stage.getBoundingClientRect();
-  const base=Math.max(720/img.naturalWidth,960/img.naturalHeight);
-  const scale=base*progressCrop.scale;
-  const dw=img.naturalWidth*scale,dh=img.naturalHeight*scale;
-  const dx=(720-dw)/2+(progressCrop.x/rect.width)*720,dy=(960-dh)/2+(progressCrop.y/rect.height)*960;
-  c.drawImage(img,dx,dy,dw,dh);
-  const image=canvas.toDataURL('image/jpeg',0.78);
-  await LTDB.put('photos',{id:uid(),date,view,image,createdAt:new Date().toISOString()});
-  $('#sheet').close();toast('Photo ajoutée à ton évolution');render();
+  const img=progressCrop.img,stage=$('#cropStage');if(!img||!stage){toast('Photo non prête');return}
+  const button=$('#saveProgressPhoto');if(button){button.disabled=true;button.textContent='Enregistrement…'}
+  try{
+    const canvas=document.createElement('canvas');canvas.width=720;canvas.height=960;const c=canvas.getContext('2d');
+    const rect=stage.getBoundingClientRect();
+    const base=Math.max(720/img.naturalWidth,960/img.naturalHeight);
+    const scale=base*progressCrop.scale,dw=img.naturalWidth*scale,dh=img.naturalHeight*scale;
+    const dx=(720-dw)/2+(progressCrop.x/Math.max(1,rect.width))*720;
+    const dy=(960-dh)/2+(progressCrop.y/Math.max(1,rect.height))*960;
+    c.drawImage(img,dx,dy,dw,dh);
+    const image=canvas.toDataURL('image/jpeg',0.76);
+    await LTDB.put('photos',{id:uid(),date,view,image,createdAt:new Date().toISOString()});
+    $('#sheet').close();toast('Photo enregistrée');render();
+  }catch(err){
+    console.error(err);toast('Impossible d’enregistrer la photo');
+    if(button){button.disabled=false;button.textContent='Enregistrer la photo'}
+  }
 }
 async function viewProgressPhoto(id){
   const p=await LTDB.get('photos',id);if(!p)return;

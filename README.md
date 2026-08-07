@@ -75,3 +75,12 @@ Diagnostic IA: affiche le code HTTP, le code d'erreur et le détail renvoyé par
 - Fallback local si Gemini est indisponible.
 - Architecture Functions 0.6.4.6 conservée, avec ajout de `companion-v1.js`.
 - Scanner et IA Nutrition inchangés.
+
+
+## Build 0.7.2 — Photos iPhone stabilisées
+- "Prendre une photo" utilise maintenant getUserMedia dans l'app, comme le scanner.
+- Aperçu caméra live + déclencheur explicite.
+- Photothèque inchangée.
+- Recadrage tactile renforcé : glisser + zoom + recentrer.
+- Bouton Enregistrer sticky et retour utilisateur pendant la sauvegarde.
+- Scanner / Nutrition IA / Compagnon inchangés.

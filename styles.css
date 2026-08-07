@@ -128,5 +128,16 @@
 .crop-nudge{display:flex;justify-content:center;gap:8px;margin:8px 0 14px}.crop-nudge button{width:42px;height:38px;border:0;border-radius:10px;background:rgba(0,0,0,.06);font-size:18px}
 .progress-photo-large{display:block;width:100%;max-height:68vh;object-fit:contain;border-radius:16px;background:#111}
 
-/* 0.7.1 iOS photo input stabilization */
-.visually-hidden-file{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+/* Build 0.7.2 — caméra live + crop tactile stabilisé */
+.progress-live-camera{position:relative;overflow:hidden;border-radius:20px;background:#111;aspect-ratio:3/4;margin:10px auto;max-height:62vh}
+.progress-live-camera video{width:100%;height:100%;object-fit:cover;display:block}
+.body-guide{position:absolute;inset:8% 18%;border:1.5px dashed rgba(255,255,255,.78);border-radius:44% 44% 22% 22%/20% 20% 12% 12%;pointer-events:none}
+.camera-help{text-align:center;color:var(--muted);font-size:13px;margin:8px 0 12px}
+.sticky-photo-action{position:sticky;bottom:8px;z-index:5}
+.crop-stage{touch-action:none!important;-webkit-user-select:none;user-select:none}
+.crop-stage img{pointer-events:none;touch-action:none}
+.crop-control-card{padding:10px 2px 4px}
+.crop-control-card input[type="range"]{width:100%;touch-action:pan-x}
+.crop-reset-row{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;color:var(--muted)}
+.sticky-photo-footer{position:sticky;bottom:-1px;padding:10px 0 max(10px,env(safe-area-inset-bottom));background:linear-gradient(to bottom,rgba(255,255,255,.1),#fff 28%);z-index:10}
+.sticky-photo-footer .action{width:100%}
