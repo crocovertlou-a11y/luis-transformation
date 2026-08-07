@@ -47,7 +47,7 @@ async function renderHome(){
   `;
 }
 function companionMark(cls='companion-mark'){return `<svg class="${cls}" viewBox="0 0 64 64" aria-hidden="true"><path d="M15 43.5A22 22 0 0 1 44.5 14" class="fluidity-arc arc-a"/><path d="M49.2 20.2A22 22 0 0 1 19.8 50" class="fluidity-arc arc-b"/></svg>`}
-function nutritionEntry(x){return `<div class="nutrition-entry"><div><strong>${escapeHtml(x.description||'Repas')}</strong><span>${[x.protein?Math.round(x.protein)+' g protéines':'',x.calories?Math.round(x.calories)+' kcal':''].filter(Boolean).join(' · ')||'Repas enregistré'}</span></div><small>Source : ${x.source==='companion'?'Compagnon':'Saisie manuelle'}</small></div>`}
+function nutritionEntry(x){return `<button class="nutrition-entry nutrition-entry-button" data-edit-food="${x.id}"><div><strong>${escapeHtml(x.description||'Repas')}</strong><span>${[x.protein?Math.round(x.protein)+' g protéines':'',x.calories?Math.round(x.calories)+' kcal':''].filter(Boolean).join(' · ')||'Repas enregistré'}</span></div><small>Source : ${x.source==='companion'?'Compagnon':'Saisie manuelle'} · Modifier ›</small></button>`}
 
 function renderToday(today,todayWorkout,protein){
   const attention=today ? recoveryText(today) : null;
@@ -94,7 +94,7 @@ async function renderTraining(){
   <div class="card-actions"><button class="action" data-open="workout">Faire cette séance</button><button class="action secondary" data-open="workoutIdeas">Autre proposition</button></div></div>
   <div class="card"><div class="card-kicker">Journal Force</div><h3>Où tu en es, exercice par exercice</h3><div class="list exercise-log">${exerciseLog||'<div class="empty">Ton journal se construira à mesure que tu enregistres tes charges.</div>'}</div></div>
   <div class="card"><div class="card-kicker">Cardio</div><h3>${cardio.length?`${cardio.length} activité${cardio.length>1?'s':''} enregistrée${cardio.length>1?'s':''}`:'Course · vélo · natation · marche'}</h3><p class="subtle">Saisie rapide, avec une durée adaptée au clavier iPhone.</p><div class="card-actions"><button class="action" data-open="cardio">Ajouter une activité</button></div></div>
-  <div class="section-title"><h2>Historique récent</h2></div><div class="card list">${[...workouts.map(x=>({...x,kind:'Force'})),...cardio.map(x=>({...x,kind:'Cardio'}))].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8).map(x=>`<div class="list-row"><div><strong>${escapeHtml(x.name||x.type||x.kind)}</strong><div class="status">${x.date}${x.durationLabel?' · '+x.durationLabel:''}</div></div><span class="pill">${x.kind}</span></div>`).join('')||'<div class="empty">Aucune activité enregistrée.</div>'}</div>`;
+  <div class="section-title"><h2>Historique récent</h2></div><div class="card list">${[...workouts.map(x=>({...x,kind:'Force'})),...cardio.map(x=>({...x,kind:'Cardio'}))].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8).map(x=>`<button class="list-row history-button" data-edit-activity="${x.kind}:${x.id}"><div><strong>${escapeHtml(x.name||x.type||x.kind)}</strong><div class="status">${x.date}${x.durationLabel?' · '+x.durationLabel:''}</div></div><span class="pill">${x.kind} · Modifier</span></button>`).join('')||'<div class="empty">Aucune activité enregistrée.</div>'}</div>`;
 }
 function suggestWorkout(workouts){
   const lastByName={};
@@ -126,7 +126,7 @@ async function renderProfile(){
   return `<section class="hero"><div class="profile-head"><svg class="big-logo" viewBox="0 0 64 64"><path d="M15 43.5A22 22 0 0 1 44.5 14" class="fluidity-arc"/><path d="M49.2 20.2A22 22 0 0 1 19.8 50" class="fluidity-arc"/></svg><div><div class="hello" style="font-size:28px;margin:0">${escapeHtml(state.profile.firstName)}</div><div class="subtle">${escapeHtml(state.profile.goal||'Ton évolution')}</div></div></div></section>
   <div class="card"><div class="card-kicker">Ce que tu sais de moi</div><div class="list"><div class="list-row"><div><strong>Objectif actuel</strong><div class="status">${escapeHtml(state.profile.goal||'À définir')}</div></div><span class="pill">Confirmé</span></div><div class="list-row"><div><strong>Alimentation</strong><div class="status">${state.profile.nutritionEnabled?'Accompagnement actif':'Masquée'}</div></div><span class="pill">Choix</span></div></div></div>
   <div class="card"><div class="switch-row"><div><strong>Accompagnement alimentation</strong><div class="status">Masqué lorsqu’il est désactivé.</div></div><input id="nutritionToggle" class="toggle" type="checkbox" ${state.profile.nutritionEnabled?'checked':''}></div></div>
-  <div class="card"><div class="card-kicker">Tes données</div><h3>Export / Import</h3><p class="subtle">Tes données restent récupérables.</p><div class="card-actions"><button class="action" id="exportBtn">Exporter JSON</button><label class="action secondary">Importer JSON<input id="importInput" type="file" accept="application/json" hidden></label></div></div><div class="version">Luis Transformation · Build 0.3.1</div>`;
+  <div class="card"><div class="card-kicker">Tes données</div><h3>Export / Import</h3><p class="subtle">Tes données restent récupérables.</p><div class="card-actions"><button class="action" id="exportBtn">Exporter JSON</button><label class="action secondary">Importer JSON<input id="importInput" type="file" accept="application/json" hidden></label></div></div><div class="version">Luis Transformation · Build 0.4</div>`;
 }
 function bindPage(){
   document.querySelectorAll('[data-home-view]').forEach(b=>b.addEventListener('click',()=>{state.homeView=b.dataset.homeView;render();}));
@@ -137,7 +137,7 @@ function bindPage(){
   $('#exportBtn')?.addEventListener('click',exportData); $('#importInput')?.addEventListener('change',importData);
 }
 async function quickAdd(){ openSheet('quick'); }
-function showSheet(html){ $('#sheetContent').innerHTML=html; $('#sheet').showModal(); bindSheet(); updateAllRanges(); }
+function showSheet(html){ $('#sheetContent').innerHTML=`<button class="sheet-x" type="button" data-close aria-label="Fermer">×</button>${html}`; $('#sheet').showModal(); bindSheet(); updateAllRanges(); }
 function slider(name,label,min,max,step,value,unit=''){ return `<div class="slider-line"><div class="slider-head"><label>${label}</label><output data-output="${name}">${value}${unit}</output></div><input type="range" name="${name}" min="${min}" max="${max}" step="${step}" value="${value}" data-range-unit="${unit}"></div>`; }
 function openSheet(kind){
   if(kind==='quick') return showSheet(`<h2>Donner quelque chose</h2><div class="sheet-grid"><button class="sheet-choice" data-sheet="checkin">◌<strong>Ressenti</strong></button><button class="sheet-choice" data-sheet="workout">◎<strong>Force</strong></button><button class="sheet-choice" data-sheet="cardio">⌁<strong>Cardio</strong></button>${state.profile.nutritionEnabled?'<button class="sheet-choice" data-sheet="nutritionHub">◒<strong>Alimentation</strong></button>':''}</div>`);
@@ -165,6 +165,26 @@ async function nutritionHubSheet(){
     <div class="nutrition-history"><div class="card-kicker">Ce que tu as saisi</div>${food.length?food.map(nutritionEntry).join(''):'<div class="empty">Aucun repas enregistré aujourd’hui.</div>'}</div>`);
 }
 
+async function editFoodSheet(id){
+  const x=await LTDB.get('food',id); if(!x) return;
+  showSheet(`<h2>Modifier le repas</h2><form id="foodEditForm">
+    <input type="hidden" name="id" value="${x.id}">
+    <div class="field"><label>Description</label><textarea name="description" rows="3">${escapeHtml(x.description||'')}</textarea></div>
+    <div class="range-row"><div class="field"><label>Protéines (g)</label><input name="protein" type="number" step="0.1" value="${x.protein??''}"></div><div class="field"><label>Calories</label><input name="calories" type="number" value="${x.calories??''}"></div></div>
+    <div class="range-row"><div class="field"><label>Glucides (g)</label><input name="carbs" type="number" step="0.1" value="${x.carbs??''}"></div><div class="field"><label>Lipides (g)</label><input name="fat" type="number" step="0.1" value="${x.fat??''}"></div></div>
+    <div class="field"><label>Eau (L)</label><input name="water" type="number" step="0.1" value="${x.water??''}"></div>
+    <div class="edit-actions"><button class="action" type="submit">Enregistrer les modifications</button><button class="action danger" type="button" id="deleteFood">Supprimer</button></div>
+  </form>`);
+}
+async function updateFood(e){
+  e.preventDefault(); const f=new FormData(e.currentTarget); const old=await LTDB.get('food',f.get('id')); if(!old)return;
+  await LTDB.put('food',{...old,description:f.get('description')||'Repas',protein:num(f.get('protein')),calories:num(f.get('calories')),carbs:num(f.get('carbs')),fat:num(f.get('fat')),water:num(f.get('water')),updatedAt:new Date().toISOString()});
+  toast('Repas modifié'); await nutritionHubSheet(); render();
+}
+async function deleteFood(id){
+  await LTDB.del('food',id); toast('Repas supprimé'); await nutritionHubSheet(); render();
+}
+
 let mealIdeaIndex=0;
 async function mealIdeaSheet(){
   const food=await LTDB.all('food'); const protein=food.filter(x=>x.date===todayKey()).reduce((s,x)=>s+(Number(x.protein)||0),0); const target=state.profile.proteinTarget||170; const remain=Math.max(0,target-protein);
@@ -180,8 +200,32 @@ async function mealIdeaSheet(){
 }
 function forceExerciseInput(name,sets,reps,rest){
   const idx={'Développé couché':0,'Tractions':1,'Rowing':2,'Développé épaules':3,'Gainage':4}[name];
-  return `<div class="force-input"><div class="force-input-head"><div><strong>${name}</strong><span>${sets} séries × ${reps} · récup. ${rest}</span></div><button type="button" class="technique-btn" data-technique="${name}">Technique</button></div><label>Poids utilisé (kg)<input name="weight${idx}" type="number" step="0.5" inputmode="decimal" placeholder="—"></label></div>`;
+  const rows=Array.from({length:sets},(_,s)=>`<div class="set-row"><span>S${s+1}</span><input name="reps_${idx}_${s}" type="number" inputmode="numeric" value="${typeof reps==='number'?reps:''}" placeholder="${reps}"><input name="weight_${idx}_${s}" type="number" step="0.5" inputmode="decimal" placeholder="kg"></div>`).join('');
+  return `<div class="force-input"><div class="force-input-head"><div><strong>${name}</strong><span>${sets} séries × ${reps} · récup. ${rest}</span></div><button type="button" class="technique-btn" data-technique="${name}">Technique</button></div><div class="set-head"><span>Série</span><span>Reps</span><span>Charge</span></div>${rows}</div>`;
 }
+async function editActivitySheet(kind,id){
+  const store=kind==='Force'?'workouts':'cardio'; const x=await LTDB.get(store,id); if(!x)return;
+  if(kind==='Cardio'){
+    return showSheet(`<h2>Modifier Cardio</h2><form id="activityEditForm"><input type="hidden" name="kind" value="Cardio"><input type="hidden" name="id" value="${id}">
+      <div class="field"><label>Type</label><input name="type" value="${escapeHtml(x.type||'Course')}"></div>
+      <div class="field"><label>Distance (km)</label><input name="distance" type="number" step="0.01" value="${x.distance??''}"></div>
+      <div class="field"><label>Durée affichée</label><input name="durationLabel" value="${escapeHtml(x.durationLabel||'')}"></div>
+      <div class="edit-actions"><button class="action" type="submit">Enregistrer</button><button class="action danger" type="button" id="deleteActivity">Supprimer</button></div></form>`);
+  }
+  return showSheet(`<h2>${escapeHtml(x.name||'Séance Force')}</h2><p class="subtle">${x.date} · ${x.durationLabel||''}</p>
+    <div class="force-history-detail">${(x.exerciseEntries||[]).map(e=>`<div><strong>${escapeHtml(e.name)}</strong><span>${escapeHtml(e.performance||'Enregistré')}</span></div>`).join('')}</div>
+    <form id="activityEditForm"><input type="hidden" name="kind" value="Force"><input type="hidden" name="id" value="${id}">
+    <div class="field"><label>Durée totale (min)</label><input name="durationMin" type="number" value="${Math.round((x.durationSeconds||0)/60)||40}"></div>
+    <div class="edit-actions"><button class="action" type="submit">Enregistrer</button><button class="action danger" type="button" id="deleteActivity">Supprimer</button></div></form>`);
+}
+async function updateActivity(e){
+  e.preventDefault(); const f=new FormData(e.currentTarget), kind=f.get('kind'), id=f.get('id'), store=kind==='Force'?'workouts':'cardio', old=await LTDB.get(store,id); if(!old)return;
+  if(kind==='Cardio') await LTDB.put(store,{...old,type:f.get('type'),distance:num(f.get('distance')),durationLabel:f.get('durationLabel'),updatedAt:new Date().toISOString()});
+  else {const mins=num(f.get('durationMin'))||40; await LTDB.put(store,{...old,durationSeconds:mins*60,durationLabel:`${mins}:00`,updatedAt:new Date().toISOString()});}
+  $('#sheet').close(); toast('Saisie modifiée'); render();
+}
+async function deleteActivity(kind,id){const store=kind==='Force'?'workouts':'cardio'; await LTDB.del(store,id); $('#sheet').close(); toast('Saisie supprimée'); render();}
+
 function showTechnique(name){
   showSheet(`<h2>${escapeHtml(name)}</h2><div class="technique-visual"><div class="companion-page-mark">${companionMark("companion-mark-large")}</div><p><strong>Technique</strong></p><p class="subtle">Le raccourci vidéo reste dans la séance pour le moment où tu en as besoin. Le catalogue vidéo validé sera branché ici.</p></div><button class="action secondary" data-close>Revenir à la séance</button>`);
 }
@@ -196,11 +240,28 @@ function bindSheet(){
   $('#foodLibraryInput')?.addEventListener('change',previewFoodPhoto);
   $('#nextMealIdea')?.addEventListener('click',()=>{mealIdeaIndex++; mealIdeaSheet();});
   document.querySelectorAll('[data-technique]').forEach(b=>b.addEventListener('click',()=>showTechnique(b.dataset.technique)));
+  document.querySelectorAll('[data-edit-food]').forEach(b=>b.addEventListener('click',()=>editFoodSheet(b.dataset.editFood)));
+  document.querySelectorAll('[data-edit-activity]').forEach(b=>b.addEventListener('click',()=>{const [kind,id]=b.dataset.editActivity.split(':'); editActivitySheet(kind,id);}));
+  $('#foodEditForm')?.addEventListener('submit',updateFood);
+  $('#activityEditForm')?.addEventListener('submit',updateActivity);
+  $('#deleteFood')?.addEventListener('click',()=>{const id=$('#foodEditForm')?.elements.id.value;if(id)deleteFood(id);});
+  $('#deleteActivity')?.addEventListener('click',()=>{const f=$('#activityEditForm');if(f)deleteActivity(f.elements.kind.value,f.elements.id.value);});
 }
 function updateAllRanges(){ document.querySelectorAll('input[type="range"]').forEach(updateRange); }
 function updateRange(r){ const out=document.querySelector(`[data-output="${r.name}"]`); if(out) out.value=`${r.value}${r.dataset.rangeUnit||''}`; }
 async function saveCheckin(e){e.preventDefault(); const f=new FormData(e.currentTarget); const row={id:todayKey(),date:todayKey(),sleep:num(f.get('sleep')),energy:num(f.get('energy')),stress:num(f.get('stress')),hunger:num(f.get('hunger')),weight:num(f.get('weight')),waist:num(f.get('waist')),updatedAt:new Date().toISOString()}; await LTDB.put('checkins',row); $('#sheet').close(); toast('Point du jour enregistré'); render();}
-async function saveWorkout(e){e.preventDefault(); const f=new FormData(e.currentTarget); const parsed=parseDuration(f.get('duration')); const exerciseEntries=String(f.get('exercises')||'').split(/\n+/).map(line=>line.trim()).filter(Boolean).map(line=>{const [name,...rest]=line.split('|');return {name:name.trim(),performance:rest.join('|').trim()||''}}); await LTDB.put('workouts',{id:uid(),date:todayKey(),name:f.get('name')||'Séance Force',durationSeconds:parsed.seconds,durationLabel:parsed.label,effort:num(f.get('effort')),exerciseEntries,notes:f.get('notes')||'',source:'manual',createdAt:new Date().toISOString()}); $('#sheet').close(); toast('Séance Force enregistrée'); render();}
+async function saveWorkout(e){
+  e.preventDefault(); const f=new FormData(e.currentTarget);
+  const specs=[['Développé couché',4,6,'2 min'],['Tractions',4,8,'90 s'],['Rowing',3,10,'90 s'],['Développé épaules',3,10,'75 s'],['Gainage',3,'45 s','45 s']];
+  const exerciseEntries=specs.map((sp,i)=>{
+    const series=Array.from({length:sp[1]},(_,s)=>({set:s+1,reps:num(f.get(`reps_${i}_${s}`))||sp[2],weight:num(f.get(`weight_${i}_${s}`))})); 
+    const weights=series.map(x=>x.weight).filter(x=>x!=null);
+    return {name:sp[0],sets:sp[1],targetReps:sp[2],rest:sp[3],series,weight:weights.length?weights[weights.length-1]:null,performance:series.map(x=>`${x.reps}×${x.weight??'—'}kg`).join(' · ')};
+  });
+  const mins=num(f.get('durationMin'))||40;
+  await LTDB.put('workouts',{id:uid(),date:todayKey(),name:'Haut du corps',durationSeconds:mins*60,durationLabel:`${mins}:00`,effort:num(f.get('effort')),exerciseEntries,source:'manual',createdAt:new Date().toISOString()});
+  $('#sheet').close(); toast('Séance Force enregistrée'); render();
+}
 async function saveCardio(e){e.preventDefault(); const f=new FormData(e.currentTarget); const parsed=parseDuration(f.get('duration')); await LTDB.put('cardio',{id:uid(),date:todayKey(),type:f.get('type'),distance:num(f.get('distance')),durationSeconds:parsed.seconds,durationLabel:parsed.label,heartRateAvg:num(f.get('hr')),cadenceAvg:num(f.get('cadence')),elevationGain:num(f.get('elevation')),calories:num(f.get('calories')),source:'manual',createdAt:new Date().toISOString()}); $('#sheet').close(); toast('Activité Cardio enregistrée'); render();}
 async function saveFood(e){e.preventDefault(); const f=new FormData(e.currentTarget); await LTDB.put('food',{id:uid(),date:todayKey(),dateTime:new Date().toISOString(),description:f.get('description')||'Repas',protein:num(f.get('protein')),calories:num(f.get('calories')),carbs:num(f.get('carbs')),fat:num(f.get('fat')),water:num(f.get('water')),classic:f.get('classic')==='on',source:'companion',confidence:'user',createdAt:new Date().toISOString()}); toast('Repas enregistré · visible dans Alimentation'); await nutritionHubSheet(); render();}
 function previewBarcode(e){e.preventDefault(); const f=new FormData(e.currentTarget); const code=f.get('barcode')||'—', product=f.get('product')||'Produit à identifier'; showSheet(`<h2>Prévisualisation produit</h2><div class="card"><div class="card-kicker">Code-barres</div><h3>${escapeHtml(product)}</h3><p class="subtle">${escapeHtml(code)}</p><p>Le parcours de confirmation est en place. La recherche automatique des valeurs sera branchée avec le backend nutrition.</p><div class="card-actions"><button class="action secondary" data-close>Fermer</button></div></div>`);}
