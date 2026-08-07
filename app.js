@@ -207,7 +207,7 @@ function bindPage(){
   $('#exportBtn')?.addEventListener('click',exportData); $('#importInput')?.addEventListener('change',importData);
 }
 async function quickAdd(){ openSheet('quick'); }
-function showSheet(html){ $('#sheetContent').innerHTML=`<button class="sheet-x" type="button" data-close aria-label="Fermer">×</button>${html}`; $('#sheet').showModal(); bindSheet(); updateAllRanges(); }
+function showSheet(html){ stopBarcodeCamera(); $('#sheetContent').innerHTML=`<button class="sheet-x" type="button" data-close aria-label="Fermer">×</button>${html}`; $('#sheet').showModal(); bindSheet(); updateAllRanges(); }
 function slider(name,label,min,max,step,value,unit=''){ return `<div class="slider-line"><div class="slider-head"><label>${label}</label><output data-output="${name}">${value}${unit}</output></div><input type="range" name="${name}" min="${min}" max="${max}" step="${step}" value="${value}" data-range-unit="${unit}"></div>`; }
 function openSheet(kind){
   if(kind==='quick') return showSheet(`<h2>Donner quelque chose</h2><div class="sheet-grid"><button class="sheet-choice" data-sheet="checkin">◌<strong>Ressenti</strong></button><button class="sheet-choice" data-sheet="workout">◎<strong>Force</strong></button><button class="sheet-choice" data-sheet="cardio">⌁<strong>Cardio</strong></button>${state.profile.nutritionEnabled?'<button class="sheet-choice" data-sheet="nutritionHub">◒<strong>Alimentation</strong></button>':''}</div>`);
@@ -326,7 +326,7 @@ function showTechnique(name){
 
 function bindSheet(){
   document.querySelectorAll('[data-sheet]').forEach(b=>b.addEventListener('click',()=>openSheet(b.dataset.sheet)));
-  document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>$('#sheet').close()));
+  document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>{stopBarcodeCamera();$('#sheet').close()}));
   document.querySelectorAll('[data-pick-workout]').forEach(b=>b.addEventListener('click',()=>{openSheet('workout'); setTimeout(()=>{const f=$('#workoutForm'); if(f) f.elements.name.value=b.dataset.pickWorkout;},0)}));
   document.querySelectorAll('input[type="range"]').forEach(r=>r.addEventListener('input',()=>updateRange(r)));
   $('#checkinForm')?.addEventListener('submit',saveCheckin); $('#workoutForm')?.addEventListener('submit',saveWorkout); $('#cardioForm')?.addEventListener('submit',saveCardio); $('#foodForm')?.addEventListener('submit',saveFood); $('#barcodeForm')?.addEventListener('submit',lookupBarcode); $('#startBarcodeCamera')?.addEventListener('click',startBarcodeCamera); $('#toggleManualBarcode')?.addEventListener('click',()=>$('#barcodeForm')?.classList.toggle('hidden')); $('#barcodeConfirmForm')?.addEventListener('submit',saveBarcodeFood); $('#aiFoodConfirmForm')?.addEventListener('submit',saveAIFood);
@@ -363,24 +363,65 @@ async function saveFood(e){e.preventDefault(); const f=new FormData(e.currentTar
 
 let pendingFoodImageData=null;
 
-let barcodeStream=null,barcodeScanning=false;
-function stopBarcodeCamera(){barcodeScanning=false;if(barcodeStream){barcodeStream.getTracks().forEach(t=>t.stop());barcodeStream=null}const v=$('#barcodeVideo');if(v)v.srcObject=null}
+let barcodeStream=null,barcodeScanning=false,barcodeZXingControls=null,barcodeZXingReader=null;
+function stopBarcodeCamera(){
+  barcodeScanning=false;
+  try{barcodeZXingControls?.stop?.()}catch(e){}
+  barcodeZXingControls=null;
+  try{barcodeZXingReader?.reset?.()}catch(e){}
+  barcodeZXingReader=null;
+  if(barcodeStream){barcodeStream.getTracks().forEach(t=>t.stop());barcodeStream=null}
+  const v=$('#barcodeVideo');if(v){try{v.pause()}catch(e){}v.srcObject=null}
+}
+function loadZXing(){
+  if(window.ZXingBrowser) return Promise.resolve(window.ZXingBrowser);
+  if(window.__zxingLoading) return window.__zxingLoading;
+  window.__zxingLoading=new Promise((resolve,reject)=>{
+    const existing=document.querySelector('script[data-zxing]');
+    if(existing){existing.addEventListener('load',()=>resolve(window.ZXingBrowser),{once:true});existing.addEventListener('error',reject,{once:true});return}
+    const script=document.createElement('script');script.dataset.zxing='1';script.src='https://unpkg.com/@zxing/browser@0.1.5/umd/zxing-browser.min.js';script.async=true;
+    script.onload=()=>window.ZXingBrowser?resolve(window.ZXingBrowser):reject(new Error('ZXING_NOT_READY'));
+    script.onerror=()=>reject(new Error('ZXING_LOAD_FAILED'));document.head.appendChild(script);
+  }).finally(()=>{window.__zxingLoading=null});
+  return window.__zxingLoading;
+}
+async function barcodeFound(raw){
+  raw=String(raw||'').replace(/\D/g,''); if(!raw||!barcodeScanning)return;
+  barcodeScanning=false; stopBarcodeCamera();
+  const status=$('#barcodeScanStatus');if(status)status.textContent=`Code détecté : ${raw} · recherche…`;
+  await lookupBarcodeCode(raw,todayKey(),$('#barcodeForm [name="mealType"]')?.value||'lunch');
+}
 async function startBarcodeCamera(){
  const status=$('#barcodeScanStatus'),video=$('#barcodeVideo');
- if(!navigator.mediaDevices?.getUserMedia){if(status)status.textContent='Caméra indisponible. Utilise la saisie manuelle.';return}
- if(!('BarcodeDetector' in window)){if(status)status.textContent='Scan automatique indisponible sur ce navigateur. Utilise la saisie manuelle.';$('#barcodeForm')?.classList.remove('hidden');return}
+ if(!video)return;
+ if(!navigator.mediaDevices?.getUserMedia){if(status)status.textContent='Caméra indisponible ici. Utilise la saisie manuelle.';$('#barcodeForm')?.classList.remove('hidden');return}
  try{
-  stopBarcodeCamera();barcodeStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
-  video.srcObject=barcodeStream;await video.play();if(status)status.textContent='Cadre le code-barres…';barcodeScanning=true;scanBarcodeFrame();
- }catch(err){console.error(err);if(status)status.textContent='Impossible d’ouvrir la caméra. Vérifie son autorisation.';$('#barcodeForm')?.classList.remove('hidden')}
+  stopBarcodeCamera(); barcodeScanning=true;
+  if('BarcodeDetector' in window){
+    barcodeStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false});
+    video.srcObject=barcodeStream;await video.play();if(status)status.textContent='Cadre le code-barres…';scanBarcodeFrame();return;
+  }
+  if(status)status.textContent='Ouverture de la caméra…';
+  const ZX=await loadZXing();
+  if(!barcodeScanning)return;
+  barcodeZXingReader=new ZX.BrowserMultiFormatReader();
+  barcodeZXingControls=await barcodeZXingReader.decodeFromConstraints({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false},video,(result,error)=>{
+    if(result&&barcodeScanning) barcodeFound(result.getText?result.getText():result.text);
+  });
+  if(status)status.textContent='Cadre le code-barres…';
+ }catch(err){
+  console.error(err);stopBarcodeCamera();
+  if(status)status.textContent='Impossible d’ouvrir le scanner. Autorise la caméra ou utilise la saisie manuelle.';
+  $('#barcodeForm')?.classList.remove('hidden');
+ }
 }
 async function scanBarcodeFrame(){
  if(!barcodeScanning)return;const video=$('#barcodeVideo');if(!video||video.readyState<2){requestAnimationFrame(scanBarcodeFrame);return}
  try{
   const detector=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e']});
-  const codes=await detector.detect(video);const raw=String(codes?.[0]?.rawValue||'').replace(/\D/g,'');
-  if(raw){stopBarcodeCamera();const status=$('#barcodeScanStatus');if(status)status.textContent=`Code détecté : ${raw} · recherche…`;await lookupBarcodeCode(raw,todayKey(),$('#barcodeForm [name="mealType"]')?.value||'lunch');return}
- }catch(err){console.error(err)}
+  const codes=await detector.detect(video);const raw=codes?.[0]?.rawValue;
+  if(raw){await barcodeFound(raw);return}
+ }catch(err){console.warn('BarcodeDetector',err)}
  if(barcodeScanning)setTimeout(scanBarcodeFrame,180);
 }
 async function lookupBarcodeCode(code,date=todayKey(),mealType='lunch'){

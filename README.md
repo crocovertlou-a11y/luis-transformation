@@ -122,5 +122,12 @@ Tous les fichiers sont fournis directement à la racine du ZIP. `netlify.toml`
 copie automatiquement `analyze-food.js` et `product-lookup.js` dans un dossier
 temporaire de Functions pendant le build Netlify.
 
-## Build 0.6.2
+## Build 0.6.3
 Scanner caméra EAN/UPC local + Open Food Facts. Saisie manuelle conservée en fallback. Aucun LLM pour le scan.
+
+
+## Stabilisation 0.6.3
+- Scanner code-barres: BarcodeDetector natif quand disponible, fallback ZXing sur iPhone/Safari/PWA.
+- Fermeture propre de la caméra à la fermeture/changement de fenêtre.
+- Saisie manuelle conservée en secours.
+- Identité visuelle du Compagnon conservée sans modification.
