@@ -1,33 +1,31 @@
-function extractOutputText(payload){
-  if (typeof payload.output_text === 'string') return payload.output_text;
-  const texts=[];
-  for (const item of payload.output || []) {
-    for (const c of item.content || []) {
-      if (c.type === 'output_text' && typeof c.text === 'string') texts.push(c.text);
-    }
-  }
-  return texts.join('\n');
+function extractText(payload){
+  const parts=payload?.candidates?.[0]?.content?.parts || [];
+  return parts.map(p=>p.text || '').filter(Boolean).join('\n').trim();
 }
 
 exports.handler = async function(event) {
   if (event.httpMethod !== 'POST') {
     return { statusCode:405, body:JSON.stringify({error:'METHOD_NOT_ALLOWED'}) };
   }
-  const apiKey=process.env.OPENAI_API_KEY;
+
+  const apiKey=process.env.GEMINI_API_KEY;
   if(!apiKey){
-    return { statusCode:503, body:JSON.stringify({error:'AI_NOT_CONFIGURED', message:'OPENAI_API_KEY is missing'}) };
+    return { statusCode:503, body:JSON.stringify({error:'AI_NOT_CONFIGURED',message:'GEMINI_API_KEY is missing'}) };
   }
 
   try{
     const body=JSON.parse(event.body || '{}');
     const imageData=body.image;
-    if(!imageData || !/^data:image\/(jpeg|png|webp);base64,/.test(imageData)){
+    const match=String(imageData||'').match(/^data:image\/(jpeg|png|webp);base64,(.+)$/);
+    if(!match){
       return { statusCode:400, body:JSON.stringify({error:'INVALID_IMAGE'}) };
     }
     if(imageData.length > 2_800_000){
       return { statusCode:413, body:JSON.stringify({error:'IMAGE_TOO_LARGE'}) };
     }
 
+    const mimeType=`image/${match[1]}`;
+    const base64=match[2];
     const prompt=`Tu analyses une photo alimentaire pour une application de suivi nutritionnel.
 Détermine s'il s'agit plutôt d'un produit/aliment unique ou d'un repas composé.
 Identifie uniquement ce qui est raisonnablement visible. Estime les portions en grammes avec prudence.
@@ -45,37 +43,41 @@ Retourne UNIQUEMENT un objet JSON valide, sans markdown, avec cette structure ex
 Les nutriments sont estimés pour les quantités visibles, pas pour 100 g.
 Si tu n'es pas assez sûr d'un aliment, signale-le dans notes au lieu d'inventer.`;
 
-    const response=await fetch('https://api.openai.com/v1/responses',{
+    const model=process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
+    const url=`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+
+    const response=await fetch(url,{
       method:'POST',
       headers:{
-        'Authorization':`Bearer ${apiKey}`,
-        'Content-Type':'application/json'
+        'Content-Type':'application/json',
+        'x-goog-api-key':apiKey
       },
       body:JSON.stringify({
-        model:process.env.OPENAI_MODEL || 'gpt-5-mini',
-        input:[{
-          role:'user',
-          content:[
-            {type:'input_text',text:prompt},
-            {type:'input_image',image_url:imageData}
+        contents:[{
+          parts:[
+            {inlineData:{mimeType,data:base64}},
+            {text:prompt}
           ]
-        }]
+        }],
+        generationConfig:{
+          temperature:0.2,
+          responseMimeType:'application/json'
+        }
       })
     });
 
     const payload=await response.json();
     if(!response.ok){
-      console.error('OpenAI error',payload);
-      return {statusCode:502,body:JSON.stringify({error:'AI_SERVICE_ERROR'})};
+      console.error('Gemini error',JSON.stringify(payload));
+      return {statusCode:502,body:JSON.stringify({error:'AI_SERVICE_ERROR',detail:payload?.error?.message||''})};
     }
 
-    const text=extractOutputText(payload);
+    const text=extractText(payload);
     let parsed;
     try{
-      const cleaned=text.trim().replace(/^```json\s*/i,'').replace(/```$/,'').trim();
-      parsed=JSON.parse(cleaned);
+      parsed=JSON.parse(text.replace(/^```json\s*/i,'').replace(/```$/,'').trim());
     }catch(err){
-      console.error('AI parse error',text);
+      console.error('Gemini parse error',text);
       return {statusCode:502,body:JSON.stringify({error:'AI_INVALID_RESPONSE'})};
     }
 
@@ -88,6 +90,7 @@ Si tu n'es pas assez sûr d'un aliment, signale-le dans notes au lieu d'inventer
       carbs:safeNum(i.carbs),
       fat:safeNum(i.fat)
     })) : [];
+
     const totals={
       calories:safeNum(parsed.totals?.calories),
       protein:safeNum(parsed.totals?.protein),
@@ -102,9 +105,9 @@ Si tu n'es pas assez sûr d'un aliment, signale-le dans notes au lieu d'inventer
         kind:parsed.kind === 'product' ? 'product' : 'meal',
         name:String(parsed.name || 'Repas analysé').slice(0,100),
         confidence:Math.min(1,Math.max(0,safeNum(parsed.confidence))),
-        items, totals,
+        items,totals,
         notes:String(parsed.notes || '').slice(0,300),
-        source:'Compagnon IA'
+        source:'Compagnon IA · Gemini'
       })
     };
   }catch(err){

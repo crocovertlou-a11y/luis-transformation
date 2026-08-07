@@ -1,12 +1,12 @@
 [build]
-  functions = "netlify/functions"
+  command = "mkdir -p .netlify-functions && cp analyze-food.js product-lookup.js .netlify-functions/"
+  functions = ".netlify-functions"
   publish = "."
 
 [[headers]]
   for = "/sw.js"
   [headers.values]
     Cache-Control = "no-cache"
-
 
 [[redirects]]
   from = "/api/product"

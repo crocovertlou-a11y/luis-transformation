@@ -102,3 +102,22 @@ Périmètre volontairement limité : suivi Alimentation visible après saisie + 
 ### Configuration IA sur Netlify
 Ajouter la variable d’environnement `OPENAI_API_KEY` dans Netlify. Optionnel : `OPENAI_MODEL` pour choisir le modèle (défaut `gpt-5-mini`).
 La clé n’est jamais stockée dans le navigateur : l’appel passe par `netlify/functions/analyze-food.js`.
+
+## Build 0.6.1 — stratégie gratuite
+
+- Code-barres : Open Food Facts, sans LLM.
+- Photo aliment / repas : Gemini API.
+- Modèle par défaut : `gemini-2.5-flash-lite`.
+- Confirmation obligatoire avant sauvegarde.
+- OpenAI n'est plus utilisé dans le parcours Nutrition normal.
+
+### Variables Netlify
+- `GEMINI_API_KEY` : obligatoire.
+- `GEMINI_MODEL` : optionnel, recommandé `gemini-2.5-flash-lite`.
+
+Les anciennes variables OpenAI peuvent rester dans Netlify, elles ne sont pas utilisées par cette release.
+
+### Livraison GitHub
+Tous les fichiers sont fournis directement à la racine du ZIP. `netlify.toml`
+copie automatiquement `analyze-food.js` et `product-lookup.js` dans un dossier
+temporaire de Functions pendant le build Netlify.
