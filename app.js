@@ -27,15 +27,21 @@ function bindGlobal(){
 function navigate(route){ state.route=route; document.querySelectorAll('.nav-item[data-route]').forEach(b=>b.classList.toggle('active',b.dataset.route===route)); render(); $('#main').focus(); }
 async function render(){
   const main=$('#main'); let html='';
-  if(!state.online) html+='<div class="offline-banner">Hors ligne · l’app reste utilisable et les données restent sur cet appareil.</div>';
-  if(state.route==='home') html+=await renderHome();
-  if(state.route==='training') html+=await renderTraining();
-  if(state.route==='companion') html+=await renderCompanion();
-  if(state.route==='profile') html+=await renderProfile();
-  main.innerHTML=html; bindPage();
+  try{
+    if(!state.online) html+='<div class="offline-banner">Hors ligne · l’app reste utilisable et les données restent sur cet appareil.</div>';
+    if(state.route==='home') html+=await renderHome();
+    if(state.route==='training') html+=await renderTraining();
+    if(state.route==='companion') html+=await renderCompanion();
+    if(state.route==='profile') html+=await renderProfile();
+    main.innerHTML=html; bindPage();
+  }catch(err){
+    console.error('Render error',err);
+    main.innerHTML=`<section class="hero"><div class="hello">Luis Transformation</div><div class="subtle">Une partie de l’écran n’a pas pu être chargée.</div></section><div class="card"><h3>Tes données restent sur l’appareil.</h3><p class="subtle">Recharge l’app. Si le problème persiste, le bouton Profil reste disponible après redémarrage.</p></div>`;
+  }
 }
 async function renderHome(){
-  const checkins=await LTDB.all('checkins'), workouts=await LTDB.all('workouts'), cardio=await LTDB.all('cardio'), food=await LTDB.all('food');
+  const safeAll=async store=>{try{return await LTDB.all(store)}catch(err){console.error('Lecture',store,err);return []}};
+  const checkins=await safeAll('checkins'), workouts=await safeAll('workouts'), cardio=await safeAll('cardio'), food=await safeAll('food');
   state._food=food; state._cardio=cardio;
   const today=checkins.find(x=>x.date===todayKey()), todayWorkout=workouts.find(x=>x.date===todayKey());
   const protein=food.filter(x=>x.date===todayKey()).reduce((s,x)=>s+(Number(x.protein)||0),0);
@@ -45,7 +51,7 @@ async function renderHome(){
   ${view==='today'?renderToday(today,todayWorkout,protein):await renderEvolution(checkins,workouts,cardio,food)}`;
 }
 function renderToday(today,todayWorkout,protein){
- const attention=today?recoveryText(today):null, cardioToday=(state._cardio||[]).filter(x=>x.date===todayKey()).at(-1), foodToday=(state._food||[]).filter(x=>x.date===todayKey());
+ const attention=today?recoveryText(today):null, cardioList=(state._cardio||[]).filter(x=>x.date===todayKey()), cardioToday=cardioList.length?cardioList[cardioList.length-1]:null, foodToday=(state._food||[]).filter(x=>x.date===todayKey());
  const kcal=foodToday.reduce((s,x)=>s+(+x.calories||0),0), target=state.profile.proteinTarget||170, remain=Math.max(0,target-protein);
  const check=today?`<div class="quiet-line clickable" data-open="checkin"><span>Ressenti enregistré</span><strong>Modifier</strong></div>`:`<div class="companion-prompt clickable" data-open="checkin"><div class="companion-orbit">${fluidityMark()}</div><div><div class="card-kicker">Compagnon</div><h3>Comment vas-tu aujourd’hui ?</h3><p>Quelques gestes suffisent. J’utiliserai le reste en silence.</p></div></div>`;
  return `${attention?`<div class="companion-inline"><span>${fluidityMark()}</span><div><strong>${attention.title}</strong><p>${attention.text}</p></div></div>`:''}${check}
@@ -115,7 +121,7 @@ async function renderProfile(){
   return `<section class="hero"><div class="profile-head"><svg class="big-logo" viewBox="0 0 64 64"><path d="M15 43.5A22 22 0 0 1 44.5 14" class="fluidity-arc"/><path d="M49.2 20.2A22 22 0 0 1 19.8 50" class="fluidity-arc"/></svg><div><div class="hello" style="font-size:28px;margin:0">${escapeHtml(state.profile.firstName)}</div><div class="subtle">${escapeHtml(state.profile.goal||'Ton évolution')}</div></div></div></section>
   <div class="card"><div class="card-kicker">Ce que tu sais de moi</div><div class="list"><div class="list-row"><div><strong>Objectif actuel</strong><div class="status">${escapeHtml(state.profile.goal||'À définir')}</div></div><span class="pill">Confirmé</span></div><div class="list-row"><div><strong>Alimentation</strong><div class="status">${state.profile.nutritionEnabled?'Accompagnement actif':'Masquée'}</div></div><span class="pill">Choix</span></div></div></div>
   <div class="card"><div class="switch-row"><div><strong>Accompagnement alimentation</strong><div class="status">Masqué lorsqu’il est désactivé.</div></div><input id="nutritionToggle" class="toggle" type="checkbox" ${state.profile.nutritionEnabled?'checked':''}></div></div>
-  <div class="card"><div class="card-kicker">Tes données</div><h3>Export / Import</h3><p class="subtle">Tes données restent récupérables.</p><div class="card-actions"><button class="action" id="exportBtn">Exporter JSON</button><label class="action secondary">Importer JSON<input id="importInput" type="file" accept="application/json" hidden></label></div></div><div class="version">Luis Transformation · Build 0.4</div>`;
+  <div class="card"><div class="card-kicker">Tes données</div><h3>Export / Import</h3><p class="subtle">Tes données restent récupérables.</p><div class="card-actions"><button class="action" id="exportBtn">Exporter JSON</button><label class="action secondary">Importer JSON<input id="importInput" type="file" accept="application/json" hidden></label></div></div><div class="version">Luis Transformation · Build 0.4.1</div>`;
 }
 function bindPage(){
   document.querySelectorAll('[data-home-view]').forEach(b=>b.addEventListener('click',()=>{state.homeView=b.dataset.homeView;render();}));
