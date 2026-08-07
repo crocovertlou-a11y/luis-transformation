@@ -44,3 +44,13 @@ Diagnostic IA: affiche le code HTTP, le code d'erreur et le détail renvoyé par
 - Route `/api/analyze-food-v2` -> `/.netlify/functions/analyze-food-v2`.
 - Modèle Gemini inchangé : `gemini-3-flash-preview`.
 - Cache PWA renouvelé.
+
+
+## Build 0.6.4.5 — appel direct Netlify Function
+- Suppression complète du routage custom `/api/analyze-food-v2`.
+- L'application appelle directement `/.netlify/functions/analyze-food-v2`.
+- `netlify.toml` ne contient plus de redirect pour l'IA.
+- La Function reste dans `netlify/functions/analyze-food-v2.js`.
+- Gemini reste verrouillé sur `gemini-3-flash-preview`.
+- Scanner code-barres / Open Food Facts inchangé.
+- Cache PWA renouvelé.

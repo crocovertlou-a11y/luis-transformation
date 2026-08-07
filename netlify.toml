@@ -2,14 +2,7 @@
   publish = "."
   functions = "netlify/functions"
 
-[[redirects]]
-  from = "/api/analyze-food-v2"
-  to = "/.netlify/functions/analyze-food-v2"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/api/product-lookup"
-  to = "/.netlify/functions/product-lookup"
-  status = 200
-  force = true
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
