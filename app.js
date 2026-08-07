@@ -27,38 +27,37 @@ function bindGlobal(){
 function navigate(route){ state.route=route; document.querySelectorAll('.nav-item[data-route]').forEach(b=>b.classList.toggle('active',b.dataset.route===route)); render(); $('#main').focus(); }
 async function render(){
   const main=$('#main'); let html='';
-  try{
-    if(!state.online) html+='<div class="offline-banner">Hors ligne · l’app reste utilisable et les données restent sur cet appareil.</div>';
-    if(state.route==='home') html+=await renderHome();
-    if(state.route==='training') html+=await renderTraining();
-    if(state.route==='companion') html+=await renderCompanion();
-    if(state.route==='profile') html+=await renderProfile();
-    main.innerHTML=html; bindPage();
-  }catch(err){
-    console.error('Render error',err);
-    main.innerHTML=`<section class="hero"><div class="hello">Luis Transformation</div><div class="subtle">Une partie de l’écran n’a pas pu être chargée.</div></section><div class="card"><h3>Tes données restent sur l’appareil.</h3><p class="subtle">Recharge l’app. Si le problème persiste, le bouton Profil reste disponible après redémarrage.</p></div>`;
-  }
+  if(!state.online) html+='<div class="offline-banner">Hors ligne · l’app reste utilisable et les données restent sur cet appareil.</div>';
+  if(state.route==='home') html+=await renderHome();
+  if(state.route==='training') html+=await renderTraining();
+  if(state.route==='companion') html+=await renderCompanion();
+  if(state.route==='profile') html+=await renderProfile();
+  main.innerHTML=html; bindPage();
 }
 async function renderHome(){
-  const safeAll=async store=>{try{return await LTDB.all(store)}catch(err){console.error('Lecture',store,err);return []}};
-  const checkins=await safeAll('checkins'), workouts=await safeAll('workouts'), cardio=await safeAll('cardio'), food=await safeAll('food');
-  state._food=food; state._cardio=cardio;
-  const today=checkins.find(x=>x.date===todayKey()), todayWorkout=workouts.find(x=>x.date===todayKey());
+  const checkins=await LTDB.all('checkins'); const today=checkins.find(x=>x.date===todayKey());
+  const workouts=await LTDB.all('workouts'); const cardio=await LTDB.all('cardio'); const food=await LTDB.all('food');
+  const todayWorkout=workouts.find(x=>x.date===todayKey());
   const protein=food.filter(x=>x.date===todayKey()).reduce((s,x)=>s+(Number(x.protein)||0),0);
   const view=state.homeView;
-  return `<section class="hero home-hero"><div class="hello">${view==='today'?'Bonjour '+escapeHtml(state.profile.firstName)+'.':'Évolution'}</div>${view==='evolution'?'<div class="subtle">Tout ce que tu renseignes reste accessible ici.</div>':''}</section>
-  <div class="segmented"><button data-home-view="today" class="${view==='today'?'active':''}">Aujourd’hui</button><button data-home-view="evolution" class="${view==='evolution'?'active':''}">Évolution</button></div>
-  ${view==='today'?renderToday(today,todayWorkout,protein):await renderEvolution(checkins,workouts,cardio,food)}`;
+  return `
+    <section class="hero home-hero"><div class="hello">Bonjour ${escapeHtml(state.profile.firstName)}.</div></section>
+    <div class="segmented"><button data-home-view="today" class="${view==='today'?'active':''}">Aujourd’hui</button><button data-home-view="evolution" class="${view==='evolution'?'active':''}">Évolution</button></div>
+    ${view==='today' ? renderToday(today,todayWorkout,protein) : await renderEvolution(checkins,workouts,cardio)}
+  `;
 }
 function renderToday(today,todayWorkout,protein){
- const attention=today?recoveryText(today):null, cardioList=(state._cardio||[]).filter(x=>x.date===todayKey()), cardioToday=cardioList.length?cardioList[cardioList.length-1]:null, foodToday=(state._food||[]).filter(x=>x.date===todayKey());
- const kcal=foodToday.reduce((s,x)=>s+(+x.calories||0),0), target=state.profile.proteinTarget||170, remain=Math.max(0,target-protein);
- const check=today?`<div class="quiet-line clickable" data-open="checkin"><span>Ressenti enregistré</span><strong>Modifier</strong></div>`:`<div class="companion-prompt clickable" data-open="checkin"><div class="companion-orbit">${fluidityMark()}</div><div><div class="card-kicker">Compagnon</div><h3>Comment vas-tu aujourd’hui ?</h3><p>Quelques gestes suffisent. J’utiliserai le reste en silence.</p></div></div>`;
- return `${attention?`<div class="companion-inline"><span>${fluidityMark()}</span><div><strong>${attention.title}</strong><p>${attention.text}</p></div></div>`:''}${check}
- <div class="section-title"><h2>Ta journée</h2></div><div class="day-stream">
- <div class="day-item clickable" data-route-card="training"><div class="day-icon">F</div><div><div class="card-kicker">Force</div><h3>${todayWorkout?'Séance enregistrée':'Une séance prête quand tu l’es'}</h3><p>${todayWorkout?'Je garde tes charges pour préparer la suite.':'Séries, répétitions, récupération et charges sont prêtes.'}</p></div><span>›</span></div>
- ${cardioToday?`<div class="day-item clickable" data-route-card="training"><div class="day-icon">C</div><div><div class="card-kicker">Cardio</div><h3>${escapeHtml(cardioToday.type)} · ${cardioToday.distance?cardioToday.distance+' km · ':''}${cardioToday.durationLabel||''}</h3><p>Source : ${sourceLabel(cardioToday.source)}</p></div><span>›</span></div>`:`<div class="day-item clickable" data-open="cardio"><div class="day-icon">C</div><div><div class="card-kicker">Cardio</div><h3>Aucune activité aujourd’hui</h3><p>Ajoute-la seulement si elle existe.</p></div><span>+</span></div>`}
- ${state.profile.nutritionEnabled?`<div class="day-item clickable" data-open="nutritionHub"><div class="day-icon">A</div><div><div class="card-kicker">Alimentation</div><h3>${protein?Math.round(protein)+' / '+target+' g de protéines':'Aucun repas enregistré'}</h3><p>${protein?Math.round(remain)+' g restent sur ton repère'+(kcal?' · '+Math.round(kcal)+' kcal saisies':''):'Tes repas restent accessibles dans Alimentation.'}</p></div><span>›</span></div>`:''}</div>`;
+  const attention=today ? recoveryText(today) : null;
+  const checkinBlock = today
+    ? `<div class="quiet-line clickable" data-open="checkin"><span>Ressenti enregistré</span><strong>Modifier</strong></div>`
+    : `<div class="companion-prompt clickable" data-open="checkin"><div class="companion-orbit">◜◝</div><div><div class="card-kicker">Compagnon</div><h3>Comment vas-tu aujourd’hui ?</h3><p>Quelques gestes suffisent. J’utiliserai le reste en silence.</p></div></div>`;
+  return `
+    ${attention?`<div class="companion-inline"><span class="fluidity-mini-static">◜◝</span><div><strong>${attention.title}</strong><p>${attention.text}</p></div></div>`:''}
+    ${checkinBlock}
+    <div class="section-title"><h2>Pour aujourd’hui</h2><span class="status">${new Intl.DateTimeFormat('fr-CH',{weekday:'long',day:'numeric',month:'long'}).format(new Date())}</span></div>
+    <div class="action-story clickable" data-route-card="training"><div><div class="card-kicker">Force</div><h3>${todayWorkout?'Séance enregistrée':'Une séance prête quand tu l’es'}</h3><p>${todayWorkout?'Je garde ce que tu as fait pour préparer la suite.':'Séries, répétitions, récupération et charges : tu peux simplement suivre le fil.'}</p></div><button class="action secondary">Voir</button></div>
+    ${state.profile.nutritionEnabled?`<div class="action-story clickable" data-open="nutritionHub"><div><div class="card-kicker">Alimentation</div><h3>Je peux t’aider si tu en as besoin</h3><p>Ajouter un repas, photographier, retrouver un classique ou demander une idée.</p></div><button class="action secondary">Ouvrir</button></div>`:''}
+  `;
 }
 function renderCheckinSummary(t){
   const rows=[];
@@ -70,13 +69,16 @@ function renderCheckinSummary(t){
   if(t.waist!=null) rows.push(`<div><span>Taille</span><strong>${t.waist} cm</strong></div>`);
   return `<div class="summary-lines">${rows.join('')}</div>`;
 }
-async function renderEvolution(checkins,workouts,cardio,food=state._food||[]){
- const sorted=[...checkins].sort((a,b)=>b.date.localeCompare(a.date)), lw=sorted.find(x=>x.weight)?.weight, lz=sorted.find(x=>x.waist)?.waist;
- const enough=sorted.filter(x=>x.weight).length>=2;
- return `<div class="card"><div class="card-kicker">Lecture</div><h3>${enough?'Ton historique commence à permettre une lecture.':'Je n’ai pas encore assez de recul pour parler de tendance.'}</h3><p class="subtle">Je préfère montrer la dernière valeur disponible plutôt qu’un faux zéro.</p></div>
- <div class="destination-grid">${destinationCard('Poids',lw?lw+' kg':'—',lw?'Dernière mesure':'Pas encore renseigné')}${destinationCard('Tour de taille',lz?lz+' cm':'—',lz?'Dernière mesure':'Pas encore renseigné')}${destinationCard('Force',workouts.length,workouts.length?'séance(s) enregistrée(s)':'Aucune séance')}${destinationCard('Cardio',cardio.length,cardio.length?'activité(s) enregistrée(s)':'Aucune activité')}</div>
- <div class="card"><div class="card-kicker">Ressentis</div><h3>Historique récent</h3><div class="list">${sorted.slice(0,7).map(x=>`<div class="list-row"><div><strong>${x.date}</strong><div class="status">${[x.sleepQuality?`Sommeil ${x.sleepQuality}/5`:'',x.energy?`Énergie ${x.energy}/5`:'',x.stress?`Stress ${x.stress}/5`:'',x.hunger?`Faim ${x.hunger}/5`:''].filter(Boolean).join(' · ')||'Mesures enregistrées'}</div></div><span class="source-chip">${sourceLabel(x.source||'manual')}</span></div>`).join('')||'<div class="empty">Tes ressentis apparaîtront ici.</div>'}</div></div>
- <div class="card"><div class="card-kicker">Alimentation</div><h3>${food.length} entrée${food.length>1?'s':''}</h3><button class="action secondary" data-open="nutritionHub">Voir mes données</button></div>`;
+async function renderEvolution(checkins,workouts,cardio){
+  const sorted=checkins.filter(x=>x.weight||x.waist).sort((a,b)=>a.date.localeCompare(b.date));
+  const first=sorted[0], last=sorted.at(-1);
+  const weightDelta=first?.weight&&last?.weight?+(last.weight-first.weight).toFixed(1):null;
+  const waistDelta=first?.waist&&last?.waist?+(last.waist-first.waist).toFixed(1):null;
+  const activities=workouts.filter(x=>daysAgo(x.date)<=30).length+cardio.filter(x=>daysAgo(x.date)<=30).length;
+  const reading=sorted.length<2?'Je n’ai pas encore assez de recul pour lire une tendance fiable.':'Ton évolution reste cohérente avec ce que tu suis actuellement.';
+  return `<div class="trend-hero"><div class="trend-mark"><svg viewBox="0 0 64 64"><path d="M13 44A23 23 0 0 1 45 12" class="fluidity-arc" style="stroke-width:6"/><path d="M51 19A23 23 0 0 1 20 52" class="fluidity-arc" style="stroke-width:6"/></svg><span class="initials" style="font-size:14px">${escapeHtml(state.profile.initials)}</span></div><div class="trend-copy">${reading}</div><p class="subtle">Le sens d’abord. Les graphiques seulement si tu veux creuser.</p></div>
+  <div class="signals"><div class="signal"><strong>${weightDelta===null?'—':signed(weightDelta)+' kg'}</strong><span>Poids</span></div><div class="signal"><strong>${waistDelta===null?'—':signed(waistDelta)+' cm'}</strong><span>Tour de taille</span></div><div class="signal"><strong>${activities}</strong><span>Activités · 30 j</span></div></div>
+  <div class="card" style="margin-top:14px"><div class="card-kicker">Comprendre</div><h3>Pourquoi cette lecture ?</h3><p class="subtle">Les graphiques et l’historique détaillé restent au niveau suivant.</p><div class="card-actions"><button class="action secondary" data-open="details">Explorer les données</button></div></div>`;
 }
 async function renderTraining(){
   const workouts=(await LTDB.all('workouts')).sort((a,b)=>b.date.localeCompare(a.date));
@@ -121,7 +123,7 @@ async function renderProfile(){
   return `<section class="hero"><div class="profile-head"><svg class="big-logo" viewBox="0 0 64 64"><path d="M15 43.5A22 22 0 0 1 44.5 14" class="fluidity-arc"/><path d="M49.2 20.2A22 22 0 0 1 19.8 50" class="fluidity-arc"/></svg><div><div class="hello" style="font-size:28px;margin:0">${escapeHtml(state.profile.firstName)}</div><div class="subtle">${escapeHtml(state.profile.goal||'Ton évolution')}</div></div></div></section>
   <div class="card"><div class="card-kicker">Ce que tu sais de moi</div><div class="list"><div class="list-row"><div><strong>Objectif actuel</strong><div class="status">${escapeHtml(state.profile.goal||'À définir')}</div></div><span class="pill">Confirmé</span></div><div class="list-row"><div><strong>Alimentation</strong><div class="status">${state.profile.nutritionEnabled?'Accompagnement actif':'Masquée'}</div></div><span class="pill">Choix</span></div></div></div>
   <div class="card"><div class="switch-row"><div><strong>Accompagnement alimentation</strong><div class="status">Masqué lorsqu’il est désactivé.</div></div><input id="nutritionToggle" class="toggle" type="checkbox" ${state.profile.nutritionEnabled?'checked':''}></div></div>
-  <div class="card"><div class="card-kicker">Tes données</div><h3>Export / Import</h3><p class="subtle">Tes données restent récupérables.</p><div class="card-actions"><button class="action" id="exportBtn">Exporter JSON</button><label class="action secondary">Importer JSON<input id="importInput" type="file" accept="application/json" hidden></label></div></div><div class="version">Luis Transformation · Build 0.4.3</div>`;
+  <div class="card"><div class="card-kicker">Tes données</div><h3>Export / Import</h3><p class="subtle">Tes données restent récupérables.</p><div class="card-actions"><button class="action" id="exportBtn">Exporter JSON</button><label class="action secondary">Importer JSON<input id="importInput" type="file" accept="application/json" hidden></label></div></div><div class="version">Luis Transformation · Build 0.3</div>`;
 }
 function bindPage(){
   document.querySelectorAll('[data-home-view]').forEach(b=>b.addEventListener('click',()=>{state.homeView=b.dataset.homeView;render();}));
@@ -142,7 +144,7 @@ function openSheet(kind){
   if(kind==='cardio') return showSheet(`<h2>Ajouter une activité Cardio</h2><form id="cardioForm"><div class="field"><label>Type</label><select name="type"><option>Course</option><option>Vélo</option><option>Natation</option><option>Marche</option><option>Autre</option></select></div><div class="field"><label>Distance (km)</label><input name="distance" type="number" step="0.01" inputmode="decimal"></div><div class="duration-picker"><div><label>Heures</label><input name="hours" type="number" min="0" max="23" inputmode="numeric" value="0"></div><span>:</span><div><label>Minutes</label><input name="minutes" type="number" min="0" max="59" inputmode="numeric" value="40"></div><span>:</span><div><label>Secondes</label><input name="seconds" type="number" min="0" max="59" inputmode="numeric" value="0"></div></div><div class="range-row"><div class="field"><label>FC moyenne</label><input name="hr" type="number" inputmode="numeric"></div><div class="field"><label>Cadence moy.</label><input name="cadence" type="number" inputmode="numeric"></div></div><div class="range-row"><div class="field"><label>Dénivelé + (m)</label><input name="elevation" type="number" inputmode="numeric"></div><div class="field"><label>Calories (kcal)</label><input name="calories" type="number" inputmode="numeric"></div></div><button class="action" type="submit">Enregistrer</button></form>`);
   if(kind==='nutritionHub') return showSheet(`<h2>Alimentation</h2><div class="nutrition-actions"><button class="sheet-choice" data-sheet="food">＋<strong>Ajouter un repas</strong><span>Description + macros</span></button><button class="sheet-choice" data-sheet="barcode">▣<strong>Code-barres</strong><span>Préparer / saisir un produit</span></button><button class="sheet-choice" data-sheet="photoFood">◉<strong>Photo produit</strong><span>Prévisualisation avant validation</span></button><button class="sheet-choice" data-sheet="mealIdea">✦<strong>Idée de repas</strong><span>Selon ce qu’il te reste aujourd’hui</span></button></div>`);
   if(kind==='food') return showSheet(`<h2>Ajouter un repas</h2><form id="foodForm"><div class="field"><label>Décris simplement</label><textarea name="description" rows="3" placeholder="Poulet, riz, légumes et un yaourt"></textarea></div><div class="range-row"><div class="field"><label>Protéines (g)</label><input name="protein" type="number" step="0.1"></div><div class="field"><label>Calories</label><input name="calories" type="number"></div></div><div class="range-row"><div class="field"><label>Glucides (g)</label><input name="carbs" type="number" step="0.1"></div><div class="field"><label>Lipides (g)</label><input name="fat" type="number" step="0.1"></div></div><div class="field"><label>Eau (L)</label><input name="water" type="number" step="0.1"></div><label class="checkline"><input type="checkbox" name="classic"> Ajouter à mes classiques</label><button class="action" type="submit">Enregistrer</button></form>`);
-  if(kind==='barcode') return showSheet(`<h2>Code-barres</h2><p class="subtle">Build 0.4.3 prépare le parcours : saisie → prévisualisation → confirmation. Le scan caméra arrivera ensuite.</p><form id="barcodeForm"><div class="field"><label>Code</label><input name="barcode" inputmode="numeric" placeholder="7612345678901"></div><div class="field"><label>Produit</label><input name="product" placeholder="Nom du produit"></div><button class="action" type="submit">Prévisualiser</button></form>`);
+  if(kind==='barcode') return showSheet(`<h2>Code-barres</h2><p class="subtle">Build 0.2 prépare le parcours : saisie → prévisualisation → confirmation. Le scan caméra arrivera ensuite.</p><form id="barcodeForm"><div class="field"><label>Code</label><input name="barcode" inputmode="numeric" placeholder="7612345678901"></div><div class="field"><label>Produit</label><input name="product" placeholder="Nom du produit"></div><button class="action" type="submit">Prévisualiser</button></form>`);
   if(kind==='photoFood') return showSheet(`<h2>Photographier un aliment</h2><p class="subtle">Prends une photo ou choisis-en une dans ta photothèque.</p><label class="action photo-action">Prendre une photo<input id="foodPhotoInput" type="file" accept="image/*" capture="environment" hidden></label><label class="action secondary photo-action">Photothèque<input id="foodLibraryInput" type="file" accept="image/*" hidden></label><div id="foodPhotoPreview" class="photo-preview empty">La photo apparaîtra ici avant confirmation.</div>`);
   if(kind==='mealIdea') return mealIdeaSheet();
   if(kind==='details') return showSheet(`<h2>Données détaillées</h2><p class="subtle">Les graphiques restent volontairement derrière Évolution. Ce niveau sera enrichi sans changer l’écran principal.</p><button class="action secondary" data-close>Fermer</button>`);
@@ -160,17 +162,10 @@ async function mealIdeaSheet(){
   const [suggestion,meta]=ideas[mealIdeaIndex%ideas.length];
   return showSheet(`<h2>Une idée pour ce soir</h2><div class="recipe-card"><div class="card-kicker">Suggestion ${mealIdeaIndex+1}</div><h3>${suggestion}</h3><p class="status">${meta}</p><p>Je la choisis en tenant compte de ce que tu as renseigné aujourd’hui${remain?` et de ton repère protéines`:''}.</p>${classics.length?`<p class="status">Classiques connus : ${classics.map(escapeHtml).join(', ')}.</p>`:''}<div class="card-actions"><button class="action" data-close>Ça me tente</button><button class="action secondary" id="nextMealIdea">Autre idée</button></div></div>`);
 }
-function fluidityMark(){return `<svg class="fluidity-inline" viewBox="0 0 64 64"><path d="M15 43.5A22 22 0 0 1 44.5 14" class="fluidity-arc arc-a"/><path d="M49.2 20.2A22 22 0 0 1 19.8 50" class="fluidity-arc arc-b"/></svg>`}
-function sourceLabel(s){return ({manual:'Saisie manuelle',companion:'Compagnon',import:'Import',garmin:'Garmin',strava:'Strava'})[s]||s||'Inconnue'}
-function destinationCard(l,v,n){return `<div class="destination-card"><span>${l}</span><strong>${v}</strong><small>${n}</small></div>`}
-function foodEntryHtml(x){return `<button class="food-entry" data-food-id="${x.id}"><div><strong>${escapeHtml(x.description||'Repas')}</strong><span>${[x.protein?Math.round(x.protein)+' g protéines':'',x.calories?Math.round(x.calories)+' kcal':''].filter(Boolean).join(' · ')||'Détail enregistré'}</span></div><div class="food-source"><span>${sourceLabel(x.source)}</span></div></button>`}
-
 function forceExerciseInput(name,sets,reps,rest){
   const idx={'Développé couché':0,'Tractions':1,'Rowing':2,'Développé épaules':3,'Gainage':4}[name];
   return `<div class="force-input"><div class="force-input-head"><div><strong>${name}</strong><span>${sets} séries × ${reps} · récup. ${rest}</span></div><button type="button" class="technique-btn" data-technique="${name}">Technique</button></div><label>Poids utilisé (kg)<input name="weight${idx}" type="number" step="0.5" inputmode="decimal" placeholder="—"></label></div>`;
 }
-async function showFoodDetail(id){const x=(await LTDB.all('food')).find(v=>v.id===id);if(!x)return;showSheet(`<h2>${escapeHtml(x.description||'Repas')}</h2><div class="detail-stack"><div><span>Protéines</span><strong>${x.protein||'—'} g</strong></div><div><span>Calories</span><strong>${x.calories||'—'} kcal</strong></div><div><span>Glucides</span><strong>${x.carbs||'—'} g</strong></div><div><span>Lipides</span><strong>${x.fat||'—'} g</strong></div></div><div class="provenance"><div class="card-kicker">Provenance</div><strong>${sourceLabel(x.source)}</strong><p class="subtle">Tu peux toujours corriger une interprétation du Compagnon.</p></div><button class="action secondary" data-close>Fermer</button>`)}
-
 function showTechnique(name){
   showSheet(`<h2>${escapeHtml(name)}</h2><div class="technique-visual"><div class="companion-page-mark">◜◝</div><p><strong>Technique</strong></p><p class="subtle">Le raccourci vidéo reste dans la séance pour le moment où tu en as besoin. Le catalogue vidéo validé sera branché ici.</p></div><button class="action secondary" data-close>Revenir à la séance</button>`);
 }
@@ -185,72 +180,24 @@ function bindSheet(){
   $('#foodLibraryInput')?.addEventListener('change',previewFoodPhoto);
   $('#nextMealIdea')?.addEventListener('click',()=>{mealIdeaIndex++; mealIdeaSheet();});
   document.querySelectorAll('[data-technique]').forEach(b=>b.addEventListener('click',()=>showTechnique(b.dataset.technique)));
-  document.querySelectorAll('[data-food-id]').forEach(b=>b.addEventListener('click',()=>showFoodDetail(b.dataset.foodId)));
 }
 function updateAllRanges(){ document.querySelectorAll('input[type="range"]').forEach(updateRange); }
 function updateRange(r){ const out=document.querySelector(`[data-output="${r.name}"]`); if(out) out.value=`${r.value}${r.dataset.rangeUnit||''}`; }
-async function saveCheckin(e){e.preventDefault(); const f=new FormData(e.currentTarget); const row={id:todayKey(),date:todayKey(),sleep:num(f.get('sleep')),energy:num(f.get('energy')),stress:num(f.get('stress')),hunger:num(f.get('hunger')),weight:num(f.get('weight')),waist:num(f.get('waist')),source:'manual',updatedAt:new Date().toISOString()}; await LTDB.put('checkins',row); $('#sheet').close(); toast('Point du jour enregistré'); render();}
-async function saveWorkout(e){
-  e.preventDefault();
-  const f=new FormData(e.currentTarget);
-  const specs=[
-    ['Développé couché',4,6,'2 min'],
-    ['Tractions',4,8,'90 s'],
-    ['Rowing',3,10,'90 s'],
-    ['Développé épaules',3,10,'75 s'],
-    ['Gainage',3,'45 s','45 s']
-  ];
-  const exerciseEntries=specs.map((spec,i)=>({
-    name:spec[0], sets:spec[1], reps:spec[2], rest:spec[3],
-    weight:num(f.get('weight'+i)),
-    performance:f.get('weight'+i)?`${f.get('weight'+i)} kg`:'réalisé'
-  }));
-  const mins=num(f.get('durationMin'))||40;
-  await LTDB.put('workouts',{
-    id:uid(),date:todayKey(),name:'Haut du corps',
-    durationSeconds:mins*60,durationLabel:`${mins}:00`,
-    effort:num(f.get('effort')),exerciseEntries,
-    source:'manual',createdAt:new Date().toISOString()
-  });
-  $('#sheet').close();
-  toast('Séance Force enregistrée');
-  render();
-}
-async function saveCardio(e){
-  e.preventDefault();
-  const f=new FormData(e.currentTarget);
-  const totalSeconds=(num(f.get('hours'))||0)*3600+(num(f.get('minutes'))||0)*60+(num(f.get('seconds'))||0);
-  const h=Math.floor(totalSeconds/3600);
-  const m=Math.floor((totalSeconds%3600)/60);
-  const s=totalSeconds%60;
-  const durationLabel=h?`${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`:`${m}:${String(s).padStart(2,'0')}`;
-  await LTDB.put('cardio',{
-    id:uid(),date:todayKey(),type:f.get('type'),
-    distance:num(f.get('distance')),durationSeconds:totalSeconds,durationLabel,
-    heartRateAvg:num(f.get('hr')),cadenceAvg:num(f.get('cadence')),
-    elevationGain:num(f.get('elevation')),calories:num(f.get('calories')),
-    source:'manual',createdAt:new Date().toISOString()
-  });
-  $('#sheet').close();
-  toast('Activité Cardio enregistrée');
-  render();
-}
-async function saveFood(e){e.preventDefault();const f=new FormData(e.currentTarget);await LTDB.put('food',{id:uid(),date:todayKey(),description:f.get('description'),protein:num(f.get('protein')),calories:num(f.get('calories')),carbs:num(f.get('carbs')),fat:num(f.get('fat')),classic:f.get('classic')==='on',source:'companion',confidence:'user_confirmed',createdAt:new Date().toISOString()});$('#sheet').close();toast('Repas enregistré · visible dans Alimentation');render();}
-
-function showFatalBootError(err){
-  console.error('Boot error',err);
-  const main=document.querySelector('#main');
-  if(main){
-    main.innerHTML=`<section class="hero"><div class="hello">Luis Transformation</div>
-      <div class="subtle">Le démarrage a rencontré un problème.</div></section>
-      <div class="card"><h3>L’app reste récupérable.</h3>
-      <p class="subtle">Aucune donnée n’a été supprimée. Recharge la page. Une erreur de démarrage ne laissera plus un écran blanc.</p></div>`;
-  }
-}
-
-if(document.readyState==='loading'){
-  document.addEventListener('DOMContentLoaded',()=>init().catch(showFatalBootError),{once:true});
-}else{
-  init().catch(showFatalBootError);
-}
-
+async function saveCheckin(e){e.preventDefault(); const f=new FormData(e.currentTarget); const row={id:todayKey(),date:todayKey(),sleep:num(f.get('sleep')),energy:num(f.get('energy')),stress:num(f.get('stress')),hunger:num(f.get('hunger')),weight:num(f.get('weight')),waist:num(f.get('waist')),updatedAt:new Date().toISOString()}; await LTDB.put('checkins',row); $('#sheet').close(); toast('Point du jour enregistré'); render();}
+async function saveWorkout(e){e.preventDefault(); const f=new FormData(e.currentTarget); const parsed=parseDuration(f.get('duration')); const exerciseEntries=String(f.get('exercises')||'').split(/\n+/).map(line=>line.trim()).filter(Boolean).map(line=>{const [name,...rest]=line.split('|');return {name:name.trim(),performance:rest.join('|').trim()||''}}); await LTDB.put('workouts',{id:uid(),date:todayKey(),name:f.get('name')||'Séance Force',durationSeconds:parsed.seconds,durationLabel:parsed.label,effort:num(f.get('effort')),exerciseEntries,notes:f.get('notes')||'',source:'manual',createdAt:new Date().toISOString()}); $('#sheet').close(); toast('Séance Force enregistrée'); render();}
+async function saveCardio(e){e.preventDefault(); const f=new FormData(e.currentTarget); const parsed=parseDuration(f.get('duration')); await LTDB.put('cardio',{id:uid(),date:todayKey(),type:f.get('type'),distance:num(f.get('distance')),durationSeconds:parsed.seconds,durationLabel:parsed.label,heartRateAvg:num(f.get('hr')),cadenceAvg:num(f.get('cadence')),elevationGain:num(f.get('elevation')),calories:num(f.get('calories')),source:'manual',createdAt:new Date().toISOString()}); $('#sheet').close(); toast('Activité Cardio enregistrée'); render();}
+async function saveFood(e){e.preventDefault(); const f=new FormData(e.currentTarget); await LTDB.put('food',{id:uid(),date:todayKey(),dateTime:new Date().toISOString(),description:f.get('description')||'Repas',protein:num(f.get('protein')),calories:num(f.get('calories')),carbs:num(f.get('carbs')),fat:num(f.get('fat')),water:num(f.get('water')),classic:f.get('classic')==='on',source:'manual',confidence:'user',createdAt:new Date().toISOString()}); $('#sheet').close(); toast('Repas enregistré'); render();}
+function previewBarcode(e){e.preventDefault(); const f=new FormData(e.currentTarget); const code=f.get('barcode')||'—', product=f.get('product')||'Produit à identifier'; showSheet(`<h2>Prévisualisation produit</h2><div class="card"><div class="card-kicker">Code-barres</div><h3>${escapeHtml(product)}</h3><p class="subtle">${escapeHtml(code)}</p><p>Le parcours de confirmation est en place. La recherche automatique des valeurs sera branchée avec le backend nutrition.</p><div class="card-actions"><button class="action secondary" data-close>Fermer</button></div></div>`);}
+function previewFoodPhoto(e){ const file=e.target.files?.[0]; if(!file)return; const url=URL.createObjectURL(file); const box=$('#foodPhotoPreview'); box.className='photo-preview'; box.innerHTML=`<img src="${url}" alt="Prévisualisation du produit"><div class="card-actions"><button class="action secondary" data-close>Annuler</button><button class="action" type="button" id="confirmPhoto">Confirmer la photo</button></div>`; $('#confirmPhoto')?.addEventListener('click',()=>{toast('Photo confirmée'); $('#sheet').close(); URL.revokeObjectURL(url);}); }
+async function sendChat(){const input=$('#chatInput'); const text=input?.value.trim(); if(!text)return; await LTDB.put('events',{id:uid(),type:'CHAT',role:'user',text,createdAt:new Date().toISOString()}); const context=await localCompanion(text); await LTDB.put('events',{id:uid(),type:'CHAT',role:'companion',text:context,createdAt:new Date().toISOString()}); render();}
+async function localCompanion(text){const low=text.toLowerCase(); const checkins=await LTDB.all('checkins'); const latest=checkins.sort((a,b)=>b.date.localeCompare(a.date))[0]; if(/(comment|vais|aujourd)/.test(low)){ if(!latest) return 'Je ne sais pas encore suffisamment bien. Donne-moi simplement ton ressenti du jour et je pourrai commencer à te répondre avec plus de contexte.'; return `Aujourd’hui, tu as indiqué ${latest.sleep?latest.sleep+' h de sommeil, ':''}${latest.energy?'une énergie de '+latest.energy+'/5 et ':''}${latest.stress?'un stress de '+latest.stress+'/5.':''} Je garde le constat simple pour le moment.`; } if(/(sais|connais|mémoire)/.test(low)) return `Je sais ce que tu m’as explicitement donné : ton objectif « ${state.profile.goal} » et les données enregistrées ici. Je ne transforme pas une supposition en fait.`; return 'Je peux utiliser ton contexte local, mais je préfère te dire clairement quand je ne sais pas encore.';}
+async function exportData(){const dump=await LTDB.dump(); const blob=new Blob([JSON.stringify(dump,null,2)],{type:'application/json'}); const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`luis-transformation-${todayKey()}.json`;a.click();URL.revokeObjectURL(a.href);toast('Export préparé');}
+async function importData(e){const file=e.target.files?.[0]; if(!file)return; try{const payload=JSON.parse(await file.text()); await LTDB.restore(payload); state.profile=await LTDB.get('profile','me')||state.profile; toast('Import terminé'); render();}catch(err){toast('Import impossible · fichier invalide');}}
+function recoveryText(x){ if(x.energy&&x.energy<=2)return {title:'Une chose mérite ton attention.',text:'Ton énergie est basse aujourd’hui. Je garderais la journée simple et j’adapterais seulement si ton ressenti le confirme.'}; if(x.sleep&&x.sleep<6)return {title:'Nuit courte.',text:'Une seule nuit ne suffit pas à modifier ton programme. Je la garde simplement en contexte.'}; return null; }
+function parseDuration(raw){ const s=String(raw||'').trim(); if(!s)return {seconds:null,label:''}; if(/^\d+$/.test(s)){const min=Number(s);return {seconds:min*60,label:`${min}:00`};} const p=s.split(':').map(Number); if(p.some(Number.isNaN)) return {seconds:null,label:s}; let sec=0; if(p.length===2)sec=p[0]*60+p[1]; else if(p.length===3)sec=p[0]*3600+p[1]*60+p[2]; else return {seconds:null,label:s}; const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),ss=sec%60; return {seconds:sec,label:h?`${h}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`:`${m}:${String(ss).padStart(2,'0')}`}; }
+function daysAgo(date){return Math.floor((Date.now()-new Date(date+'T00:00:00').getTime())/86400000)}
+function signed(n){return n>0?`+${n}`:`${n}`}
+function num(v){return v===''||v===null?null:Number(v)}
+function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
+function escapeHtml(s=''){return String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
+init();
