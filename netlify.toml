@@ -1,19 +1,15 @@
 [build]
-  command = "mkdir -p .netlify-functions && cp analyze-food-v2.js product-lookup.js .netlify-functions/"
-  functions = ".netlify-functions"
   publish = "."
-
-[[headers]]
-  for = "/sw.js"
-  [headers.values]
-    Cache-Control = "no-cache"
-
-[[redirects]]
-  from = "/api/product"
-  to = "/.netlify/functions/product-lookup"
-  status = 200
+  functions = "netlify/functions"
 
 [[redirects]]
   from = "/api/analyze-food-v2"
   to = "/.netlify/functions/analyze-food-v2"
   status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/product-lookup"
+  to = "/.netlify/functions/product-lookup"
+  status = 200
+  force = true

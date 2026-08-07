@@ -36,3 +36,11 @@ Diagnostic IA: affiche le code HTTP, le code d'erreur et le détail renvoyé par
 - Le diagnostic renvoie aussi le modèle réellement appelé.
 - Scanner code-barres / Open Food Facts inchangé.
 - Nouveau cache PWA : `luis-build-0.6.4.3-gemini3fresh`.
+
+
+## Build 0.6.4.4 — correction routage Netlify
+- Functions placées dans le dossier conventionnel `netlify/functions`.
+- `netlify.toml` pointe explicitement vers ce dossier.
+- Route `/api/analyze-food-v2` -> `/.netlify/functions/analyze-food-v2`.
+- Modèle Gemini inchangé : `gemini-3-flash-preview`.
+- Cache PWA renouvelé.
