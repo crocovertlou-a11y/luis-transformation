@@ -80,8 +80,14 @@ function normalizedForceSeries(e){
   return Array.from({length:count},(_,i)=>({set:i+1,reps:defaultReps,weight:legacyWeight}));
 }
 
-function companionMark(cls='companion-mark'){return `<svg class="${cls}" viewBox="0 0 64 64" aria-hidden="true"><path d="M15 43.5A22 22 0 0 1 44.5 14" class="fluidity-arc arc-a"/><path d="M49.2 20.2A22 22 0 0 1 19.8 50" class="fluidity-arc arc-b"/></svg>`}
-
+function companionMark(cls='companion-mark'){
+  return `<svg class="${cls} companion-logo" viewBox="0 0 64 64" aria-hidden="true">
+    <path d="M21 8.5C12.5 12.7 7.5 21.3 7.5 31.1c0 10.1 5.1 18.9 13.5 24.4"/>
+    <path d="M43 8.5c8.5 4.2 13.5 12.8 13.5 22.6 0 10.1-5.1 18.9-13.5 24.4"/>
+    <path d="M24.5 15.5C18.3 19.2 14.8 25 14.8 32c0 7 3.5 12.8 9.7 16.5"/>
+    <path d="M39.5 15.5c6.2 3.7 9.7 9.5 9.7 16.5 0 7-3.5 12.8-9.7 16.5"/>
+  </svg>`;
+}
 function mealTypeLabel(type){
   return ({breakfast:'Petit-déjeuner',lunch:'Déjeuner',dinner:'Dîner',snack:'Collation'})[type] || 'Repas';
 }
@@ -195,7 +201,7 @@ async function renderProfile(){
   return `<section class="hero"><div class="profile-head"><svg class="big-logo" viewBox="0 0 64 64"><path d="M15 43.5A22 22 0 0 1 44.5 14" class="fluidity-arc"/><path d="M49.2 20.2A22 22 0 0 1 19.8 50" class="fluidity-arc"/></svg><div><div class="hello" style="font-size:28px;margin:0">${escapeHtml(state.profile.firstName)}</div><div class="subtle">${escapeHtml(state.profile.goal||'Ton évolution')}</div></div></div></section>
   <div class="card"><div class="card-kicker">Ce que tu sais de moi</div><div class="list"><div class="list-row"><div><strong>Objectif actuel</strong><div class="status">${escapeHtml(state.profile.goal||'À définir')}</div></div><span class="pill">Confirmé</span></div><div class="list-row"><div><strong>Alimentation</strong><div class="status">${state.profile.nutritionEnabled?'Accompagnement actif':'Masquée'}</div></div><span class="pill">Choix</span></div></div></div>
   <div class="card"><div class="switch-row"><div><strong>Accompagnement alimentation</strong><div class="status">Masqué lorsqu’il est désactivé.</div></div><input id="nutritionToggle" class="toggle" type="checkbox" ${state.profile.nutritionEnabled?'checked':''}></div></div>
-  <div class="card"><div class="card-kicker">Tes données</div><h3>Export / Import</h3><p class="subtle">Tes données restent récupérables.</p><div class="card-actions"><button class="action" id="exportBtn">Exporter JSON</button><label class="action secondary">Importer JSON<input id="importInput" type="file" accept="application/json" hidden></label></div></div><div class="version">Luis Transformation · Build 0.6.2</div>`;
+  <div class="card"><div class="card-kicker">Tes données</div><h3>Export / Import</h3><p class="subtle">Tes données restent récupérables.</p><div class="card-actions"><button class="action" id="exportBtn">Exporter JSON</button><label class="action secondary">Importer JSON<input id="importInput" type="file" accept="application/json" hidden></label></div></div><div class="version">Luis Transformation · Build 0.6.3</div>`;
 }
 function bindPage(){
   document.querySelectorAll('[data-home-view]').forEach(b=>b.addEventListener('click',()=>{state.homeView=b.dataset.homeView;render();}));

@@ -131,3 +131,11 @@ Scanner caméra EAN/UPC local + Open Food Facts. Saisie manuelle conservée en f
 - Fermeture propre de la caméra à la fermeture/changement de fenêtre.
 - Saisie manuelle conservée en secours.
 - Identité visuelle du Compagnon conservée sans modification.
+
+
+## Build 0.6.3 — Stabilisation v2
+- Scanner Safari/iPhone inchangé par rapport au 0.6.3 fonctionnel.
+- Identité Compagnon remplacée partout par le logo validé à quatre arcs orange.
+- Le logo utilisateur LS reste inchangé.
+- Version Profil corrigée en Build 0.6.3.
+- Cache PWA renouvelé (`luis-build-0.6.3-v2`).

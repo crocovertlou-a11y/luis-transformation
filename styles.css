@@ -72,3 +72,20 @@
 .barcode-scanner .ai-status{position:absolute;left:12px;right:12px;bottom:8px;padding:7px 9px;border-radius:10px;background:rgba(0,0,0,.58);color:white;text-align:center}
 .text-action{display:block;width:100%;border:0;background:transparent;padding:13px;color:var(--muted);font:inherit;text-decoration:underline}
 .manual-barcode.hidden{display:none}
+
+/* Build 0.6.3 Stabilisation v2 — identité Compagnon validée */
+.companion-logo{display:block;overflow:visible}
+.companion-logo path{
+  fill:none;
+  stroke:#f26a3d;
+  stroke-width:3.6;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  filter:none;
+  animation:none;
+}
+.header-companion-mark{width:27px;height:27px}
+.nav-companion{width:23px;height:23px!important;padding:0!important;letter-spacing:0!important}
+.companion-mark-large{width:44px;height:44px}
+.companion-mark-mini{width:24px;height:24px}
+.choice-companion{width:22px;height:22px}
