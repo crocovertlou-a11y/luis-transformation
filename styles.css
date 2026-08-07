@@ -39,3 +39,12 @@
 /* Build 0.5 — Aujourd’hui + édition entraînement */
 .today-flow{display:grid;gap:10px}.today-domain{padding:18px;border-radius:22px;background:var(--card);border:1px solid var(--border);box-shadow:var(--shadow)}.today-domain-top{display:flex;justify-content:space-between;align-items:center}.domain-badge{font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-weight:800;color:var(--muted)}.today-domain h3{font-size:19px;margin:8px 0 5px}.today-domain p{font-size:13px;line-height:1.45;color:var(--muted);margin:0}.today-domain-top>span:last-child{font-size:22px;color:var(--muted)}.nutrition-today{background:linear-gradient(145deg,#fff,#fff9f4)}.mini-progress{height:5px;background:#eee6df;border-radius:99px;overflow:hidden;margin-top:12px}.mini-progress i{display:block;height:100%;background:var(--accent);border-radius:99px}.today-checkin{display:flex;align-items:center;justify-content:space-between;padding:10px 2px 16px;color:var(--muted);font-size:12px}.today-checkin>div{display:flex;align-items:center;gap:7px}.today-checkin strong{color:var(--ink)}
 #sheetContent{width:100%;box-sizing:border-box}.nutrition-actions{width:100%;box-sizing:border-box}.nutrition-actions .sheet-choice{min-width:0}.edit-force-exercise{padding:13px 0;border-bottom:1px solid var(--border)}
+
+/* Build 0.5.1 — consolidation */
+.sheet{max-height:82dvh}
+#sheetContent{max-height:78dvh;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.date-field{margin-top:4px}
+@media(max-width:700px){
+  .sheet{max-height:82dvh}
+  #sheetContent{max-height:78dvh}
+}
