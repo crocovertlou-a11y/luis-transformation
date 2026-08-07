@@ -38,28 +38,41 @@ async function renderHome(){
   const checkins=await LTDB.all('checkins'); const today=checkins.find(x=>x.date===todayKey());
   const workouts=await LTDB.all('workouts'); const cardio=await LTDB.all('cardio'); const food=await LTDB.all('food');
   const todayWorkout=workouts.find(x=>x.date===todayKey());
-  const protein=food.filter(x=>x.date===todayKey()).reduce((s,x)=>s+(Number(x.protein)||0),0);
+  const todayCardio=cardio.filter(x=>x.date===todayKey()).sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||'')); 
+  const todayFood=food.filter(x=>x.date===todayKey());
+  const protein=todayFood.reduce((s,x)=>s+(Number(x.protein)||0),0);
+  const calories=todayFood.reduce((s,x)=>s+(Number(x.calories)||0),0);
   const view=state.homeView;
   return `
     <section class="hero home-hero"><div class="hello">Bonjour ${escapeHtml(state.profile.firstName)}.</div></section>
     <div class="segmented"><button data-home-view="today" class="${view==='today'?'active':''}">Aujourd’hui</button><button data-home-view="evolution" class="${view==='evolution'?'active':''}">Évolution</button></div>
-    ${view==='today' ? renderToday(today,todayWorkout,protein) : await renderEvolution(checkins,workouts,cardio)}
+    ${view==='today' ? renderToday(today,todayWorkout,todayCardio,protein,calories,todayFood.length) : await renderEvolution(checkins,workouts,cardio)}
   `;
 }
 function companionMark(cls='companion-mark'){return `<svg class="${cls}" viewBox="0 0 64 64" aria-hidden="true"><path d="M15 43.5A22 22 0 0 1 44.5 14" class="fluidity-arc arc-a"/><path d="M49.2 20.2A22 22 0 0 1 19.8 50" class="fluidity-arc arc-b"/></svg>`}
 function nutritionEntry(x){return `<button class="nutrition-entry nutrition-entry-button" data-edit-food="${x.id}"><div><strong>${escapeHtml(x.description||'Repas')}</strong><span>${[x.protein?Math.round(x.protein)+' g protéines':'',x.calories?Math.round(x.calories)+' kcal':''].filter(Boolean).join(' · ')||'Repas enregistré'}</span></div><small>Source : ${x.source==='companion'?'Compagnon':'Saisie manuelle'} · Modifier ›</small></button>`}
 
-function renderToday(today,todayWorkout,protein){
+function renderToday(today,todayWorkout,todayCardio,protein,calories,foodCount){
   const attention=today ? recoveryText(today) : null;
-  const checkinBlock = today
-    ? `<div class="quiet-line clickable" data-open="checkin"><span>Ressenti enregistré</span><strong>Modifier</strong></div>`
+  const target=state.profile.proteinTarget||170;
+  const remain=Math.max(0,target-protein);
+  const checkinBlock=today
+    ? `<div class="today-checkin clickable" data-open="checkin"><div>${companionMark("companion-mark-mini")}<span>Ressenti enregistré</span></div><strong>Modifier</strong></div>`
     : `<div class="companion-prompt clickable" data-open="checkin"><div class="companion-orbit">${companionMark("companion-mark-large")}</div><div><div class="card-kicker">Compagnon</div><h3>Comment vas-tu aujourd’hui ?</h3><p>Quelques gestes suffisent. J’utiliserai le reste en silence.</p></div></div>`;
+  const cardioBlock=todayCardio.length?(()=>{
+    const x=todayCardio[0];
+    return `<div class="today-domain clickable" data-route-card="training"><div class="today-domain-top"><span class="domain-badge">Cardio</span><span>›</span></div><h3>${escapeHtml(x.type||'Cardio')}${x.distance?` · ${x.distance} km`:''}${x.durationLabel?` · ${x.durationLabel}`:''}</h3><p>${todayCardio.length>1?`${todayCardio.length} activités aujourd’hui. `:''}Ta saisie est dans ton journal d’entraînement.</p></div>`;
+  })():'';
+  const nutritionBlock=state.profile.nutritionEnabled?`<div class="today-domain nutrition-today clickable" data-open="nutritionHub"><div class="today-domain-top"><span class="domain-badge">Alimentation</span><span>›</span></div><h3>${foodCount?`${Math.round(protein)} / ${target} g de protéines`:'Commencer ma journée alimentaire'}</h3><p>${foodCount?`${Math.round(remain)} g restent sur ton repère${calories?` · ${Math.round(calories)} kcal saisies`:''}.`:'Ajouter un repas, voir mes saisies ou demander une idée au Compagnon.'}</p><div class="mini-progress"><i style="width:${Math.min(100,(protein/target)*100)}%"></i></div></div>`:'';
   return `
     ${attention?`<div class="companion-inline"><span class="fluidity-mini-static">${companionMark("companion-mark-mini")}</span><div><strong>${attention.title}</strong><p>${attention.text}</p></div></div>`:''}
     ${checkinBlock}
-    <div class="section-title"><h2>Pour aujourd’hui</h2><span class="status">${new Intl.DateTimeFormat('fr-CH',{weekday:'long',day:'numeric',month:'long'}).format(new Date())}</span></div>
-    <div class="action-story clickable" data-route-card="training"><div><div class="card-kicker">Force</div><h3>${todayWorkout?'Séance enregistrée':'Une séance prête quand tu l’es'}</h3><p>${todayWorkout?'Je garde ce que tu as fait pour préparer la suite.':'Séries, répétitions, récupération et charges : tu peux simplement suivre le fil.'}</p></div><button class="action secondary">Voir</button></div>
-    ${state.profile.nutritionEnabled?`<div class="action-story clickable" data-open="nutritionHub"><div><div class="card-kicker">Alimentation</div><h3>Je peux t’aider si tu en as besoin</h3><p>Ajouter un repas, photographier, retrouver un classique ou demander une idée.</p></div><button class="action secondary">Ouvrir</button></div>`:''}
+    <div class="section-title"><h2>Ta journée</h2><span class="status">${new Intl.DateTimeFormat('fr-CH',{weekday:'long',day:'numeric',month:'long'}).format(new Date())}</span></div>
+    <div class="today-flow">
+      <div class="today-domain clickable" data-route-card="training"><div class="today-domain-top"><span class="domain-badge">Force</span><span>›</span></div><h3>${todayWorkout?'Séance enregistrée':'Une séance prête quand tu l’es'}</h3><p>${todayWorkout?'Je garde les séries et les charges pour préparer la suite.':'Tu peux simplement suivre la proposition, sans construire ta séance.'}</p></div>
+      ${cardioBlock}
+      ${nutritionBlock}
+    </div>
   `;
 }
 function renderCheckinSummary(t){
@@ -126,12 +139,13 @@ async function renderProfile(){
   return `<section class="hero"><div class="profile-head"><svg class="big-logo" viewBox="0 0 64 64"><path d="M15 43.5A22 22 0 0 1 44.5 14" class="fluidity-arc"/><path d="M49.2 20.2A22 22 0 0 1 19.8 50" class="fluidity-arc"/></svg><div><div class="hello" style="font-size:28px;margin:0">${escapeHtml(state.profile.firstName)}</div><div class="subtle">${escapeHtml(state.profile.goal||'Ton évolution')}</div></div></div></section>
   <div class="card"><div class="card-kicker">Ce que tu sais de moi</div><div class="list"><div class="list-row"><div><strong>Objectif actuel</strong><div class="status">${escapeHtml(state.profile.goal||'À définir')}</div></div><span class="pill">Confirmé</span></div><div class="list-row"><div><strong>Alimentation</strong><div class="status">${state.profile.nutritionEnabled?'Accompagnement actif':'Masquée'}</div></div><span class="pill">Choix</span></div></div></div>
   <div class="card"><div class="switch-row"><div><strong>Accompagnement alimentation</strong><div class="status">Masqué lorsqu’il est désactivé.</div></div><input id="nutritionToggle" class="toggle" type="checkbox" ${state.profile.nutritionEnabled?'checked':''}></div></div>
-  <div class="card"><div class="card-kicker">Tes données</div><h3>Export / Import</h3><p class="subtle">Tes données restent récupérables.</p><div class="card-actions"><button class="action" id="exportBtn">Exporter JSON</button><label class="action secondary">Importer JSON<input id="importInput" type="file" accept="application/json" hidden></label></div></div><div class="version">Luis Transformation · Build 0.4</div>`;
+  <div class="card"><div class="card-kicker">Tes données</div><h3>Export / Import</h3><p class="subtle">Tes données restent récupérables.</p><div class="card-actions"><button class="action" id="exportBtn">Exporter JSON</button><label class="action secondary">Importer JSON<input id="importInput" type="file" accept="application/json" hidden></label></div></div><div class="version">Luis Transformation · Build 0.5</div>`;
 }
 function bindPage(){
   document.querySelectorAll('[data-home-view]').forEach(b=>b.addEventListener('click',()=>{state.homeView=b.dataset.homeView;render();}));
   document.querySelectorAll('[data-route-card]').forEach(b=>b.addEventListener('click',()=>navigate(b.dataset.routeCard)));
   document.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>openSheet(b.dataset.open)));
+  document.querySelectorAll('[data-edit-activity]').forEach(b=>b.addEventListener('click',()=>{const [kind,id]=b.dataset.editActivity.split(':'); editActivitySheet(kind,id);}));
   $('#sendChat')?.addEventListener('click',sendChat); $('#chatInput')?.addEventListener('keydown',e=>{if(e.key==='Enter')sendChat();});
   $('#nutritionToggle')?.addEventListener('change',async e=>{state.profile.nutritionEnabled=e.target.checked; await LTDB.put('profile',state.profile); toast(e.target.checked?'Alimentation activée':'Alimentation masquée'); render();});
   $('#exportBtn')?.addEventListener('click',exportData); $('#importInput')?.addEventListener('change',importData);
@@ -206,22 +220,37 @@ function forceExerciseInput(name,sets,reps,rest){
 async function editActivitySheet(kind,id){
   const store=kind==='Force'?'workouts':'cardio'; const x=await LTDB.get(store,id); if(!x)return;
   if(kind==='Cardio'){
+    const total=x.durationSeconds||0, h=Math.floor(total/3600), m=Math.floor((total%3600)/60), s=total%60;
     return showSheet(`<h2>Modifier Cardio</h2><form id="activityEditForm"><input type="hidden" name="kind" value="Cardio"><input type="hidden" name="id" value="${id}">
-      <div class="field"><label>Type</label><input name="type" value="${escapeHtml(x.type||'Course')}"></div>
-      <div class="field"><label>Distance (km)</label><input name="distance" type="number" step="0.01" value="${x.distance??''}"></div>
-      <div class="field"><label>Durée affichée</label><input name="durationLabel" value="${escapeHtml(x.durationLabel||'')}"></div>
+      <div class="field"><label>Type</label><select name="type">${['Course','Vélo','Natation','Marche','Autre'].map(v=>`<option ${x.type===v?'selected':''}>${v}</option>`).join('')}</select></div>
+      <div class="field"><label>Distance (km)</label><input name="distance" type="number" step="0.01" inputmode="decimal" value="${x.distance??''}"></div>
+      <div class="duration-picker"><div><label>Heures</label><input name="hours" type="number" min="0" value="${h}"></div><span>:</span><div><label>Minutes</label><input name="minutes" type="number" min="0" max="59" value="${m}"></div><span>:</span><div><label>Secondes</label><input name="seconds" type="number" min="0" max="59" value="${s}"></div></div>
+      <div class="range-row"><div class="field"><label>FC moyenne</label><input name="hr" type="number" value="${x.heartRateAvg??''}"></div><div class="field"><label>Cadence</label><input name="cadence" type="number" value="${x.cadenceAvg??''}"></div></div>
+      <div class="range-row"><div class="field"><label>Dénivelé +</label><input name="elevation" type="number" value="${x.elevationGain??''}"></div><div class="field"><label>Calories</label><input name="calories" type="number" value="${x.calories??''}"></div></div>
       <div class="edit-actions"><button class="action" type="submit">Enregistrer</button><button class="action danger" type="button" id="deleteActivity">Supprimer</button></div></form>`);
   }
-  return showSheet(`<h2>${escapeHtml(x.name||'Séance Force')}</h2><p class="subtle">${x.date} · ${x.durationLabel||''}</p>
-    <div class="force-history-detail">${(x.exerciseEntries||[]).map(e=>`<div><strong>${escapeHtml(e.name)}</strong><span>${escapeHtml(e.performance||'Enregistré')}</span></div>`).join('')}</div>
-    <form id="activityEditForm"><input type="hidden" name="kind" value="Force"><input type="hidden" name="id" value="${id}">
+  const entries=x.exerciseEntries||[];
+  return showSheet(`<h2>Modifier la séance Force</h2><form id="activityEditForm"><input type="hidden" name="kind" value="Force"><input type="hidden" name="id" value="${id}">
+    <div class="edit-force-list">${entries.map((e,i)=>`<div class="edit-force-exercise"><div class="force-input-head"><div><strong>${escapeHtml(e.name)}</strong><span>${e.rest?`Récup. ${escapeHtml(String(e.rest))}`:''}</span></div></div>${(e.series||[]).map((s,j)=>`<div class="set-row"><span>S${j+1}</span><input name="editreps_${i}_${j}" type="number" inputmode="numeric" value="${s.reps??''}" placeholder="reps"><input name="editweight_${i}_${j}" type="number" step="0.5" inputmode="decimal" value="${s.weight??''}" placeholder="kg"></div>`).join('')||`<div class="field"><label>Dernière performance</label><input name="legacyperf_${i}" value="${escapeHtml(e.performance||'')}"></div>`}</div>`).join('')}</div>
     <div class="field"><label>Durée totale (min)</label><input name="durationMin" type="number" value="${Math.round((x.durationSeconds||0)/60)||40}"></div>
     <div class="edit-actions"><button class="action" type="submit">Enregistrer</button><button class="action danger" type="button" id="deleteActivity">Supprimer</button></div></form>`);
 }
 async function updateActivity(e){
   e.preventDefault(); const f=new FormData(e.currentTarget), kind=f.get('kind'), id=f.get('id'), store=kind==='Force'?'workouts':'cardio', old=await LTDB.get(store,id); if(!old)return;
-  if(kind==='Cardio') await LTDB.put(store,{...old,type:f.get('type'),distance:num(f.get('distance')),durationLabel:f.get('durationLabel'),updatedAt:new Date().toISOString()});
-  else {const mins=num(f.get('durationMin'))||40; await LTDB.put(store,{...old,durationSeconds:mins*60,durationLabel:`${mins}:00`,updatedAt:new Date().toISOString()});}
+  if(kind==='Cardio'){
+    const seconds=(num(f.get('hours'))||0)*3600+(num(f.get('minutes'))||0)*60+(num(f.get('seconds'))||0);
+    const h=Math.floor(seconds/3600),m=Math.floor((seconds%3600)/60),s=seconds%60;
+    const label=h?`${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`:`${m}:${String(s).padStart(2,'0')}`;
+    await LTDB.put(store,{...old,type:f.get('type'),distance:num(f.get('distance')),durationSeconds:seconds,durationLabel:label,heartRateAvg:num(f.get('hr')),cadenceAvg:num(f.get('cadence')),elevationGain:num(f.get('elevation')),calories:num(f.get('calories')),updatedAt:new Date().toISOString()});
+  } else {
+    const entries=(old.exerciseEntries||[]).map((e,i)=>{
+      if(!(e.series||[]).length) return e;
+      const series=e.series.map((s,j)=>({...s,reps:num(f.get(`editreps_${i}_${j}`))??s.reps,weight:num(f.get(`editweight_${i}_${j}`))}));
+      return {...e,series,weight:series.map(v=>v.weight).filter(v=>v!=null).slice(-1)[0]??e.weight,performance:series.map(v=>`${v.reps??'—'}×${v.weight??'—'}kg`).join(' · ')};
+    });
+    const mins=num(f.get('durationMin'))||40;
+    await LTDB.put(store,{...old,exerciseEntries:entries,durationSeconds:mins*60,durationLabel:`${mins}:00`,updatedAt:new Date().toISOString()});
+  }
   $('#sheet').close(); toast('Saisie modifiée'); render();
 }
 async function deleteActivity(kind,id){const store=kind==='Force'?'workouts':'cardio'; await LTDB.del(store,id); $('#sheet').close(); toast('Saisie supprimée'); render();}
