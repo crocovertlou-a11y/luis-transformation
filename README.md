@@ -139,3 +139,11 @@ Scanner caméra EAN/UPC local + Open Food Facts. Saisie manuelle conservée en f
 - Le logo utilisateur LS reste inchangé.
 - Version Profil corrigée en Build 0.6.3.
 - Cache PWA renouvelé (`luis-build-0.6.3-v2`).
+
+
+## Build 0.6.3.1 — identité uniquement
+- Aucun changement du scanner.
+- Aucun changement Nutrition / Gemini / Open Food Facts.
+- Logo Compagnon canonique verrouillé partout en orange fin.
+- Suppression des anciens symboles visuels Compagnon résiduels.
+- Nouveau cache PWA : `luis-build-0.6.3.1-identity`.

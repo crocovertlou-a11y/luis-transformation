@@ -89,3 +89,24 @@
 .companion-mark-large{width:44px;height:44px}
 .companion-mark-mini{width:24px;height:24px}
 .choice-companion{width:22px;height:22px}
+
+/* Build 0.6.3.1 — identité Compagnon verrouillée */
+.companion-logo,
+.companion-logo *{
+  animation:none!important;
+  transition:none!important;
+  filter:none!important;
+}
+.companion-logo path{
+  fill:none!important;
+  stroke:#f26a3d!important;
+  stroke-width:3.6!important;
+  stroke-linecap:round!important;
+  stroke-linejoin:round!important;
+  opacity:1!important;
+}
+.header-companion-mark{width:27px!important;height:27px!important}
+.nav-companion{width:23px!important;height:23px!important;display:block!important}
+.companion-mark-large{width:44px!important;height:44px!important}
+.companion-mark-mini{width:24px!important;height:24px!important}
+.choice-companion{width:22px!important;height:22px!important}
