@@ -121,3 +121,9 @@ Diagnostic IA: affiche le code HTTP, le code d'erreur et le détail renvoyé par
 - Historique Force et Cardio séparés.
 - Aucun chrono.
 - IA volontairement repoussée à une version suivante.
+
+## Build 0.8.1 — Import Cardio
+- Ajout manuel conservé.
+- Import GPX/TCX/FIT avec écran de vérification avant sauvegarde.
+- Historique Cardio toujours modifiable/supprimable.
+- Aucun enregistrement automatique sans confirmation utilisateur.

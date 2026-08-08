@@ -181,3 +181,9 @@
 .workout-detail-main{display:flex;flex-direction:column;gap:4px}.workout-detail-main strong{font-size:17px}.workout-detail-main span,.workout-detail-main small{color:var(--muted)}
 .workout-detail-actions{display:flex;flex-direction:column;gap:6px}.swap-exercise-btn{border:0;background:rgba(0,0,0,.05);padding:8px 10px;border-radius:10px;font-weight:650}
 @media(max-width:620px){.training-history-grid{grid-template-columns:1fr}.training-v2-head{flex-direction:column}.workout-detail-row{align-items:flex-start}}
+
+/* Build 0.8.1 — Import Cardio */
+.history-card-actions{display:grid;gap:8px;margin-top:auto}.history-link{font-size:12px;text-decoration:none;padding:9px}
+.import-drop-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:170px;border:1.5px dashed rgba(0,0,0,.18);border-radius:18px;background:rgba(0,0,0,.025)}
+.import-icon{font-size:30px;color:#f26a3d}.import-privacy,.import-reading{margin-top:12px;font-size:12px;color:var(--muted)}
+.import-source-pill{margin:12px 0;padding:10px 12px;border-radius:12px;background:rgba(0,0,0,.04);font-size:12px;color:var(--muted)}
