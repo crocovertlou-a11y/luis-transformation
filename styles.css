@@ -155,3 +155,11 @@
 .compare-photo>span{position:absolute;left:8px;bottom:8px;background:rgba(0,0,0,.58);color:#fff;padding:4px 7px;border-radius:7px;font-size:10px}
 .compare-missing{height:100%;display:grid;place-items:center;text-align:center;color:#aaa;font-size:12px;padding:12px}
 .compare-note{text-align:center;color:var(--muted);font-size:11px;margin:10px 0 0}
+
+/* Build 0.7.3.1 — bouton Comparer visible */
+.photo-top-actions{display:flex;gap:8px;align-items:center;flex-shrink:0}
+@media(max-width:420px){
+  .photo-title-row{align-items:flex-start}
+  .photo-top-actions{flex-direction:column}
+  .photo-top-actions .action{width:100%}
+}

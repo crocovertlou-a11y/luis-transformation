@@ -93,3 +93,10 @@ Diagnostic IA: affiche le code HTTP, le code d'erreur et le détail renvoyé par
 - Gestion explicite d'une vue manquante à l'une des dates.
 - Aucune IA sur les photos à ce stade.
 - Capture, recadrage, scanner, Nutrition IA et Compagnon inchangés.
+
+
+## Build 0.7.3.1 — Comparaison visible
+- Bouton `Comparer` affiché en permanence à côté de `Ajouter`.
+- Suppression de l'ancien bouton de comparaison en bas de la galerie.
+- Si moins de deux dates existent, message explicite.
+- Comparaison Avant / Après inchangée.
