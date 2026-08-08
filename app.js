@@ -168,27 +168,123 @@ async function renderTraining(){
   const workouts=(await LTDB.all('workouts')).sort((a,b)=>b.date.localeCompare(a.date));
   const cardio=(await LTDB.all('cardio')).sort((a,b)=>b.date.localeCompare(a.date));
   const suggestion=suggestWorkout(workouts);
-  const exerciseLog=exerciseJournal(workouts);
-  return `<section class="hero"><div class="hello">Entraînement</div><div class="subtle">Tu peux suivre la proposition sans avoir à construire ta séance.</div></section>
-  <div class="card training-feature"><div class="card-kicker">Force · proposition du jour</div><h3>${suggestion.title}</h3><p class="subtle">Une séance directement exécutable. Les charges proposées ne deviennent personnalisées que lorsque j’ai assez d’historique.</p>
-  <div class="workout-plan">${suggestion.plan.map((x,i)=>`<div class="plan-exercise"><div class="plan-index">${i+1}</div><div class="plan-main"><strong>${escapeHtml(x.name)}</strong><div class="plan-meta">${x.sets} séries × ${x.reps} · récup. ${x.rest}</div><div class="plan-advice">${x.advice}</div></div><button class="technique-btn" data-technique="${escapeHtml(x.name)}">Technique</button></div>`).join('')}</div>
-  <div class="card-actions"><button class="action" data-open="workout">Faire cette séance</button><button class="action secondary" data-open="workoutIdeas">Autre proposition</button></div></div>
-  <div class="card"><div class="card-kicker">Journal Force</div><h3>Où tu en es, exercice par exercice</h3><div class="list exercise-log">${exerciseLog||'<div class="empty">Ton journal se construira à mesure que tu enregistres tes charges.</div>'}</div></div>
-  <div class="card"><div class="card-kicker">Cardio</div><h3>${cardio.length?`${cardio.length} activité${cardio.length>1?'s':''} enregistrée${cardio.length>1?'s':''}`:'Course · vélo · natation · marche'}</h3><p class="subtle">Saisie rapide, avec une durée adaptée au clavier iPhone.</p><div class="card-actions"><button class="action" data-open="cardio">Ajouter une activité</button></div></div>
-  <div class="section-title"><h2>Historique récent</h2></div><div class="card list">${[...workouts.map(x=>({...x,kind:'Force'})),...cardio.map(x=>({...x,kind:'Cardio'}))].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8).map(x=>`<button class="list-row history-button" data-edit-activity="${x.kind}:${x.id}"><div><strong>${escapeHtml(x.name||x.type||x.kind)}</strong><div class="status">${x.date}${x.durationLabel?' · '+x.durationLabel:''}</div></div><span class="pill">${x.kind} · Modifier</span></button>`).join('')||'<div class="empty">Aucune activité enregistrée.</div>'}</div>`;
+  const lastForce=workouts[0], lastCardio=cardio[0];
+  const forceCount30=workouts.filter(x=>daysAgo(x.date)<=30).length;
+  const cardioCount30=cardio.filter(x=>daysAgo(x.date)<=30).length;
+  return `<section class="hero"><div class="hello">Entraînement</div><div class="subtle">Une proposition simple, basée sur ton historique. Tu restes toujours libre de changer.</div></section>
+
+  <div class="card training-v2-feature">
+    <div class="card-kicker">Suggestion du jour</div>
+    <div class="training-v2-head">
+      <div>
+        <h3>${escapeHtml(suggestion.title)}</h3>
+        <p class="subtle">${escapeHtml(suggestion.subtitle)}</p>
+      </div>
+      <span class="pill">${escapeHtml(suggestion.goalLabel)}</span>
+    </div>
+    <div class="training-v2-reason">${escapeHtml(suggestion.reason)}</div>
+    <div class="card-actions">
+      <button class="action" data-open="suggestedWorkout">Voir la séance</button>
+      <button class="action secondary" data-open="workoutIdeas">Changer</button>
+    </div>
+  </div>
+
+  <div class="training-history-grid">
+    <div class="card compact-history-card">
+      <div class="card-kicker">Historique Force</div>
+      <h3>${lastForce?escapeHtml(lastForce.name||'Séance Force'):'Aucune séance'}</h3>
+      <p class="subtle">${lastForce?`${formatPhotoDate(lastForce.date)} · ${lastForce.durationLabel||''}`:`Commence à enregistrer tes séances pour personnaliser les propositions.`}</p>
+      <div class="history-mini-stat"><strong>${forceCount30}</strong><span>séance${forceCount30>1?'s':''} · 30 j</span></div>
+      <button class="action secondary compact full" data-open="forceHistory">Voir l’historique</button>
+    </div>
+
+    <div class="card compact-history-card">
+      <div class="card-kicker">Historique Cardio</div>
+      <h3>${lastCardio?escapeHtml(lastCardio.type||'Cardio'):'Aucune activité'}</h3>
+      <p class="subtle">${lastCardio?`${formatPhotoDate(lastCardio.date)}${lastCardio.distance?` · ${lastCardio.distance} km`:''}${lastCardio.durationLabel?` · ${lastCardio.durationLabel}`:''}`:'Course, vélo, natation, marche…'}</p>
+      <div class="history-mini-stat"><strong>${cardioCount30}</strong><span>activité${cardioCount30>1?'s':''} · 30 j</span></div>
+      <button class="action secondary compact full" data-open="cardioHistory">Voir l’historique</button>
+    </div>
+  </div>`;
+}
+
+function workoutLibrary(){
+  return [
+    {id:'upper',title:'Haut du corps',subtitle:'~40 min · équilibré',goalLabel:'Mixte',tags:['upper','balanced'],plan:[
+      {name:'Développé couché',sets:4,reps:6,rest:'2 min'},
+      {name:'Tractions',sets:4,reps:8,rest:'90 s'},
+      {name:'Rowing',sets:3,reps:10,rest:'90 s'},
+      {name:'Développé épaules',sets:3,reps:10,rest:'75 s'},
+      {name:'Gainage',sets:3,reps:'45 s',rest:'45 s'}
+    ]},
+    {id:'full',title:'Full body',subtitle:'~40 min · global',goalLabel:'Mixte',tags:['full'],plan:[
+      {name:'Squat',sets:4,reps:6,rest:'2 min'},
+      {name:'Développé couché',sets:3,reps:8,rest:'90 s'},
+      {name:'Rowing',sets:3,reps:10,rest:'90 s'},
+      {name:'Fentes',sets:3,reps:10,rest:'75 s'},
+      {name:'Gainage',sets:3,reps:'45 s',rest:'45 s'}
+    ]},
+    {id:'lower',title:'Bas du corps',subtitle:'~40 min · jambes + gainage',goalLabel:'Force',tags:['lower'],plan:[
+      {name:'Squat',sets:4,reps:6,rest:'2 min'},
+      {name:'Fentes',sets:3,reps:10,rest:'90 s'},
+      {name:'Soulevé de terre roumain',sets:3,reps:8,rest:'2 min'},
+      {name:'Mollets',sets:3,reps:15,rest:'60 s'},
+      {name:'Gainage',sets:3,reps:'45 s',rest:'45 s'}
+    ]},
+    {id:'push',title:'Push',subtitle:'~35 min · poussée',goalLabel:'Hypertrophie',tags:['upper','push'],plan:[
+      {name:'Développé couché',sets:4,reps:8,rest:'90 s'},
+      {name:'Développé incliné',sets:3,reps:10,rest:'90 s'},
+      {name:'Développé épaules',sets:3,reps:10,rest:'75 s'},
+      {name:'Élévations latérales',sets:3,reps:15,rest:'60 s'},
+      {name:'Extensions triceps',sets:3,reps:12,rest:'60 s'}
+    ]},
+    {id:'pull',title:'Pull',subtitle:'~35 min · tirage',goalLabel:'Hypertrophie',tags:['upper','pull'],plan:[
+      {name:'Tractions',sets:4,reps:8,rest:'90 s'},
+      {name:'Rowing',sets:4,reps:10,rest:'90 s'},
+      {name:'Tirage vertical',sets:3,reps:10,rest:'75 s'},
+      {name:'Face pull',sets:3,reps:15,rest:'60 s'},
+      {name:'Curl biceps',sets:3,reps:12,rest:'60 s'}
+    ]},
+    {id:'upper-push',title:'Haut orienté poussée',subtitle:'~40 min · pecs / épaules / triceps',goalLabel:'Hypertrophie',tags:['upper','push'],plan:[
+      {name:'Développé couché',sets:4,reps:6,rest:'2 min'},
+      {name:'Développé incliné',sets:3,reps:8,rest:'90 s'},
+      {name:'Développé épaules',sets:3,reps:10,rest:'75 s'},
+      {name:'Élévations latérales',sets:3,reps:15,rest:'60 s'},
+      {name:'Extensions triceps',sets:3,reps:12,rest:'60 s'}
+    ]},
+    {id:'upper-pull',title:'Haut orienté tirage',subtitle:'~40 min · dos / biceps',goalLabel:'Hypertrophie',tags:['upper','pull'],plan:[
+      {name:'Tractions',sets:4,reps:6,rest:'2 min'},
+      {name:'Rowing',sets:4,reps:8,rest:'90 s'},
+      {name:'Tirage horizontal',sets:3,reps:10,rest:'75 s'},
+      {name:'Face pull',sets:3,reps:15,rest:'60 s'},
+      {name:'Curl biceps',sets:3,reps:12,rest:'60 s'}
+    ]},
+    {id:'short',title:'Séance courte',subtitle:'~25 min · essentiel',goalLabel:'Efficace',tags:['short'],plan:[
+      {name:'Développé couché',sets:3,reps:8,rest:'90 s'},
+      {name:'Tractions',sets:3,reps:8,rest:'90 s'},
+      {name:'Squat',sets:3,reps:8,rest:'90 s'},
+      {name:'Gainage',sets:3,reps:'45 s',rest:'45 s'}
+    ]}
+  ];
 }
 function suggestWorkout(workouts){
-  const lastByName={};
-  for(const w of workouts) for(const e of (w.exerciseEntries||[])) if(!lastByName[e.name]) lastByName[e.name]=e;
-  const last=(name)=>lastByName[name]?.weight ? `Dernière charge : ${lastByName[name].weight} kg. Je l’utilise comme contexte, pas comme ordre.` : `Je n’ai pas encore assez de recul pour conseiller une charge.`;
-  return {title:'Haut du corps · ~40 min',plan:[
-    {name:'Développé couché',sets:4,reps:6,rest:'2 min',advice:last('Développé couché')},
-    {name:'Tractions',sets:4,reps:8,rest:'90 s',advice:last('Tractions')},
-    {name:'Rowing',sets:3,reps:10,rest:'90 s',advice:last('Rowing')},
-    {name:'Développé épaules',sets:3,reps:10,rest:'75 s',advice:last('Développé épaules')},
-    {name:'Gainage',sets:3,reps:'45 s',rest:'45 s',advice:'Pas de charge nécessaire.'}
-  ]};
+  const lib=workoutLibrary();
+  const recent=workouts.filter(x=>daysAgo(x.date)<=7).slice(0,4);
+  const names=recent.map(x=>(x.name||'').toLowerCase());
+  let target='upper';
+  let reason='Je privilégie une séance polyvalente pour construire l’historique.';
+  if(recent.length){
+    const last=(recent[0]?.name||'').toLowerCase();
+    if(/haut|push|pull/.test(last)){target='lower';reason='Ta dernière séance était orientée haut du corps, donc je varie la sollicitation.'}
+    else if(/bas|jamb|lower/.test(last)){target='upper';reason='Ta dernière séance était orientée bas du corps, donc je rééquilibre avec le haut.'}
+    else if(/full/.test(last)){target='upper';reason='Après un full body, je propose une séance plus ciblée.'}
+  }
+  if(recent.length>=3 && names.filter(n=>/haut|push|pull/.test(n)).length>=2){target='lower';reason='Tu as déjà beaucoup travaillé le haut du corps récemment.'}
+  const pick=lib.find(x=>x.id===target)||lib[0];
+  return {...pick,reason};
 }
+function workoutById(id){return workoutLibrary().find(x=>x.id===id)||workoutLibrary()[0]}
+
 function exerciseJournal(workouts){
   const rows=[]; const seen=new Set();
   for(const w of workouts){
@@ -226,7 +322,7 @@ async function renderProfile(){
   return `<section class="hero"><div class="profile-head"><svg class="big-logo" viewBox="0 0 64 64"><path d="M15 43.5A22 22 0 0 1 44.5 14" class="fluidity-arc"/><path d="M49.2 20.2A22 22 0 0 1 19.8 50" class="fluidity-arc"/></svg><div><div class="hello" style="font-size:28px;margin:0">${escapeHtml(state.profile.firstName)}</div><div class="subtle">${escapeHtml(state.profile.goal||'Ton évolution')}</div></div></div></section>
   <div class="card"><div class="card-kicker">Ce que tu sais de moi</div><div class="list"><div class="list-row"><div><strong>Objectif actuel</strong><div class="status">${escapeHtml(state.profile.goal||'À définir')}</div></div><span class="pill">Confirmé</span></div><div class="list-row"><div><strong>Alimentation</strong><div class="status">${state.profile.nutritionEnabled?'Accompagnement actif':'Masquée'}</div></div><span class="pill">Choix</span></div></div></div>
   <div class="card"><div class="switch-row"><div><strong>Accompagnement alimentation</strong><div class="status">Masqué lorsqu’il est désactivé.</div></div><input id="nutritionToggle" class="toggle" type="checkbox" ${state.profile.nutritionEnabled?'checked':''}></div></div>
-  <div class="card"><div class="card-kicker">Tes données</div><h3>Export / Import</h3><p class="subtle">Tes données restent récupérables.</p><div class="card-actions"><button class="action" id="exportBtn">Exporter JSON</button><label class="action secondary">Importer JSON<input id="importInput" type="file" accept="application/json" hidden></label></div></div><div class="version">Luis Transformation · Build 0.7.4.1</div>`;
+  <div class="card"><div class="card-kicker">Tes données</div><h3>Export / Import</h3><p class="subtle">Tes données restent récupérables.</p><div class="card-actions"><button class="action" id="exportBtn">Exporter JSON</button><label class="action secondary">Importer JSON<input id="importInput" type="file" accept="application/json" hidden></label></div></div><div class="version">Luis Transformation · Build 0.8.0</div>`;
 }
 function bindPage(){
   document.querySelectorAll('[data-home-view]').forEach(b=>b.addEventListener('click',()=>{state.homeView=b.dataset.homeView;render();}));
@@ -244,17 +340,10 @@ function openSheet(kind){
   if(kind==='quick') return showSheet(`<h2>Donner quelque chose</h2><div class="sheet-grid"><button class="sheet-choice" data-sheet="checkin">◌<strong>Ressenti</strong></button><button class="sheet-choice" data-sheet="workout">◎<strong>Force</strong></button><button class="sheet-choice" data-sheet="cardio">⌁<strong>Cardio</strong></button>${state.profile.nutritionEnabled?'<button class="sheet-choice" data-sheet="nutritionHub">◒<strong>Alimentation</strong></button>':''}</div>`);
   if(kind==='checkin') return showSheet(`<h2>Comment vas-tu aujourd’hui ?</h2><form id="checkinForm">${dateField('date',todayKey())}${slider('sleep','Sommeil','0','12','0.25','7',' h')}${slider('energy','Énergie','1','5','1','3','/5')}${slider('stress','Stress','1','5','1','2','/5')}${slider('hunger','Faim','1','5','1','3','/5')}<div class="field"><label>Poids (kg)</label><input name="weight" type="number" min="20" max="300" step="0.1" inputmode="decimal" placeholder="80.4"></div><div class="field"><label>Tour de taille (cm)</label><input name="waist" type="number" min="30" max="250" step="0.1" inputmode="decimal" placeholder="90.0"></div><button class="action" type="submit">Enregistrer</button></form>`);
   if(kind==='workout') return showSheet(`<h2>Ta séance Force</h2><form id="workoutForm"><input type="hidden" name="name" value="Haut du corps">${dateField('date',todayKey())}${forceExerciseInput('Développé couché',4,6,'2 min')}${forceExerciseInput('Tractions',4,8,'90 s')}${forceExerciseInput('Rowing',3,10,'90 s')}${forceExerciseInput('Développé épaules',3,10,'75 s')}${forceExerciseInput('Gainage',3,'45 s','45 s')}<div class="field"><label>Durée totale (min)</label><input name="durationMin" type="number" inputmode="numeric" value="40"></div>${slider('effort','Ressenti','1','5','1','3','/5')}<button class="action" type="submit">Terminer la séance</button></form>`);
-  if(kind==='workoutIdeas') return showSheet(`<h2>Suggestions Force</h2><div class="suggestion-list"><button class="suggestion-card" data-pick-workout="Haut du corps"><strong>Haut du corps · 40 min</strong><span>Développé couché · Tractions · Rowing · Épaules · Abdos</span></button><button class="suggestion-card" data-pick-workout="Full body"><strong>Full body · 40 min</strong><span>Squat · Développé couché · Rowing · Épaules · Gainage</span></button><button class="suggestion-card" data-pick-workout="Bas du corps"><strong>Bas du corps + abdos · 40 min</strong><span>Squat · Fentes · Hip hinge · Mollets · Gainage</span></button></div>`);
-  if(kind==='photoCompare') {
-    LTDB.all('photos').then(photos=>{
-      const dates=[...new Set(photos.map(p=>p.date))].sort().reverse();
-      if(dates.length<2){showSheet(`<h2>Comparer deux dates</h2><div class="empty">Ajoute des photos sur au moins deux dates différentes pour lancer une comparaison.</div>`);return}
-      showSheet(`<h2>Comparer deux dates</h2><p class="subtle">Choisis deux moments de ton évolution.</p><div class="compare-date-grid"><div class="field"><label>Avant</label><select id="compareDateA">${dates.map((d,i)=>`<option value="${d}" ${i===1?'selected':''}>${formatPhotoDate(d)}</option>`).join('')}</select></div><div class="field"><label>Après</label><select id="compareDateB">${dates.map((d,i)=>`<option value="${d}" ${i===0?'selected':''}>${formatPhotoDate(d)}</option>`).join('')}</select></div></div><button class="action" id="launchPhotoCompare" type="button">Afficher la comparaison</button>`);
-      $('#launchPhotoCompare')?.addEventListener('click',()=>renderPhotoComparison($('#compareDateA').value,$('#compareDateB').value));
-    });
-    return;
-  }
-  if(kind==='progressPhoto') return showSheet(`<h2>Photo d’évolution</h2><p class="subtle">Prends une photo ou choisis-en une, puis recadre-la avant de l’enregistrer.</p>${dateField('photoDate',todayKey())}<div class="field"><label>Vue</label><select id="progressPhotoView"><option>Face</option><option>Profil</option><option>Dos</option></select></div><div class="photo-source-actions"><button class="action" id="openProgressCamera" type="button">Prendre une photo</button><label class="action secondary">Photothèque<input id="progressLibraryInput" type="file" accept="image/*" hidden></label></div><div class="photo-guide-note">Conseil : même lumière, même distance et posture détendue pour rendre les comparaisons utiles.</div>`);
+  if(kind==='suggestedWorkout') return LTDB.all('workouts').then(ws=>workoutDetailSheet(suggestWorkout(ws)));
+  if(kind==='workoutIdeas') return showSheet(`<h2>Choisir l’entraînement</h2><p class="subtle">Choisis librement le type de séance. La suggestion n’est qu’un point de départ.</p><div class="workout-choice-grid">${workoutLibrary().map(w=>`<button class="suggestion-card workout-choice-card" data-workout-choice="${w.id}"><div><strong>${escapeHtml(w.title)}</strong><span>${escapeHtml(w.subtitle)} · ${escapeHtml(w.goalLabel)}</span></div><span>›</span></button>`).join('')}</div>`);
+  if(kind==='forceHistory') return LTDB.all('workouts').then(rows=>showSheet(`<h2>Historique Force</h2><div class="list">${rows.sort((a,b)=>b.date.localeCompare(a.date)).map(x=>`<button class="list-row history-button" data-edit-activity="Force:${x.id}"><div><strong>${escapeHtml(x.name||'Séance Force')}</strong><div class="status">${formatPhotoDate(x.date)}${x.durationLabel?` · ${x.durationLabel}`:''}</div></div><span class="pill">Modifier</span></button>`).join('')||'<div class="empty">Aucune séance Force.</div>'}</div>`));
+  if(kind==='cardioHistory') return LTDB.all('cardio').then(rows=>showSheet(`<h2>Historique Cardio</h2><div class="list">${rows.sort((a,b)=>b.date.localeCompare(a.date)).map(x=>`<button class="list-row history-button" data-edit-activity="Cardio:${x.id}"><div><strong>${escapeHtml(x.type||'Cardio')}</strong><div class="status">${formatPhotoDate(x.date)}${x.distance?` · ${x.distance} km`:''}${x.durationLabel?` · ${x.durationLabel}`:''}</div></div><span class="pill">Modifier</span></button>`).join('')||'<div class="empty">Aucune activité Cardio.</div>'}</div>`));
   if(kind==='cardio') return showSheet(`<h2>Ajouter une activité Cardio</h2><form id="cardioForm">${dateField('date',todayKey())}<div class="field"><label>Type</label><select name="type"><option>Course</option><option>Vélo</option><option>Natation</option><option>Marche</option><option>Autre</option></select></div><div class="field"><label>Distance (km)</label><input name="distance" type="number" step="0.01" inputmode="decimal"></div><div class="duration-picker"><div><label>Heures</label><input name="hours" type="number" min="0" max="23" inputmode="numeric" value="0"></div><span>:</span><div><label>Minutes</label><input name="minutes" type="number" min="0" max="59" inputmode="numeric" value="40"></div><span>:</span><div><label>Secondes</label><input name="seconds" type="number" min="0" max="59" inputmode="numeric" value="0"></div></div><div class="range-row"><div class="field"><label>FC moyenne</label><input name="hr" type="number" inputmode="numeric"></div><div class="field"><label>Cadence moy.</label><input name="cadence" type="number" inputmode="numeric"></div></div><div class="range-row"><div class="field"><label>Dénivelé + (m)</label><input name="elevation" type="number" inputmode="numeric"></div><div class="field"><label>Calories (kcal)</label><input name="calories" type="number" inputmode="numeric"></div></div><button class="action" type="submit">Enregistrer</button></form>`);
   if(kind==='nutritionHub') return nutritionHubSheet();
   if(kind==='food') return showSheet(`<h2>Ajouter un repas</h2><form id="foodForm">${dateField('date',todayKey())}<div class="field"><label>Moment</label><select name="mealType">${mealTypeOptions('lunch')}</select></div><div class="field"><label>Décris simplement</label><textarea name="description" rows="3" placeholder="Poulet, riz, légumes et un yaourt"></textarea></div><div class="range-row"><div class="field"><label>Protéines (g)</label><input name="protein" type="number" step="0.1"></div><div class="field"><label>Calories</label><input name="calories" type="number"></div></div><div class="range-row"><div class="field"><label>Glucides (g)</label><input name="carbs" type="number" step="0.1"></div><div class="field"><label>Lipides (g)</label><input name="fat" type="number" step="0.1"></div></div><div class="field"><label>Eau (L)</label><input name="water" type="number" step="0.1"></div><label class="checkline"><input type="checkbox" name="classic"> Ajouter à mes classiques</label><button class="action" type="submit">Enregistrer</button></form>`);
@@ -310,6 +399,37 @@ async function mealIdeaSheet(){
   ];
   const [suggestion,meta]=ideas[mealIdeaIndex%ideas.length];
   return showSheet(`<h2>Une idée pour ce soir</h2><div class="recipe-card"><div class="card-kicker">Suggestion ${mealIdeaIndex+1}</div><h3>${suggestion}</h3><p class="status">${meta}</p><p>Je la choisis en tenant compte de ce que tu as renseigné aujourd’hui${remain?` et de ton repère protéines`:''}.</p>${classics.length?`<p class="status">Classiques connus : ${classics.map(escapeHtml).join(', ')}.</p>`:''}<div class="card-actions"><button class="action" data-close>Ça me tente</button><button class="action secondary" id="nextMealIdea">Autre idée</button></div></div>`);
+}
+
+function lastExercisePerformance(name,workouts){
+  for(const w of workouts||[]){
+    const e=(w.exerciseEntries||[]).find(x=>x.name===name);
+    if(e)return e;
+  }
+  return null;
+}
+async function workoutDetailSheet(workout){
+  const history=(await LTDB.all('workouts')).sort((a,b)=>b.date.localeCompare(a.date));
+  const plan=workout.plan.map(x=>({...x,last:lastExercisePerformance(x.name,history)}));
+  state.pendingWorkout={...workout,plan};
+  showSheet(`<h2>${escapeHtml(workout.title)}</h2><p class="subtle">${escapeHtml(workout.subtitle)} · ${escapeHtml(workout.goalLabel)}</p><div class="workout-detail-list">${plan.map((x,i)=>`<div class="workout-detail-row"><div class="workout-detail-main"><strong>${escapeHtml(x.name)}</strong><span>${x.sets} séries × ${x.reps} · récup. ${x.rest}</span>${x.last?`<small>Dernière fois : ${escapeHtml(x.last.performance||'enregistrée')}</small>`:'<small>Pas encore d’historique sur cet exercice</small>'}</div><div class="workout-detail-actions"><button class="technique-btn" data-technique="${escapeHtml(x.name)}">Technique</button><button class="swap-exercise-btn" data-swap-exercise="${i}">Changer</button></div></div>`).join('')}</div><div class="card-actions"><button class="action" id="startChosenWorkout">Je fais cette séance</button><button class="action secondary" data-sheet="workoutIdeas">Changer d’entraînement</button></div>`);
+}
+function exerciseAlternatives(current){
+  const pool=['Développé couché','Développé incliné','Pompes','Dips','Tractions','Rowing','Tirage horizontal','Tirage vertical','Développé épaules','Élévations latérales','Face pull','Curl biceps','Extensions triceps','Squat','Fentes','Soulevé de terre roumain','Presse à cuisses','Mollets','Gainage'];
+  return pool.filter(x=>x!==current);
+}
+function swapExerciseSheet(index){
+  const pending=state.pendingWorkout;if(!pending)return;
+  const current=pending.plan[index];
+  showSheet(`<h2>Remplacer ${escapeHtml(current.name)}</h2><div class="suggestion-list">${exerciseAlternatives(current.name).map(name=>`<button class="suggestion-card" data-exercise-replace="${index}|${escapeHtml(name)}"><strong>${escapeHtml(name)}</strong><span>Remplacer dans cette séance uniquement</span></button>`).join('')}</div>`);
+}
+function chosenWorkoutForm(){
+  const w=state.pendingWorkout;if(!w)return;
+  return showSheet(`<h2>${escapeHtml(w.title)}</h2><form id="workoutForm"><input type="hidden" name="name" value="${escapeHtml(w.title)}">${dateField('date',todayKey())}${w.plan.map((x,i)=>dynamicExerciseInput(x,i)).join('')}<div class="field"><label>Durée totale (min)</label><input name="durationMin" type="number" inputmode="numeric" value="${parseInt(w.subtitle)||40}"></div>${slider('effort','Ressenti','1','5','1','3','/5')}<button class="action" type="submit">Terminer la séance</button></form>`);
+}
+function dynamicExerciseInput(x,idx){
+  const rows=Array.from({length:x.sets},(_,s)=>`<div class="set-row"><span>S${s+1}</span><input name="reps_${idx}_${s}" type="number" inputmode="numeric" value="${typeof x.reps==='number'?x.reps:''}" placeholder="${x.reps}"><input name="weight_${idx}_${s}" type="number" step="0.5" inputmode="decimal" placeholder="kg"></div>`).join('');
+  return `<div class="force-input"><div class="force-input-head"><div><strong>${escapeHtml(x.name)}</strong><span>${x.sets} séries × ${x.reps} · récup. ${x.rest}</span></div><button type="button" class="technique-btn" data-technique="${escapeHtml(x.name)}">Technique</button></div><div class="set-head"><span>Série</span><span>Reps</span><span>Charge</span></div>${rows}</div>`;
 }
 function forceExerciseInput(name,sets,reps,rest){
   const idx={'Développé couché':0,'Tractions':1,'Rowing':2,'Développé épaules':3,'Gainage':4}[name];
@@ -368,6 +488,10 @@ function showTechnique(name){
 function bindSheet(){
   document.querySelectorAll('[data-sheet]').forEach(b=>b.addEventListener('click',()=>openSheet(b.dataset.sheet)));
   document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>{stopBarcodeCamera();stopProgressCamera();$('#sheet').close()}));
+  document.querySelectorAll('[data-workout-choice]').forEach(b=>b.addEventListener('click',()=>workoutDetailSheet(workoutById(b.dataset.workoutChoice))));
+  document.querySelectorAll('[data-swap-exercise]').forEach(b=>b.addEventListener('click',()=>swapExerciseSheet(Number(b.dataset.swapExercise))));
+  document.querySelectorAll('[data-exercise-replace]').forEach(b=>b.addEventListener('click',()=>{const [idx,name]=b.dataset.exerciseReplace.split('|');const i=Number(idx);if(state.pendingWorkout){state.pendingWorkout.plan[i]={...state.pendingWorkout.plan[i],name};workoutDetailSheet(state.pendingWorkout)}}));
+  $('#startChosenWorkout')?.addEventListener('click',chosenWorkoutForm);
   document.querySelectorAll('[data-pick-workout]').forEach(b=>b.addEventListener('click',()=>{openSheet('workout'); setTimeout(()=>{const f=$('#workoutForm'); if(f) f.elements.name.value=b.dataset.pickWorkout;},0)}));
   document.querySelectorAll('input[type="range"]').forEach(r=>r.addEventListener('input',()=>updateRange(r)));
   $('#checkinForm')?.addEventListener('submit',saveCheckin); $('#workoutForm')?.addEventListener('submit',saveWorkout); $('#cardioForm')?.addEventListener('submit',saveCardio); $('#foodForm')?.addEventListener('submit',saveFood); $('#barcodeForm')?.addEventListener('submit',lookupBarcode); $('#startBarcodeCamera')?.addEventListener('click',startBarcodeCamera); $('#toggleManualBarcode')?.addEventListener('click',()=>$('#barcodeForm')?.classList.toggle('hidden')); $('#barcodeConfirmForm')?.addEventListener('submit',saveBarcodeFood); $('#aiFoodConfirmForm')?.addEventListener('submit',saveAIFood);
@@ -389,17 +513,18 @@ function updateRange(r){ const out=document.querySelector(`[data-output="${r.nam
 async function saveCheckin(e){e.preventDefault(); const f=new FormData(e.currentTarget); const date=f.get('date')||todayKey(); const row={id:date,date,sleep:num(f.get('sleep')),energy:num(f.get('energy')),stress:num(f.get('stress')),hunger:num(f.get('hunger')),weight:num(f.get('weight')),waist:num(f.get('waist')),source:'manual',updatedAt:new Date().toISOString()}; await LTDB.put('checkins',row); $('#sheet').close(); toast('Point du jour enregistré'); render();}
 async function saveWorkout(e){
   e.preventDefault(); const f=new FormData(e.currentTarget);
-  const specs=[['Développé couché',4,6,'2 min'],['Tractions',4,8,'90 s'],['Rowing',3,10,'90 s'],['Développé épaules',3,10,'75 s'],['Gainage',3,'45 s','45 s']];
+  const pending=state.pendingWorkout||workoutById('upper');
+  const specs=pending.plan.map(x=>[x.name,x.sets,x.reps,x.rest]);
   const exerciseEntries=specs.map((sp,i)=>{
-    const series=Array.from({length:sp[1]},(_,s)=>({set:s+1,reps:num(f.get(`reps_${i}_${s}`))||sp[2],weight:num(f.get(`weight_${i}_${s}`))})); 
+    const series=Array.from({length:sp[1]},(_,s)=>({set:s+1,reps:num(f.get(`reps_${i}_${s}`))||sp[2],weight:num(f.get(`weight_${i}_${s}`))}));
     const weights=series.map(x=>x.weight).filter(x=>x!=null);
     return {name:sp[0],sets:sp[1],targetReps:sp[2],rest:sp[3],series,weight:weights.length?weights[weights.length-1]:null,performance:series.map(x=>`${x.reps}×${x.weight??'—'}kg`).join(' · ')};
   });
-  const date=f.get('date')||todayKey();
-  const mins=num(f.get('durationMin'))||40;
-  await LTDB.put('workouts',{id:uid(),date,name:'Haut du corps',durationSeconds:mins*60,durationLabel:`${mins}:00`,effort:num(f.get('effort')),exerciseEntries,source:'manual',createdAt:new Date().toISOString()});
-  $('#sheet').close(); toast('Séance Force enregistrée'); render();
+  const date=f.get('date')||todayKey(),mins=num(f.get('durationMin'))||40;
+  await LTDB.put('workouts',{id:uid(),date,name:f.get('name')||pending.title,durationSeconds:mins*60,durationLabel:`${mins}:00`,effort:num(f.get('effort')),exerciseEntries,source:'manual',createdAt:new Date().toISOString()});
+  state.pendingWorkout=null; $('#sheet').close();toast('Séance enregistrée');render();
 }
+
 async function saveCardio(e){e.preventDefault(); const f=new FormData(e.currentTarget); const date=f.get('date')||todayKey(); const seconds=(num(f.get('hours'))||0)*3600+(num(f.get('minutes'))||0)*60+(num(f.get('seconds'))||0); const h=Math.floor(seconds/3600),m=Math.floor((seconds%3600)/60),s=seconds%60; const label=h?`${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`:`${m}:${String(s).padStart(2,'0')}`; await LTDB.put('cardio',{id:uid(),date,type:f.get('type'),distance:num(f.get('distance')),durationSeconds:seconds,durationLabel:label,heartRateAvg:num(f.get('hr')),cadenceAvg:num(f.get('cadence')),elevationGain:num(f.get('elevation')),calories:num(f.get('calories')),source:'manual',createdAt:new Date().toISOString()}); $('#sheet').close(); toast('Activité Cardio enregistrée'); render();}
 async function saveFood(e){e.preventDefault(); const f=new FormData(e.currentTarget); const date=f.get('date')||todayKey(); await LTDB.put('food',{id:uid(),date,dateTime:new Date().toISOString(),mealType:f.get('mealType')||'lunch',description:f.get('description')||'Repas',protein:num(f.get('protein')),calories:num(f.get('calories')),carbs:num(f.get('carbs')),fat:num(f.get('fat')),water:num(f.get('water')),classic:f.get('classic')==='on',source:'companion',confidence:'user',createdAt:new Date().toISOString()}); toast('Repas enregistré · visible dans Alimentation'); if(date===todayKey()) await nutritionHubSheet(); else $('#sheet').close(); render();}
 

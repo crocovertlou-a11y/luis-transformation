@@ -109,3 +109,15 @@ Diagnostic IA: affiche le code HTTP, le code d'erreur et le détail renvoyé par
 - Suppression automatique des anciens caches à l'activation.
 - Headers Netlify `no-cache/no-store` sur le shell de l'app.
 - Comparaison manuelle, photo, scanner, nutrition et Compagnon inchangés.
+
+
+## Build 0.8.0 — Entraînement v2
+- Écran Entraînement simplifié en 3 cartes : suggestion du jour + historique Force + historique Cardio.
+- Suggestion basée sur l’historique récent, sans IA.
+- Bibliothèque élargie : Haut, Bas, Full body, Push, Pull, orienté poussée/tirage, séance courte.
+- Détail de séance dans un sous-écran.
+- Possibilité de remplacer un exercice dans la séance choisie.
+- L’utilisateur reste libre de changer totalement de séance.
+- Historique Force et Cardio séparés.
+- Aucun chrono.
+- IA volontairement repoussée à une version suivante.
