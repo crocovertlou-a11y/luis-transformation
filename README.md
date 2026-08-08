@@ -130,3 +130,15 @@ Diagnostic IA: affiche le code HTTP, le code d'erreur et le détail renvoyé par
 
 ## Build 0.8.2 — Strava à la demande
 Variables Netlify requises : STRAVA_CLIENT_ID et STRAVA_CLIENT_SECRET. Optionnel : STRAVA_COOKIE_SECRET. Connexion OAuth, récupération manuelle des 10 dernières activités, prévisualisation et confirmation avant sauvegarde. Manuel, fichier et historique modifiable conservés.
+
+
+## Build 0.9.0 — Entraînement intelligent V1
+- La recommandation Force peut être affinée par Gemini à la demande.
+- Contexte utilisé: 14 jours Force, 14 jours Cardio, 7 jours récupération/check-in, 3 jours alimentation.
+- L'IA génère 4 à 6 exercices: la bibliothèque n'est plus limitée aux séances prédéfinies.
+- Cardio influence la proposition Force; alimentation reste un signal de contexte, jamais un verrou.
+- Explication courte de la recommandation.
+- Voir la séance / autre proposition / choisir soi-même.
+- Modification d'exercices et validation utilisateur conservées.
+- Fallback local conservé si Gemini est indisponible.
+- Aucun chrono.

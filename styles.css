@@ -190,3 +190,8 @@
 
 /* Build 0.8.2 — Strava */
 .strava-action{border-color:#fc4c02!important;color:#d94200!important}.strava-card{display:flex;align-items:center;gap:12px;padding:14px;border-radius:16px;background:#fff5f0;margin:12px 0}.strava-mark{display:grid;place-items:center;width:42px;height:42px;border-radius:12px;background:#fc4c02;color:white;font-weight:800;font-size:22px}.strava-card div:last-child{display:flex;flex-direction:column;gap:3px}.strava-card span{font-size:12px;color:var(--muted)}.strava-actions{display:grid;gap:8px}.strava-connect{background:#fc4c02!important;color:#fff!important;text-decoration:none;text-align:center}.strava-status{font-size:12px;color:var(--muted);margin:12px 2px}.strava-list{display:grid;gap:8px;margin-top:10px}.strava-activity-row{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;text-align:left;border:0;border-radius:14px;background:rgba(0,0,0,.035);padding:12px}.strava-activity-row>div{display:flex;flex-direction:column;gap:4px}.strava-activity-row span{font-size:11px;color:var(--muted)}.strava-activity-row:disabled{opacity:.55}
+
+/* Build 0.9.0 — Entraînement intelligent */
+.smart-fallback-note,.smart-context-note{font-size:12px;color:var(--muted);margin:10px 0;line-height:1.45}
+.smart-context-note{padding:10px 12px;border-radius:12px;background:rgba(147,91,210,.07)}
+#smartTrainingSuggestion .card-actions{flex-wrap:wrap}

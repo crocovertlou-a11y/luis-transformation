@@ -174,18 +174,21 @@ async function renderTraining(){
   return `<section class="hero"><div class="hello">Entraînement</div><div class="subtle">Une proposition simple, basée sur ton historique. Tu restes toujours libre de changer.</div></section>
 
   <div class="card training-v2-feature">
-    <div class="card-kicker">Suggestion du jour</div>
-    <div class="training-v2-head">
-      <div>
-        <h3>${escapeHtml(suggestion.title)}</h3>
-        <p class="subtle">${escapeHtml(suggestion.subtitle)}</p>
+    <div class="card-kicker">${companionMark("choice-companion")} Suggestion du Compagnon</div>
+    <div id="smartTrainingSuggestion">
+      <div class="training-v2-head">
+        <div>
+          <h3>${escapeHtml(suggestion.title)}</h3>
+          <p class="subtle">${escapeHtml(suggestion.subtitle)}</p>
+        </div>
+        <span class="pill">${escapeHtml(suggestion.goalLabel)}</span>
       </div>
-      <span class="pill">${escapeHtml(suggestion.goalLabel)}</span>
-    </div>
-    <div class="training-v2-reason">${escapeHtml(suggestion.reason)}</div>
-    <div class="card-actions">
-      <button class="action" data-open="suggestedWorkout">Voir la séance</button>
-      <button class="action secondary" data-open="workoutIdeas">Changer</button>
+      <div class="training-v2-reason">${escapeHtml(suggestion.reason)}</div>
+      <div class="smart-fallback-note">Suggestion locale immédiate · le Compagnon peut l’affiner avec ton contexte récent.</div>
+      <div class="card-actions">
+        <button class="action" id="askSmartTraining" type="button">Affiner avec le Compagnon</button>
+        <button class="action secondary" data-open="workoutIdeas">Choisir moi-même</button>
+      </div>
     </div>
   </div>
 
@@ -213,6 +216,37 @@ async function renderTraining(){
   </div>`;
 }
 
+
+async function smartTrainingContext(){
+  const [workouts,cardio,checkins,nutrition]=await Promise.all([LTDB.all('workouts'),LTDB.all('cardio'),LTDB.all('checkins'),LTDB.all('nutrition')]);
+  const recent=(rows,days)=>rows.filter(x=>daysAgo(x.date)<=days).sort((a,b)=>b.date.localeCompare(a.date));
+  return {
+    date:todayKey(),
+    force:recent(workouts,14).slice(0,12).map(w=>({date:w.date,name:w.name,duration:w.durationLabel||null,effort:w.effort??null,exercises:(w.exerciseEntries||[]).map(e=>({name:e.name,performance:e.performance||null}))})),
+    cardio:recent(cardio,14).slice(0,15).map(c=>({date:c.date,type:c.type,name:c.name||null,distance:c.distance??null,duration:c.durationLabel||null,heartRateAvg:c.heartRateAvg??null,elevationGain:c.elevationGain??null,source:c.importSource||c.source||null})),
+    recovery:recent(checkins,7).slice(0,7).map(c=>({date:c.date,sleep:c.sleep??null,stress:c.stress??null,energy:c.energy??null,hunger:c.hunger??null,weight:c.weight??null,waist:c.waist??null})),
+    nutrition:recent(nutrition,3).slice(0,20).map(n=>({date:n.date,meal:n.meal||n.type||null,protein:n.protein??null,calories:n.calories??null})),
+    constraints:{preferredDurationMin:40,primaryFocus:'force et recomposition corporelle',freedom:'L’utilisateur peut toujours changer la séance'}
+  };
+}
+async function loadSmartTrainingSuggestion(){
+  const box=$('#smartTrainingSuggestion'),btn=$('#askSmartTraining');
+  if(btn){btn.disabled=true;btn.textContent='Le Compagnon réfléchit…'}
+  try{
+    const context=await smartTrainingContext();
+    const r=await fetch('/.netlify/functions/training-ai-v1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({context})});
+    const data=await r.json();if(!r.ok)throw new Error(data.detail||data.error||'Analyse impossible');
+    state.aiWorkout=data.workout;
+    box.innerHTML=`<div class="training-v2-head"><div><h3>${escapeHtml(data.workout.title)}</h3><p class="subtle">${escapeHtml(data.workout.subtitle)}</p></div><span class="pill">${escapeHtml(data.workout.goalLabel||'Force')}</span></div><div class="training-v2-reason">${escapeHtml(data.reason)}</div>${data.contextNote?`<div class="smart-context-note">${escapeHtml(data.contextNote)}</div>`:''}<div class="card-actions"><button class="action" id="viewAIWorkout" type="button">Voir la séance</button><button class="action secondary" id="regenerateAIWorkout" type="button">Une autre proposition</button><button class="text-action" data-open="workoutIdeas">Choisir moi-même</button></div>`;
+    $('#viewAIWorkout')?.addEventListener('click',()=>workoutDetailSheet(state.aiWorkout));
+    $('#regenerateAIWorkout')?.addEventListener('click',loadSmartTrainingSuggestion);
+    document.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>openSheet(b.dataset.open)));
+  }catch(err){
+    console.error(err);
+    if(btn){btn.disabled=false;btn.textContent='Réessayer avec le Compagnon'}
+    toast('Suggestion locale conservée');
+  }
+}
 function workoutLibrary(){
   return [
     {id:'upper',title:'Haut du corps',subtitle:'~40 min · équilibré',goalLabel:'Mixte',tags:['upper','balanced'],plan:[
@@ -327,7 +361,7 @@ async function renderProfile(){
   return `<section class="hero"><div class="profile-head"><svg class="big-logo" viewBox="0 0 64 64"><path d="M15 43.5A22 22 0 0 1 44.5 14" class="fluidity-arc"/><path d="M49.2 20.2A22 22 0 0 1 19.8 50" class="fluidity-arc"/></svg><div><div class="hello" style="font-size:28px;margin:0">${escapeHtml(state.profile.firstName)}</div><div class="subtle">${escapeHtml(state.profile.goal||'Ton évolution')}</div></div></div></section>
   <div class="card"><div class="card-kicker">Ce que tu sais de moi</div><div class="list"><div class="list-row"><div><strong>Objectif actuel</strong><div class="status">${escapeHtml(state.profile.goal||'À définir')}</div></div><span class="pill">Confirmé</span></div><div class="list-row"><div><strong>Alimentation</strong><div class="status">${state.profile.nutritionEnabled?'Accompagnement actif':'Masquée'}</div></div><span class="pill">Choix</span></div></div></div>
   <div class="card"><div class="switch-row"><div><strong>Accompagnement alimentation</strong><div class="status">Masqué lorsqu’il est désactivé.</div></div><input id="nutritionToggle" class="toggle" type="checkbox" ${state.profile.nutritionEnabled?'checked':''}></div></div>
-  <div class="card"><div class="card-kicker">Tes données</div><h3>Export / Import</h3><p class="subtle">Tes données restent récupérables.</p><div class="card-actions"><button class="action" id="exportBtn">Exporter JSON</button><label class="action secondary">Importer JSON<input id="importInput" type="file" accept="application/json" hidden></label></div></div><div class="version">Luis Transformation · Build 0.8.2</div>`;
+  <div class="card"><div class="card-kicker">Tes données</div><h3>Export / Import</h3><p class="subtle">Tes données restent récupérables.</p><div class="card-actions"><button class="action" id="exportBtn">Exporter JSON</button><label class="action secondary">Importer JSON<input id="importInput" type="file" accept="application/json" hidden></label></div></div><div class="version">Luis Transformation · Build 0.9.0</div>`;
 }
 function bindPage(){
   document.querySelectorAll('[data-home-view]').forEach(b=>b.addEventListener('click',()=>{state.homeView=b.dataset.homeView;render();}));
@@ -501,7 +535,7 @@ function bindSheet(){
   $('#startChosenWorkout')?.addEventListener('click',chosenWorkoutForm);
   document.querySelectorAll('[data-pick-workout]').forEach(b=>b.addEventListener('click',()=>{openSheet('workout'); setTimeout(()=>{const f=$('#workoutForm'); if(f) f.elements.name.value=b.dataset.pickWorkout;},0)}));
   document.querySelectorAll('input[type="range"]').forEach(r=>r.addEventListener('input',()=>updateRange(r)));
-  $('#checkinForm')?.addEventListener('submit',saveCheckin); $('#workoutForm')?.addEventListener('submit',saveWorkout); $('#cardioForm')?.addEventListener('submit',saveCardio); $('#cardioImportInput')?.addEventListener('change',handleCardioImport); $('#cardioImportConfirmForm')?.addEventListener('submit',saveImportedCardio); $('#fetchStravaActivities')?.addEventListener('click',fetchStravaActivities); $('#stravaConfirmForm')?.addEventListener('submit',saveStravaCardio); $('#foodForm')?.addEventListener('submit',saveFood); $('#barcodeForm')?.addEventListener('submit',lookupBarcode); $('#startBarcodeCamera')?.addEventListener('click',startBarcodeCamera); $('#toggleManualBarcode')?.addEventListener('click',()=>$('#barcodeForm')?.classList.toggle('hidden')); $('#barcodeConfirmForm')?.addEventListener('submit',saveBarcodeFood); $('#aiFoodConfirmForm')?.addEventListener('submit',saveAIFood);
+  $('#checkinForm')?.addEventListener('submit',saveCheckin); $('#workoutForm')?.addEventListener('submit',saveWorkout); $('#cardioForm')?.addEventListener('submit',saveCardio); $('#cardioImportInput')?.addEventListener('change',handleCardioImport); $('#cardioImportConfirmForm')?.addEventListener('submit',saveImportedCardio); $('#fetchStravaActivities')?.addEventListener('click',fetchStravaActivities); $('#askSmartTraining')?.addEventListener('click',loadSmartTrainingSuggestion); $('#stravaConfirmForm')?.addEventListener('submit',saveStravaCardio); $('#foodForm')?.addEventListener('submit',saveFood); $('#barcodeForm')?.addEventListener('submit',lookupBarcode); $('#startBarcodeCamera')?.addEventListener('click',startBarcodeCamera); $('#toggleManualBarcode')?.addEventListener('click',()=>$('#barcodeForm')?.classList.toggle('hidden')); $('#barcodeConfirmForm')?.addEventListener('submit',saveBarcodeFood); $('#aiFoodConfirmForm')?.addEventListener('submit',saveAIFood);
   $('#foodPhotoInput')?.addEventListener('change',previewFoodPhoto);
   $('#foodLibraryInput')?.addEventListener('change',previewFoodPhoto);
   $('#openProgressCamera')?.addEventListener('click',openProgressCamera); $('#progressLibraryInput')?.addEventListener('click',rememberProgressPhotoMeta); $('#progressLibraryInput')?.addEventListener('change',prepareProgressPhoto);
