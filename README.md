@@ -84,3 +84,12 @@ Diagnostic IA: affiche le code HTTP, le code d'erreur et le détail renvoyé par
 - Recadrage tactile renforcé : glisser + zoom + recentrer.
 - Bouton Enregistrer sticky et retour utilisateur pendant la sauvegarde.
 - Scanner / Nutrition IA / Compagnon inchangés.
+
+
+## Build 0.7.3 — Comparaison Photos v1
+- Sélection de deux dates depuis Évolution > Photos.
+- Comparaison côte à côte Avant / Après.
+- Onglets Face / Profil / Dos selon les photos disponibles.
+- Gestion explicite d'une vue manquante à l'une des dates.
+- Aucune IA sur les photos à ce stade.
+- Capture, recadrage, scanner, Nutrition IA et Compagnon inchangés.
