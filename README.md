@@ -100,3 +100,12 @@ Diagnostic IA: affiche le code HTTP, le code d'erreur et le détail renvoyé par
 - Suppression de l'ancien bouton de comparaison en bas de la galerie.
 - Si moins de deux dates existent, message explicite.
 - Comparaison Avant / Après inchangée.
+
+
+## Build 0.7.4.1 — Anti-cache
+- Aucune modification fonctionnelle de l'IA comparaison.
+- `app.js`, `db.js`, `styles.css` et service worker chargés avec version `v=0741`.
+- Nouveau cache PWA `luis-build-0.7.4.1-force-refresh`.
+- Suppression automatique des anciens caches à l'activation.
+- Headers Netlify `no-cache/no-store` sur le shell de l'app.
+- Comparaison manuelle, photo, scanner, nutrition et Compagnon inchangés.
