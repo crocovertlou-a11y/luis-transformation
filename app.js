@@ -226,7 +226,7 @@ async function renderProfile(){
   return `<section class="hero"><div class="profile-head"><svg class="big-logo" viewBox="0 0 64 64"><path d="M15 43.5A22 22 0 0 1 44.5 14" class="fluidity-arc"/><path d="M49.2 20.2A22 22 0 0 1 19.8 50" class="fluidity-arc"/></svg><div><div class="hello" style="font-size:28px;margin:0">${escapeHtml(state.profile.firstName)}</div><div class="subtle">${escapeHtml(state.profile.goal||'Ton évolution')}</div></div></div></section>
   <div class="card"><div class="card-kicker">Ce que tu sais de moi</div><div class="list"><div class="list-row"><div><strong>Objectif actuel</strong><div class="status">${escapeHtml(state.profile.goal||'À définir')}</div></div><span class="pill">Confirmé</span></div><div class="list-row"><div><strong>Alimentation</strong><div class="status">${state.profile.nutritionEnabled?'Accompagnement actif':'Masquée'}</div></div><span class="pill">Choix</span></div></div></div>
   <div class="card"><div class="switch-row"><div><strong>Accompagnement alimentation</strong><div class="status">Masqué lorsqu’il est désactivé.</div></div><input id="nutritionToggle" class="toggle" type="checkbox" ${state.profile.nutritionEnabled?'checked':''}></div></div>
-  <div class="card"><div class="card-kicker">Tes données</div><h3>Export / Import</h3><p class="subtle">Tes données restent récupérables.</p><div class="card-actions"><button class="action" id="exportBtn">Exporter JSON</button><label class="action secondary">Importer JSON<input id="importInput" type="file" accept="application/json" hidden></label></div></div><div class="version">Luis Transformation · Build 0.7.3.1</div>`;
+  <div class="card"><div class="card-kicker">Tes données</div><h3>Export / Import</h3><p class="subtle">Tes données restent récupérables.</p><div class="card-actions"><button class="action" id="exportBtn">Exporter JSON</button><label class="action secondary">Importer JSON<input id="importInput" type="file" accept="application/json" hidden></label></div></div><div class="version">Luis Transformation · Build 0.7.4</div>`;
 }
 function bindPage(){
   document.querySelectorAll('[data-home-view]').forEach(b=>b.addEventListener('click',()=>{state.homeView=b.dataset.homeView;render();}));
@@ -692,19 +692,40 @@ async function saveProgressPhoto(date,view){
 
 async function renderPhotoComparison(dateA,dateB){
   if(!dateA||!dateB||dateA===dateB){toast('Choisis deux dates différentes');return}
-  const photos=await LTDB.all('photos');
+  const [photos,checkins]=await Promise.all([LTDB.all('photos'),LTDB.all('checkins')]);
   const a=photos.filter(p=>p.date===dateA),b=photos.filter(p=>p.date===dateB);
   const views=['Face','Profil','Dos'];
   const available=views.filter(v=>a.some(p=>p.view===v)||b.some(p=>p.view===v));
-  const first=available[0]||'Face';
-  showSheet(`<h2>Comparaison</h2><div class="compare-head"><strong>${formatPhotoDate(dateA)}</strong><span>→</span><strong>${formatPhotoDate(dateB)}</strong></div><div class="compare-view-tabs">${available.map((v,i)=>`<button class="${i===0?'active':''}" data-compare-view="${v}">${v}</button>`).join('')}</div><div id="photoCompareStage"></div><p class="compare-note">Même vue + cadrage similaire = comparaison plus fiable.</p>`);
+  let currentView=available[0]||'Face';
+  const metricFor=date=>{
+    const exact=checkins.find(x=>x.date===date);
+    if(exact)return {weight:exact.weight??null,waist:exact.waist??null,date:exact.date};
+    const before=checkins.filter(x=>x.date<=date&&(x.weight||x.waist)).sort((x,y)=>y.date.localeCompare(x.date))[0];
+    return before?{weight:before.weight??null,waist:before.waist??null,date:before.date}:null;
+  };
+  const metricA=metricFor(dateA),metricB=metricFor(dateB);
+  showSheet(`<h2>Comparaison</h2><div class="compare-head"><strong>${formatPhotoDate(dateA)}</strong><span>→</span><strong>${formatPhotoDate(dateB)}</strong></div><div class="compare-view-tabs">${available.map((v,i)=>`<button class="${i===0?'active':''}" data-compare-view="${v}">${v}</button>`).join('')}</div><div id="photoCompareStage"></div><div class="compare-ai-zone"><button class="action" id="analyzePhotoEvolution" type="button">${companionMark("choice-companion")}Analyser avec le Compagnon</button><div id="photoEvolutionAnalysis"></div></div><p class="compare-note">L’IA décrit les changements visibles et utilise uniquement les mesures réellement enregistrées.</p>`);
   const draw=view=>{
+    currentView=view;
     document.querySelectorAll('[data-compare-view]').forEach(x=>x.classList.toggle('active',x.dataset.compareView===view));
     const pa=a.find(p=>p.view===view),pb=b.find(p=>p.view===view);
-    $('#photoCompareStage').innerHTML=`<div class="photo-compare-pair"><div class="compare-photo">${pa?`<img src="${pa.image}" alt="${view} ${dateA}">`:'<div class="compare-missing">Pas de photo<br>${view}</div>'}<span>Avant</span></div><div class="compare-photo">${pb?`<img src="${pb.image}" alt="${view} ${dateB}">`:'<div class="compare-missing">Pas de photo<br>${view}</div>'}<span>Après</span></div></div>`;
+    $('#photoCompareStage').innerHTML=`<div class="photo-compare-pair"><div class="compare-photo">${pa?`<img src="${pa.image}">`:'<div class="compare-missing">Pas de photo<br>${view}</div>'}<span>Avant</span></div><div class="compare-photo">${pb?`<img src="${pb.image}">`:'<div class="compare-missing">Pas de photo<br>${view}</div>'}<span>Après</span></div></div>`;
+    const btn=$('#analyzePhotoEvolution');if(btn){btn.disabled=!(pa&&pb);btn.innerHTML=pa&&pb?`${companionMark("choice-companion")}Analyser avec le Compagnon`:'Deux photos de la même vue requises'}
+    if($('#photoEvolutionAnalysis'))$('#photoEvolutionAnalysis').innerHTML='';
   };
   document.querySelectorAll('[data-compare-view]').forEach(x=>x.addEventListener('click',()=>draw(x.dataset.compareView)));
-  draw(first);
+  $('#analyzePhotoEvolution')?.addEventListener('click',async()=>{
+    const pa=a.find(p=>p.view===currentView),pb=b.find(p=>p.view===currentView);if(!pa||!pb)return;
+    const btn=$('#analyzePhotoEvolution'),result=$('#photoEvolutionAnalysis');btn.disabled=true;btn.textContent='Analyse en cours…';
+    result.innerHTML='<div class="ai-working">Le Compagnon compare les deux photos…</div>';
+    try{
+      const r=await fetch('/.netlify/functions/compare-photos-v1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({view:currentView,before:{date:dateA,image:pa.image,metrics:metricA},after:{date:dateB,image:pb.image,metrics:metricB}})});
+      const data=await r.json();if(!r.ok)throw new Error(data.detail||data.error||'Analyse impossible');
+      result.innerHTML=`<div class="ai-evolution-card"><div class="card-kicker">Lecture du Compagnon</div><div class="ai-evolution-text">${escapeHtml(data.analysis||'Pas de lecture utile.').replace(/\n/g,'<br>')}</div></div>`;
+    }catch(err){result.innerHTML=`<div class="ai-error">Analyse impossible : ${escapeHtml(err.message||'erreur inconnue')}</div>`}
+    finally{btn.disabled=false;btn.innerHTML=`${companionMark("choice-companion")}Analyser avec le Compagnon`;}
+  });
+  draw(currentView);
 }
 async function viewProgressPhoto(id){
   const p=await LTDB.get('photos',id);if(!p)return;

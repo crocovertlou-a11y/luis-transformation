@@ -163,3 +163,9 @@
   .photo-top-actions{flex-direction:column}
   .photo-top-actions .action{width:100%}
 }
+
+/* Build 0.7.4 — Analyse IA évolution */
+.compare-ai-zone{margin-top:14px}.compare-ai-zone .action{width:100%;display:flex;align-items:center;justify-content:center;gap:8px}
+.ai-working,.ai-error{margin-top:10px;padding:12px;border-radius:13px;background:rgba(0,0,0,.045);font-size:13px;color:var(--muted)}
+.ai-error{color:#9c3d38;background:#fff3f1}.ai-evolution-card{margin-top:12px;padding:15px;border-radius:18px;background:linear-gradient(135deg,rgba(242,106,61,.08),rgba(147,91,210,.07));border:1px solid rgba(242,106,61,.18)}
+.ai-evolution-text{font-size:14px;line-height:1.55;margin-top:8px}
