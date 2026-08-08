@@ -142,3 +142,6 @@ Variables Netlify requises : STRAVA_CLIENT_ID et STRAVA_CLIENT_SECRET. Optionnel
 - Modification d'exercices et validation utilisateur conservées.
 - Fallback local conservé si Gemini est indisponible.
 - Aucun chrono.
+
+## Build 0.9.1 — Recherche alimentaire
+Ajout isolé dans Alimentation : recherche par nom/marque via Open Food Facts, complétée par une petite référence générique locale. Quantité, macros recalculées, correction et confirmation avant enregistrement. Scan, photo IA, saisie manuelle, Strava, entraînement IA et historiques conservés.
