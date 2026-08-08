@@ -127,3 +127,6 @@ Diagnostic IA: affiche le code HTTP, le code d'erreur et le détail renvoyé par
 - Import GPX/TCX/FIT avec écran de vérification avant sauvegarde.
 - Historique Cardio toujours modifiable/supprimable.
 - Aucun enregistrement automatique sans confirmation utilisateur.
+
+## Build 0.8.2 — Strava à la demande
+Variables Netlify requises : STRAVA_CLIENT_ID et STRAVA_CLIENT_SECRET. Optionnel : STRAVA_COOKIE_SECRET. Connexion OAuth, récupération manuelle des 10 dernières activités, prévisualisation et confirmation avant sauvegarde. Manuel, fichier et historique modifiable conservés.
