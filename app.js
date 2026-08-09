@@ -107,6 +107,18 @@ function displayDate(date){
 }
 
 
+
+function dateKeyFromDate(d){
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function formatNutritionDate(key){
+  const d=new Date(`${key}T12:00:00`);
+  return new Intl.DateTimeFormat('fr-CH',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(d);
+}
+function monthLabel(year,month){
+  return new Intl.DateTimeFormat('fr-CH',{month:'long',year:'numeric'}).format(new Date(year,month,1));
+}
+
 function previousDayKey(dateKey=todayKey()){
   const d=new Date(`${dateKey}T12:00:00`);
   d.setDate(d.getDate()-1);
@@ -567,6 +579,30 @@ async function addRecipeToMeal(e){
   toast(`${r.name} ajouté · ${used} portion${used>1?'s':''}`);pendingNutritionMealType=null;await nutritionHubSheet();render();
 }
 
+
+async function nutritionHistorySheet(year=null,month=null){
+  const now=new Date(), y=year??state.nutritionCalendarYear??now.getFullYear(), m=month??state.nutritionCalendarMonth??now.getMonth();
+  state.nutritionCalendarYear=y;state.nutritionCalendarMonth=m;
+  const all=await LTDB.all('food');
+  const daysWithFood=new Set(all.map(x=>x.date));
+  const first=new Date(y,m,1), last=new Date(y,m+1,0), offset=(first.getDay()+6)%7;
+  const cells=[];
+  for(let i=0;i<offset;i++)cells.push('<span class="calendar-empty"></span>');
+  for(let day=1;day<=last.getDate();day++){
+    const key=dateKeyFromDate(new Date(y,m,day)),has=daysWithFood.has(key),today=key===todayKey();
+    cells.push(`<button type="button" class="calendar-day${has?' has-food':''}${today?' is-today':''}" data-history-date="${key}"><span>${day}</span>${has?'<i></i>':''}</button>`);
+  }
+  const prev=new Date(y,m-1,1),next=new Date(y,m+1,1);
+  return showSheet(`<div class="nutrition-page-head"><div><div class="card-kicker">Alimentation</div><h2>Historique</h2></div><button type="button" class="text-action" data-history-today>Aujourd’hui</button></div><section class="nutrition-calendar"><div class="calendar-nav"><button type="button" data-calendar-month="${prev.getFullYear()}-${prev.getMonth()}">‹</button><strong>${monthLabel(y,m)}</strong><button type="button" data-calendar-month="${next.getFullYear()}-${next.getMonth()}">›</button></div><div class="calendar-weekdays">${['L','M','M','J','V','S','D'].map(x=>`<span>${x}</span>`).join('')}</div><div class="calendar-grid">${cells.join('')}</div></section><p class="nutrition-safe-note">Les jours marqués contiennent des données alimentaires. Choisis une date pour revoir ou modifier ses repas.</p>`);
+}
+async function nutritionHistoryDaySheet(date){
+  state.nutritionHistoryDate=date;
+  const all=await LTDB.all('food'),food=all.filter(x=>x.date===date).sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||''));
+  const total=mealSummary(food),target=state.profile.proteinTarget||170,mealOrder=['breakfast','lunch','snack','dinner'];
+  const byMeal=Object.fromEntries(mealOrder.map(type=>[type,food.filter(x=>x.mealType===type)]));
+  return showSheet(`<div class="nutrition-page-head"><div><div class="card-kicker">Historique</div><h2>${formatNutritionDate(date)}</h2></div><button type="button" class="text-action" data-history-back>Calendrier</button></div><section class="nutrition-day-summary"><div class="nutrition-day-top"><strong>${Math.round(total.calories)} kcal</strong><span>${Math.round(total.protein)} / ${target} g protéines</span></div><div class="nutrition-day-macros"><div><b>${Math.round(total.protein)} g</b><span>Protéines</span></div><div><b>${Math.round(total.carbs)} g</b><span>Glucides</span></div><div><b>${Math.round(total.fat)} g</b><span>Lipides</span></div></div></section><div class="history-meals">${mealOrder.map(type=>{const rows=byMeal[type],sum=mealSummary(rows);return `<section class="nutrition-meal-card"><div class="nutrition-meal-head"><div class="nutrition-meal-title"><span class="nutrition-meal-icon">${mealIcon(type)}</span><div><strong>${mealTypeLabel(type)}</strong><small>${rows.length?`${Math.round(sum.calories)} kcal · ${Math.round(sum.protein)} g prot.`:'Aucune saisie'}</small></div></div></div>${rows.length?`<div class="meal-items">${rows.map(x=>`<button type="button" class="meal-item-row" data-edit-food="${x.id}"><span>${escapeHtml(x.description||'Aliment')}</span><small>${x.calories?Math.round(x.calories)+' kcal':''}${x.protein?` · ${Math.round(x.protein)} g prot.`:''}</small><b>›</b></button>`).join('')}</div>`:''}</section>`}).join('')}</div>`);
+}
+
 async function nutritionHubSheet(){
   pendingNutritionMealType=null;
   const all=await LTDB.all('food');
@@ -576,7 +612,7 @@ async function nutritionHubSheet(){
   const proteinPct=Math.min(100,target?total.protein/target*100:0);
   const mealOrder=['breakfast','lunch','snack','dinner'];
   const byMeal=Object.fromEntries(mealOrder.map(type=>[type,food.filter(x=>x.mealType===type)]));
-  return showSheet(`<div class="nutrition-page-head"><div><div class="card-kicker">Alimentation</div><h2>Aujourd’hui</h2></div><span class="nutrition-date">${new Intl.DateTimeFormat('fr-CH',{weekday:'short',day:'numeric',month:'short'}).format(new Date())}</span></div>
+  return showSheet(`<div class="nutrition-page-head"><div><div class="card-kicker">Alimentation</div><h2>Aujourd’hui</h2></div><div class="nutrition-head-actions"><span class="nutrition-date">${new Intl.DateTimeFormat('fr-CH',{weekday:'short',day:'numeric',month:'short'}).format(new Date())}</span><button type="button" class="nutrition-calendar-button" data-nutrition-history aria-label="Historique">▦</button></div></div>
     <section class="nutrition-day-summary">
       <div class="nutrition-day-top"><strong>${Math.round(total.calories)} kcal</strong><span>Objectif protéines ${target} g</span></div>
       <div class="nutrition-day-macros"><div><b>${Math.round(total.protein)} g</b><span>Protéines</span></div><div><b>${Math.round(total.carbs)} g</b><span>Glucides</span></div><div><b>${Math.round(total.fat)} g</b><span>Lipides</span></div></div>
@@ -602,10 +638,10 @@ async function editFoodSheet(id){
 async function updateFood(e){
   e.preventDefault(); const f=new FormData(e.currentTarget); const old=await LTDB.get('food',f.get('id')); if(!old)return;
   await LTDB.put('food',{...old,date:f.get('date')||old.date||todayKey(),mealType:f.get('mealType')||old.mealType||'lunch',description:f.get('description')||'Repas',protein:num(f.get('protein')),calories:num(f.get('calories')),carbs:num(f.get('carbs')),fat:num(f.get('fat')),water:num(f.get('water')),updatedAt:new Date().toISOString()});
-  toast('Repas modifié'); await nutritionHubSheet(); render();
+  toast('Repas modifié'); const editedDate=f.get('date')||old.date||todayKey(); if(editedDate===todayKey()) await nutritionHubSheet(); else await nutritionHistoryDaySheet(editedDate); render();
 }
 async function deleteFood(id){
-  await LTDB.del('food',id); toast('Repas supprimé'); await nutritionHubSheet(); render();
+  const old=await LTDB.get('food',id); await LTDB.del('food',id); toast('Repas supprimé'); if(old?.date&&old.date!==todayKey()) await nutritionHistoryDaySheet(old.date); else await nutritionHubSheet(); render();
 }
 
 let mealIdeaIndex=0;
@@ -710,6 +746,13 @@ function bindSheet(){
   document.querySelectorAll('[data-sheet]').forEach(b=>b.addEventListener('click',()=>openSheet(b.dataset.sheet)));
   document.querySelectorAll('[data-meal-add]').forEach(b=>b.addEventListener('click',()=>{pendingNutritionMealType=b.dataset.mealAdd;openSheet('nutritionMealAdd')}));
   document.querySelectorAll('[data-copy-yesterday]').forEach(b=>b.addEventListener('click',()=>copyMealFromYesterday(b.dataset.copyYesterday)));
+
+  $('[data-nutrition-history]')?.addEventListener('click',()=>nutritionHistorySheet());
+  $('[data-history-today]')?.addEventListener('click',()=>nutritionHistoryDaySheet(todayKey()));
+  $('[data-history-back]')?.addEventListener('click',()=>nutritionHistorySheet());
+  document.querySelectorAll('[data-history-date]').forEach(b=>b.addEventListener('click',()=>nutritionHistoryDaySheet(b.dataset.historyDate)));
+  document.querySelectorAll('[data-calendar-month]').forEach(b=>b.addEventListener('click',()=>{const [y,m]=b.dataset.calendarMonth.split('-').map(Number);nutritionHistorySheet(y,m)}));
+
 
   document.querySelectorAll('[data-personal-recipes]').forEach(b=>b.addEventListener('click',personalRecipesSheet));
   $('[data-new-recipe]')?.addEventListener('click',()=>recipeEditorSheet());

@@ -217,3 +217,15 @@ Basé exclusivement sur Copier Hier R1 validé.
 - L'ingrédient choisi est ajouté à la recette, pas au repas du jour.
 - Les macros de la recette et par portion se recalculent après chaque ingrédient.
 - Aucun changement aux autres blocs validés.
+
+
+## Historique + Calendrier Alimentation R1
+Basé exclusivement sur Recettes + Portions R2 validé.
+- Accès calendrier discret depuis Alimentation/Aujourd'hui.
+- Jours contenant des données alimentaires marqués dans le calendrier.
+- Navigation mois précédent/suivant.
+- Détail d'une journée passée : kcal, macros et repas.
+- Les aliments historiques restent ouvrables, modifiables et supprimables.
+- Après modification d'une journée passée, retour sur cette même journée.
+- Aucun ajout/copie dans les jours passés dans ce bloc pour limiter les risques.
+- Recherche, IA, scan, Copier hier et Recettes/portions conservés.
