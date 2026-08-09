@@ -91,6 +91,7 @@ function companionMark(cls='companion-mark'){
 function mealTypeLabel(type){
   return ({breakfast:'Petit-déjeuner',lunch:'Déjeuner',dinner:'Dîner',snack:'Collation'})[type] || 'Repas';
 }
+let pendingNutritionMealType=null;
 function mealTypeOptions(selected=''){
   return [
     ['breakfast','Petit-déjeuner'],
@@ -105,6 +106,31 @@ function displayDate(date){
   return new Intl.DateTimeFormat('fr-CH',{day:'numeric',month:'short',year:'numeric'}).format(d);
 }
 
+
+function mealIcon(type){
+  return ({breakfast:'☕',lunch:'🍴',snack:'🍎',dinner:'◒'})[type]||'•';
+}
+function mealSummary(rows){
+  return rows.reduce((a,x)=>({
+    calories:a.calories+(Number(x.calories)||0),
+    protein:a.protein+(Number(x.protein)||0),
+    carbs:a.carbs+(Number(x.carbs)||0),
+    fat:a.fat+(Number(x.fat)||0)
+  }),{calories:0,protein:0,carbs:0,fat:0});
+}
+function nutritionMealCard(type,rows){
+  const sum=mealSummary(rows);
+  const details=rows.length
+    ? `<div class="meal-items">${rows.map(x=>`<button type="button" class="meal-item-row" data-edit-food="${x.id}"><span>${escapeHtml(x.description||'Aliment')}</span><small>${x.calories?Math.round(x.calories)+' kcal':''}${x.protein?` · ${Math.round(x.protein)} g prot.`:''}</small><b>›</b></button>`).join('')}</div>`
+    : `<div class="meal-empty">Rien de saisi pour le moment.</div>`;
+  return `<section class="nutrition-meal-card">
+    <div class="nutrition-meal-head">
+      <div class="nutrition-meal-title"><span class="nutrition-meal-icon">${mealIcon(type)}</span><div><strong>${mealTypeLabel(type)}</strong><small>${rows.length?`${Math.round(sum.calories)} kcal · ${Math.round(sum.protein)} g prot. · ${Math.round(sum.carbs)} g gluc. · ${Math.round(sum.fat)} g lip.`:'À compléter'}</small></div></div>
+      <button type="button" class="nutrition-meal-add" data-meal-add="${type}">＋ Ajouter</button>
+    </div>
+    ${details}
+  </section>`;
+}
 function nutritionEntry(x){
   return `<button class="nutrition-entry nutrition-entry-button" data-edit-food="${x.id}">
     <div>
@@ -405,10 +431,14 @@ function openSheet(kind){
   if(kind==='cardioHistory') return LTDB.all('cardio').then(rows=>showSheet(`<h2>Historique Cardio</h2><div class="list">${rows.sort((a,b)=>b.date.localeCompare(a.date)).map(x=>`<button class="list-row history-button" data-edit-activity="Cardio:${x.id}"><div><strong>${escapeHtml(x.type||'Cardio')}</strong><div class="status">${formatPhotoDate(x.date)}${x.distance?` · ${x.distance} km`:''}${x.durationLabel?` · ${x.durationLabel}`:''}</div></div><span class="pill">Modifier</span></button>`).join('')||'<div class="empty">Aucune activité Cardio.</div>'}</div>`));
   if(kind==='cardio') return showSheet(`<h2>Ajouter une activité Cardio</h2><form id="cardioForm">${dateField('date',todayKey())}<div class="field"><label>Type</label><select name="type"><option>Course</option><option>Vélo</option><option>Natation</option><option>Marche</option><option>Autre</option></select></div><div class="field"><label>Distance (km)</label><input name="distance" type="number" step="0.01" inputmode="decimal"></div><div class="duration-picker"><div><label>Heures</label><input name="hours" type="number" min="0" max="23" inputmode="numeric" value="0"></div><span>:</span><div><label>Minutes</label><input name="minutes" type="number" min="0" max="59" inputmode="numeric" value="40"></div><span>:</span><div><label>Secondes</label><input name="seconds" type="number" min="0" max="59" inputmode="numeric" value="0"></div></div><div class="range-row"><div class="field"><label>FC moyenne</label><input name="hr" type="number" inputmode="numeric"></div><div class="field"><label>Cadence moy.</label><input name="cadence" type="number" inputmode="numeric"></div></div><div class="range-row"><div class="field"><label>Dénivelé + (m)</label><input name="elevation" type="number" inputmode="numeric"></div><div class="field"><label>Calories (kcal)</label><input name="calories" type="number" inputmode="numeric"></div></div><button class="action" type="submit">Enregistrer</button></form>`);
   if(kind==='nutritionHub') return nutritionHubSheet();
-  if(kind==='food') return showSheet(`<h2>Ajouter un repas</h2><form id="foodForm">${dateField('date',todayKey())}<div class="field"><label>Moment</label><select name="mealType">${mealTypeOptions('lunch')}</select></div><div class="field"><label>Décris simplement</label><textarea name="description" rows="3" placeholder="Poulet, riz, légumes et un yaourt"></textarea></div><div class="range-row"><div class="field"><label>Protéines (g)</label><input name="protein" type="number" step="0.1"></div><div class="field"><label>Calories</label><input name="calories" type="number"></div></div><div class="range-row"><div class="field"><label>Glucides (g)</label><input name="carbs" type="number" step="0.1"></div><div class="field"><label>Lipides (g)</label><input name="fat" type="number" step="0.1"></div></div><div class="field"><label>Eau (L)</label><input name="water" type="number" step="0.1"></div><label class="checkline"><input type="checkbox" name="classic"> Ajouter à mes classiques</label><button class="action" type="submit">Enregistrer</button></form>`);
+  if(kind==='nutritionMealAdd'){
+    const type=pendingNutritionMealType||'lunch';
+    return showSheet(`<h2>${mealTypeLabel(type)}</h2><p class="subtle">Comment veux-tu ajouter quelque chose à ce repas ?</p><div class="nutrition-actions meal-add-methods"><button class="sheet-choice" data-sheet="foodSearch">⌕<strong>Rechercher un aliment</strong><span>Nom, marque ou produit</span></button><button class="sheet-choice" data-sheet="barcode">▣<strong>Scanner un produit</strong><span>Code-barres</span></button><button class="sheet-choice" data-sheet="photoFood">◉<strong>Photo aliment / repas</strong><span>Le Compagnon analyse puis tu confirmes</span></button><button class="sheet-choice" data-sheet="food">＋<strong>Saisie manuelle</strong><span>Description + macros</span></button></div>`);
+  }
+  if(kind==='food') return showSheet(`<h2>Ajouter un repas</h2><form id="foodForm">${dateField('date',todayKey())}<div class="field"><label>Moment</label><select name="mealType">${mealTypeOptions(pendingNutritionMealType||'lunch')}</select></div><div class="field"><label>Décris simplement</label><textarea name="description" rows="3" placeholder="Poulet, riz, légumes et un yaourt"></textarea></div><div class="range-row"><div class="field"><label>Protéines (g)</label><input name="protein" type="number" step="0.1"></div><div class="field"><label>Calories</label><input name="calories" type="number"></div></div><div class="range-row"><div class="field"><label>Glucides (g)</label><input name="carbs" type="number" step="0.1"></div><div class="field"><label>Lipides (g)</label><input name="fat" type="number" step="0.1"></div></div><div class="field"><label>Eau (L)</label><input name="water" type="number" step="0.1"></div><label class="checkline"><input type="checkbox" name="classic"> Ajouter à mes classiques</label><button class="action" type="submit">Enregistrer</button></form>`);
   if(kind==='foodSearch') return showSheet(`<h2>Rechercher un aliment</h2><p class="subtle">Recherche par nom ou marque. Choisis un résultat, indique la quantité et confirme avant l’enregistrement.</p><form id="foodSearchForm"><div class="food-search-line"><input name="query" autocomplete="off" placeholder="Ex. skyr, poulet, Lidl High Protein…" required><button class="action compact" type="submit">Rechercher</button></div></form><div id="foodSearchStatus" class="ai-status"></div><div id="foodSearchResults"></div><div class="ai-note">Produits de marque : Open Food Facts. Aliments génériques : base nutritionnelle intégrée en complément.</div>`);
-  if(kind==='barcode') return showSheet(`<h2>Scanner un produit</h2><p class="subtle">Cadre le code-barres avec l’appareil photo. Dès qu’il est reconnu, le produit est recherché.</p><div class="barcode-scanner"><video id="barcodeVideo" playsinline muted></video><div class="barcode-frame"><span></span></div><div id="barcodeScanStatus" class="ai-status">Appuie sur « Ouvrir la caméra ».</div></div><button class="action" type="button" id="startBarcodeCamera">Ouvrir la caméra</button><button class="text-action" type="button" id="toggleManualBarcode">Saisir le code manuellement</button><form id="barcodeForm" class="manual-barcode hidden">${dateField('date',todayKey())}<div class="field"><label>Moment</label><select name="mealType">${mealTypeOptions('lunch')}</select></div><div class="field"><label>Code-barres</label><input name="barcode" inputmode="numeric" autocomplete="off" placeholder="7612345678901" required></div><button class="action secondary" type="submit" id="barcodeLookupBtn">Rechercher</button></form><div class="ai-note">Le scan est traité sur ton téléphone. Seul le numéro du code-barres est envoyé à Open Food Facts.</div>`);
-  if(kind==='photoFood') return showSheet(`<h2>Photo aliment / repas</h2><p class="subtle">Prends une photo ou choisis-en une. Le Compagnon propose ce qu’il reconnaît, puis tu corriges ou confirmes.</p>${dateField('photoDate',todayKey())}<div class="field"><label>Moment</label><select id="photoMealType">${mealTypeOptions('lunch')}</select></div><div class="photo-actions"><label class="action photo-action">Prendre une photo<input id="foodPhotoInput" type="file" accept="image/*" capture="environment" hidden></label><label class="action secondary photo-action">Photothèque<input id="foodLibraryInput" type="file" accept="image/*" hidden></label></div><div id="foodPhotoPreview" class="photo-preview empty">Aucune photo sélectionnée.</div><div id="foodAIStatus" class="ai-status"></div>`);
+  if(kind==='barcode') return showSheet(`<h2>Scanner un produit</h2><p class="subtle">Cadre le code-barres avec l’appareil photo. Dès qu’il est reconnu, le produit est recherché.</p><div class="barcode-scanner"><video id="barcodeVideo" playsinline muted></video><div class="barcode-frame"><span></span></div><div id="barcodeScanStatus" class="ai-status">Appuie sur « Ouvrir la caméra ».</div></div><button class="action" type="button" id="startBarcodeCamera">Ouvrir la caméra</button><button class="text-action" type="button" id="toggleManualBarcode">Saisir le code manuellement</button><form id="barcodeForm" class="manual-barcode hidden">${dateField('date',todayKey())}<div class="field"><label>Moment</label><select name="mealType">${mealTypeOptions(pendingNutritionMealType||'lunch')}</select></div><div class="field"><label>Code-barres</label><input name="barcode" inputmode="numeric" autocomplete="off" placeholder="7612345678901" required></div><button class="action secondary" type="submit" id="barcodeLookupBtn">Rechercher</button></form><div class="ai-note">Le scan est traité sur ton téléphone. Seul le numéro du code-barres est envoyé à Open Food Facts.</div>`);
+  if(kind==='photoFood') return showSheet(`<h2>Photo aliment / repas</h2><p class="subtle">Prends une photo ou choisis-en une. Le Compagnon propose ce qu’il reconnaît, puis tu corriges ou confirmes.</p>${dateField('photoDate',todayKey())}<div class="field"><label>Moment</label><select id="photoMealType">${mealTypeOptions(pendingNutritionMealType||'lunch')}</select></div><div class="photo-actions"><label class="action photo-action">Prendre une photo<input id="foodPhotoInput" type="file" accept="image/*" capture="environment" hidden></label><label class="action secondary photo-action">Photothèque<input id="foodLibraryInput" type="file" accept="image/*" hidden></label></div><div id="foodPhotoPreview" class="photo-preview empty">Aucune photo sélectionnée.</div><div id="foodAIStatus" class="ai-status"></div>`);
   if(kind==='photoCompare') {
     LTDB.all('photos').then(photos=>{
       const dates=[...new Set(photos.map(p=>p.date))].sort().reverse();
@@ -429,18 +459,24 @@ function openSheet(kind){
   if(kind==='details') return showSheet(`<h2>Données détaillées</h2><p class="subtle">Les graphiques restent volontairement derrière Évolution. Ce niveau sera enrichi sans changer l’écran principal.</p><button class="action secondary" data-close>Fermer</button>`);
 }
 async function nutritionHubSheet(){
+  pendingNutritionMealType=null;
   const all=await LTDB.all('food');
-  const food=all.filter(x=>x.date===todayKey()).sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
-  const protein=food.reduce((s,x)=>s+(Number(x.protein)||0),0);
-  const calories=food.reduce((s,x)=>s+(Number(x.calories)||0),0);
+  const food=all.filter(x=>x.date===todayKey()).sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||''));
+  const total=mealSummary(food);
   const target=state.profile.proteinTarget||170;
-  const remain=Math.max(0,target-protein);
-  return showSheet(`<h2>Alimentation</h2>
-    <div class="nutrition-summary"><div class="card-kicker">Aujourd’hui</div><div class="nutrition-total"><strong>${Math.round(protein)} / ${target} g</strong><span>protéines</span></div><div class="nutrition-bar"><i style="width:${Math.min(100,(protein/target)*100)}%"></i></div><p>${protein?`${Math.round(remain)} g restent sur ton repère${calories?` · ${Math.round(calories)} kcal saisies`:''}.`:'Ajoute simplement ce que tu manges. Je garde le fil de la journée.'}</p></div>
-    <div class="nutrition-actions"><button class="sheet-choice" data-sheet="foodSearch">⌕<strong>Rechercher un aliment</strong><span>Nom, marque ou produit</span></button><button class="sheet-choice" data-sheet="food">＋<strong>Ajouter un repas</strong><span>Description + macros</span></button><button class="sheet-choice" data-sheet="photoFood">◉<strong>Photo aliment / repas</strong><span>Le Compagnon analyse puis tu confirmes</span></button><button class="sheet-choice" data-sheet="mealIdea">${companionMark("choice-companion")}<strong>Idée du Compagnon</strong><span>Selon ta journée</span></button><button class="sheet-choice" data-sheet="barcode">▣<strong>Code-barres</strong><span>Préparer / saisir un produit</span></button></div>
-    <div class="nutrition-history"><div class="card-kicker">Ce que tu as saisi</div>${food.length?food.map(nutritionEntry).join(''):'<div class="empty">Aucun repas enregistré aujourd’hui.</div>'}</div>`);
+  const proteinPct=Math.min(100,target?total.protein/target*100:0);
+  const mealOrder=['breakfast','lunch','snack','dinner'];
+  const byMeal=Object.fromEntries(mealOrder.map(type=>[type,food.filter(x=>x.mealType===type)]));
+  return showSheet(`<div class="nutrition-page-head"><div><div class="card-kicker">Alimentation</div><h2>Aujourd’hui</h2></div><span class="nutrition-date">${new Intl.DateTimeFormat('fr-CH',{weekday:'short',day:'numeric',month:'short'}).format(new Date())}</span></div>
+    <section class="nutrition-day-summary">
+      <div class="nutrition-day-top"><strong>${Math.round(total.calories)} kcal</strong><span>Objectif protéines ${target} g</span></div>
+      <div class="nutrition-day-macros"><div><b>${Math.round(total.protein)} g</b><span>Protéines</span></div><div><b>${Math.round(total.carbs)} g</b><span>Glucides</span></div><div><b>${Math.round(total.fat)} g</b><span>Lipides</span></div></div>
+      <div class="nutrition-bar"><i style="width:${proteinPct}%"></i></div>
+    </section>
+    <div class="nutrition-meals">${mealOrder.map(type=>nutritionMealCard(type,byMeal[type])).join('')}</div>
+    <div class="nutrition-legacy-actions"><button class="action secondary" data-sheet="foodSearch">Rechercher</button><button class="action secondary" data-sheet="barcode">Scanner</button><button class="action secondary" data-sheet="photoFood">Photo</button><button class="action secondary" data-sheet="food">Saisie manuelle</button></div>
+    <p class="nutrition-safe-note">Tes fonctions actuelles restent disponibles. Recettes, copier depuis hier et calendrier arrivent dans les prochains blocs validés.</p>`);
 }
-
 async function editFoodSheet(id){
   const x=await LTDB.get('food',id); if(!x) return;
   showSheet(`<h2>Modifier le repas</h2><form id="foodEditForm">
@@ -563,6 +599,7 @@ function showTechnique(name){
 
 function bindSheet(){
   document.querySelectorAll('[data-sheet]').forEach(b=>b.addEventListener('click',()=>openSheet(b.dataset.sheet)));
+  document.querySelectorAll('[data-meal-add]').forEach(b=>b.addEventListener('click',()=>{pendingNutritionMealType=b.dataset.mealAdd;openSheet('nutritionMealAdd')}));
   document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>{stopBarcodeCamera();stopProgressCamera();$('#sheet').close()}));
   document.querySelectorAll('[data-workout-choice]').forEach(b=>b.addEventListener('click',()=>workoutDetailSheet(workoutById(b.dataset.workoutChoice))));
   document.querySelectorAll('[data-swap-exercise]').forEach(b=>b.addEventListener('click',()=>swapExerciseSheet(Number(b.dataset.swapExercise))));
@@ -769,7 +806,7 @@ async function searchFoods(e){
 }
 function showFoodSearchConfirm(x){
   const grams=Number(x.servingGrams)||100,p=x.per100||{};
-  showSheet(`<h2>Confirmer l’aliment</h2><div class="identified-product">${x.image?`<img src="${escapeHtml(x.image)}" alt="">`:''}<div><div class="card-kicker">${escapeHtml(x.sourceLabel||'Base alimentaire')}</div><h3>${escapeHtml(x.name||'Aliment')}</h3><p>${escapeHtml(x.brand||'')}${x.quantity?` · ${escapeHtml(x.quantity)}`:''}</p></div></div><form id="foodSearchConfirmForm"><input type="hidden" name="source" value="${escapeHtml(x.source||'food-search')}"><input type="hidden" name="sourceId" value="${escapeHtml(String(x.id||''))}"><input type="hidden" name="pCalories" value="${p.calories??0}"><input type="hidden" name="pProtein" value="${p.protein??0}"><input type="hidden" name="pCarbs" value="${p.carbs??0}"><input type="hidden" name="pFat" value="${p.fat??0}">${dateField('date',todayKey())}<div class="field"><label>Moment</label><select name="mealType">${mealTypeOptions('lunch')}</select></div><div class="field"><label>Aliment</label><input name="description" value="${escapeHtml([x.name,x.brand].filter(Boolean).join(' · '))}"></div><div class="field"><label>Quantité consommée (g)</label><input id="foodSearchGrams" name="grams" type="number" min="1" step="1" value="${grams}"></div><div class="range-row"><div class="field"><label>Protéines (g)</label><input id="foodSearchProtein" name="protein" type="number" step="0.1" value="${macroForPortion(p.protein,grams)}"></div><div class="field"><label>Calories</label><input id="foodSearchCalories" name="calories" type="number" value="${Math.round(macroForPortion(p.calories,grams))}"></div></div><div class="range-row"><div class="field"><label>Glucides (g)</label><input id="foodSearchCarbs" name="carbs" type="number" step="0.1" value="${macroForPortion(p.carbs,grams)}"></div><div class="field"><label>Lipides (g)</label><input id="foodSearchFat" name="fat" type="number" step="0.1" value="${macroForPortion(p.fat,grams)}"></div></div><label class="checkline"><input type="checkbox" name="classic"> Ajouter à mes classiques</label><div class="confidence-box"><strong>Source : ${escapeHtml(x.sourceLabel||'Base alimentaire')}</strong><span>Valeurs calculées pour la quantité indiquée. Tu peux tout corriger.</span></div><button class="action" type="submit">Confirmer et enregistrer</button></form>`);
+  showSheet(`<h2>Confirmer l’aliment</h2><div class="identified-product">${x.image?`<img src="${escapeHtml(x.image)}" alt="">`:''}<div><div class="card-kicker">${escapeHtml(x.sourceLabel||'Base alimentaire')}</div><h3>${escapeHtml(x.name||'Aliment')}</h3><p>${escapeHtml(x.brand||'')}${x.quantity?` · ${escapeHtml(x.quantity)}`:''}</p></div></div><form id="foodSearchConfirmForm"><input type="hidden" name="source" value="${escapeHtml(x.source||'food-search')}"><input type="hidden" name="sourceId" value="${escapeHtml(String(x.id||''))}"><input type="hidden" name="pCalories" value="${p.calories??0}"><input type="hidden" name="pProtein" value="${p.protein??0}"><input type="hidden" name="pCarbs" value="${p.carbs??0}"><input type="hidden" name="pFat" value="${p.fat??0}">${dateField('date',todayKey())}<div class="field"><label>Moment</label><select name="mealType">${mealTypeOptions(pendingNutritionMealType||'lunch')}</select></div><div class="field"><label>Aliment</label><input name="description" value="${escapeHtml([x.name,x.brand].filter(Boolean).join(' · '))}"></div><div class="field"><label>Quantité consommée (g)</label><input id="foodSearchGrams" name="grams" type="number" min="1" step="1" value="${grams}"></div><div class="range-row"><div class="field"><label>Protéines (g)</label><input id="foodSearchProtein" name="protein" type="number" step="0.1" value="${macroForPortion(p.protein,grams)}"></div><div class="field"><label>Calories</label><input id="foodSearchCalories" name="calories" type="number" value="${Math.round(macroForPortion(p.calories,grams))}"></div></div><div class="range-row"><div class="field"><label>Glucides (g)</label><input id="foodSearchCarbs" name="carbs" type="number" step="0.1" value="${macroForPortion(p.carbs,grams)}"></div><div class="field"><label>Lipides (g)</label><input id="foodSearchFat" name="fat" type="number" step="0.1" value="${macroForPortion(p.fat,grams)}"></div></div><label class="checkline"><input type="checkbox" name="classic"> Ajouter à mes classiques</label><div class="confidence-box"><strong>Source : ${escapeHtml(x.sourceLabel||'Base alimentaire')}</strong><span>Valeurs calculées pour la quantité indiquée. Tu peux tout corriger.</span></div><button class="action" type="submit">Confirmer et enregistrer</button></form>`);
   $('#foodSearchGrams')?.addEventListener('input',updateFoodSearchPortion);
 }
 function updateFoodSearchPortion(){

@@ -175,3 +175,14 @@ Aucun changement fonctionnel aux modules Alimentation, Photos, Strava, Force, Ca
 - Vélo et saisie manuelle restent inchangés.
 - Libellé UI : Cadence moyenne (ppm).
 Cas de contrôle : Strava 86 -> 172 ppm pour une course ; 172 reste 172 ; vélo 86 reste 86.
+
+
+## Alimentation UX R1 — écran principal + repas du jour
+Bloc 1 uniquement, basé sur Cadence R1 validé.
+- Résumé du jour : kcal + protéines/glucides/lipides.
+- Quatre cartes fixes : Petit-déjeuner, Déjeuner, Collation, Dîner.
+- Chaque repas affiche ses aliments actuels et permet d'ouvrir/modifier chaque saisie.
+- Bouton Ajouter par repas avec les 4 méthodes existantes : recherche, scan, photo, saisie manuelle.
+- La méthode choisie pré-sélectionne le bon moment du repas.
+- Aucune recette, copie d'hier ou calendrier ajouté dans ce bloc.
+- Aucun changement Force, Cardio, Strava, Photos, Ressenti, Évolution ou IA.
