@@ -153,3 +153,10 @@ Ajout isolé dans Alimentation : recherche par nom/marque via Open Food Facts, c
 - Boutons dynamiques rebondés de façon robuste.
 - Cache PWA et fichiers JS/CSS forcés en v0912.
 - Aucun changement fonctionnel sur Alimentation, Strava ou Entraînement IA.
+
+
+## Ressenti R2
+Correctif isolé :
+- le formulaire stable s'ouvre normalement puis recharge les valeurs du check-in du jour depuis IndexedDB ;
+- cache PWA versionné uniquement pour garantir que l'iPhone charge réellement ce nouveau app.js.
+Aucun changement fonctionnel aux modules Alimentation, Photos, Strava, Force, Cardio, IA ou Évolution.

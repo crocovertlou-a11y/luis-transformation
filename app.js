@@ -377,7 +377,22 @@ function showSheet(html){ stopBarcodeCamera(); stopProgressCamera(); $('#sheetCo
 function slider(name,label,min,max,step,value,unit=''){ return `<div class="slider-line"><div class="slider-head"><label>${label}</label><output data-output="${name}">${value}${unit}</output></div><input type="range" name="${name}" min="${min}" max="${max}" step="${step}" value="${value}" data-range-unit="${unit}"></div>`; }
 function openSheet(kind){
   if(kind==='quick') return showSheet(`<h2>Donner quelque chose</h2><div class="sheet-grid"><button class="sheet-choice" data-sheet="checkin">◌<strong>Ressenti</strong></button><button class="sheet-choice" data-sheet="workout">◎<strong>Force</strong></button><button class="sheet-choice" data-sheet="cardio">⌁<strong>Cardio</strong></button>${state.profile.nutritionEnabled?'<button class="sheet-choice" data-sheet="nutritionHub">◒<strong>Alimentation</strong></button>':''}</div>`);
-  if(kind==='checkin') return showSheet(`<h2>Comment vas-tu aujourd’hui ?</h2><form id="checkinForm">${dateField('date',todayKey())}${slider('sleep','Sommeil','0','12','0.25','7',' h')}${slider('energy','Énergie','1','5','1','3','/5')}${slider('stress','Stress','1','5','1','2','/5')}${slider('hunger','Faim','1','5','1','3','/5')}<div class="field"><label>Poids (kg)</label><input name="weight" type="number" min="20" max="300" step="0.1" inputmode="decimal" placeholder="80.4"></div><div class="field"><label>Tour de taille (cm)</label><input name="waist" type="number" min="30" max="250" step="0.1" inputmode="decimal" placeholder="90.0"></div><button class="action" type="submit">Enregistrer</button></form>`);
+  if(kind==='checkin') {
+    showSheet(`<h2>Comment vas-tu aujourd’hui ?</h2><form id="checkinForm">${dateField('date',todayKey())}${slider('sleep','Sommeil','0','12','0.25','7',' h')}${slider('energy','Énergie','1','5','1','3','/5')}${slider('stress','Stress','1','5','1','2','/5')}${slider('hunger','Faim','1','5','1','3','/5')}<div class="field"><label>Poids (kg)</label><input name="weight" type="number" min="20" max="300" step="0.1" inputmode="decimal" placeholder="80.4"></div><div class="field"><label>Tour de taille (cm)</label><input name="waist" type="number" min="30" max="250" step="0.1" inputmode="decimal" placeholder="90.0"></div><button class="action" type="submit">Enregistrer</button></form>`);
+    const form=$('#checkinForm'), date=todayKey();
+    LTDB.get('checkins',date).then(existing=>{
+      if(!existing || !form || !form.isConnected) return;
+      ['sleep','energy','stress','hunger','weight','waist'].forEach(name=>{
+        if(existing[name]!==null && existing[name]!==undefined && form.elements[name]){
+          form.elements[name].value=existing[name];
+          if(form.elements[name].type==='range') updateRange(form.elements[name]);
+        }
+      });
+      const submit=form.querySelector('button[type="submit"]');
+      if(submit) submit.textContent='Mettre à jour';
+    }).catch(console.error);
+    return;
+  }
   if(kind==='workout') return showSheet(`<h2>Ta séance Force</h2><form id="workoutForm"><input type="hidden" name="name" value="Haut du corps">${dateField('date',todayKey())}${forceExerciseInput('Développé couché',4,6,'2 min')}${forceExerciseInput('Tractions',4,8,'90 s')}${forceExerciseInput('Rowing',3,10,'90 s')}${forceExerciseInput('Développé épaules',3,10,'75 s')}${forceExerciseInput('Gainage',3,'45 s','45 s')}<div class="field"><label>Durée totale (min)</label><input name="durationMin" type="number" inputmode="numeric" value="40"></div>${slider('effort','Ressenti','1','5','1','3','/5')}<button class="action" type="submit">Terminer la séance</button></form>`);
   if(kind==='suggestedWorkout') return LTDB.all('workouts').then(ws=>workoutDetailSheet(suggestWorkout(ws)));
   if(kind==='workoutIdeas') return showSheet(`<h2>Choisir l’entraînement</h2><p class="subtle">Choisis librement le type de séance. La suggestion n’est qu’un point de départ.</p><div class="workout-choice-grid">${workoutLibrary().map(w=>`<button class="suggestion-card workout-choice-card" data-workout-choice="${w.id}"><div><strong>${escapeHtml(w.title)}</strong><span>${escapeHtml(w.subtitle)} · ${escapeHtml(w.goalLabel)}</span></div><span>›</span></button>`).join('')}</div>`);
