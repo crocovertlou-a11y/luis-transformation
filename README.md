@@ -155,9 +155,10 @@ Ajout isolé dans Alimentation : recherche par nom/marque via Open Food Facts, c
 - Aucun changement fonctionnel sur Alimentation, Strava ou Entraînement IA.
 
 
-## Build 0.9.1.4.1 — Emergency stable
-Repart de 0.9.1.3. Corrige uniquement :
-- identité Luis dans le header et Évolution ;
-- valeur actuelle Poids/Tour de taille dans Évolution + delta seulement si plusieurs mesures ;
-- service worker simplifié et sécurisé : plus de double listener hérité, plus de fallback HTML pour un fichier JS/CSS.
-Aucune refonte Alimentation ni nouvelle logique IA.
+## RECOVERY 0.9.1.3
+Emergency rollback to the last known-good functional build.
+- Functional code is unchanged from 0.9.1.3.
+- Service worker disabled and unregistered.
+- Browser caches cleared in background.
+- Core JS/CSS served under unique recovery filenames to bypass stale PWA caches.
+Use this build only to restore a stable app baseline before any further fixes.
