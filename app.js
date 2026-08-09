@@ -438,7 +438,7 @@ function openSheet(kind){
   if(kind==='nutritionHub') return nutritionHubSheet();
   if(kind==='nutritionMealAdd'){
     const type=pendingNutritionMealType||'lunch';
-    return showSheet(`<h2>${mealTypeLabel(type)}</h2><p class="subtle">Comment veux-tu ajouter quelque chose à ce repas ?</p><div class="nutrition-actions meal-add-methods"><button class="sheet-choice" data-sheet="foodSearch">⌕<strong>Rechercher un aliment</strong><span>Nom, marque ou produit</span></button><button class="sheet-choice" data-sheet="barcode">▣<strong>Scanner un produit</strong><span>Code-barres</span></button><button class="sheet-choice" data-sheet="photoFood">◉<strong>Photo aliment / repas</strong><span>Le Compagnon analyse puis tu confirmes</span></button><button class="sheet-choice" data-sheet="food">＋<strong>Saisie manuelle</strong><span>Description + macros</span></button></div>`);
+    return showSheet(`<h2>${mealTypeLabel(type)}</h2><p class="subtle">Comment veux-tu ajouter quelque chose à ce repas ?</p><div class="nutrition-actions meal-add-methods"><button class="sheet-choice" data-sheet="foodSearch">⌕<strong>Rechercher un aliment</strong><span>Nom, marque ou produit</span></button><button class="sheet-choice" data-sheet="barcode">▣<strong>Scanner un produit</strong><span>Code-barres</span></button><button class="sheet-choice" data-sheet="photoFood">◉<strong>Photo aliment / repas</strong><span>Le Compagnon analyse puis tu confirmes</span></button><button class="sheet-choice" data-personal-recipes>♨<strong>Mes recettes</strong><span>Ajouter une recette personnelle</span></button><button class="sheet-choice" data-sheet="food">＋<strong>Saisie manuelle</strong><span>Description + macros</span></button></div>`);
   }
   if(kind==='food') return showSheet(`<h2>Ajouter un repas</h2><form id="foodForm">${dateField('date',todayKey())}<div class="field"><label>Moment</label><select name="mealType">${mealTypeOptions(pendingNutritionMealType||'lunch')}</select></div><div class="field"><label>Décris simplement</label><textarea name="description" rows="3" placeholder="Poulet, riz, légumes et un yaourt"></textarea></div><div class="range-row"><div class="field"><label>Protéines (g)</label><input name="protein" type="number" step="0.1"></div><div class="field"><label>Calories</label><input name="calories" type="number"></div></div><div class="range-row"><div class="field"><label>Glucides (g)</label><input name="carbs" type="number" step="0.1"></div><div class="field"><label>Lipides (g)</label><input name="fat" type="number" step="0.1"></div></div><div class="field"><label>Eau (L)</label><input name="water" type="number" step="0.1"></div><label class="checkline"><input type="checkbox" name="classic"> Ajouter à mes classiques</label><button class="action" type="submit">Enregistrer</button></form>`);
   if(kind==='foodSearch') return showSheet(`<h2>Rechercher un aliment</h2><p class="subtle">Recherche par nom ou marque. Choisis un résultat, indique la quantité et confirme avant l’enregistrement.</p><input type="hidden" id="foodSearchMealContext" value="${escapeHtml(pendingNutritionMealType||'')}"><form id="foodSearchForm"><div class="food-search-line"><input name="query" autocomplete="off" placeholder="Ex. skyr, poulet, Lidl High Protein…" required><button class="action compact" type="submit">Rechercher</button></div></form><div id="foodSearchStatus" class="ai-status"></div><div id="foodSearchResults"></div><div class="ai-note">Produits de marque : Open Food Facts. Aliments génériques : base nutritionnelle intégrée en complément.</div>`);
@@ -488,6 +488,59 @@ async function copyMealFromYesterday(type){
   await nutritionHubSheet();render();
 }
 
+
+async function getPersonalRecipes(){
+  const rows=await LTDB.all('memory');
+  return rows.filter(x=>x.type==='personal-recipe').sort((a,b)=>(b.updatedAt||b.createdAt||'').localeCompare(a.updatedAt||a.createdAt||''));
+}
+function recipeTotals(ingredients=[]){
+  return ingredients.reduce((a,x)=>({calories:a.calories+(Number(x.calories)||0),protein:a.protein+(Number(x.protein)||0),carbs:a.carbs+(Number(x.carbs)||0),fat:a.fat+(Number(x.fat)||0)}),{calories:0,protein:0,carbs:0,fat:0});
+}
+function recipeIngredientRow(i,x={}){
+  return `<div class="recipe-ingredient-row" data-recipe-row="${i}"><input name="ingredientName" placeholder="Ingrédient" value="${escapeHtml(x.name||'')}"><input name="ingredientQty" type="number" min="0" step="0.1" placeholder="g" value="${x.qty??''}"><input name="ingredientProtein" type="number" min="0" step="0.1" placeholder="Prot." value="${x.protein??''}"><input name="ingredientCalories" type="number" min="0" step="1" placeholder="kcal" value="${x.calories??''}"><input name="ingredientCarbs" type="number" min="0" step="0.1" placeholder="Gluc." value="${x.carbs??''}"><input name="ingredientFat" type="number" min="0" step="0.1" placeholder="Lip." value="${x.fat??''}"><button type="button" class="recipe-remove" data-remove-recipe-row="${i}">×</button></div>`;
+}
+async function personalRecipesSheet(){
+  const recipes=await getPersonalRecipes();
+  return showSheet(`<div class="nutrition-page-head"><div><div class="card-kicker">Alimentation</div><h2>Mes recettes</h2></div><button class="action compact" type="button" data-new-recipe>＋ Nouvelle</button></div>${recipes.length?`<div class="personal-recipe-list">${recipes.map(r=>{const t=recipeTotals(r.ingredients),p=Math.max(1,Number(r.portions)||1);return `<section class="personal-recipe-card"><button type="button" class="personal-recipe-main" data-use-recipe="${r.id}"><div><strong>${escapeHtml(r.name||'Recette')}</strong><small>${r.ingredients?.length||0} ingrédient${(r.ingredients?.length||0)>1?'s':''} · ${p} portion${p>1?'s':''}</small></div><span>${Math.round(t.calories/p)} kcal<br><small>${Math.round(t.protein/p)} g prot. / portion</small></span></button><button type="button" class="recipe-edit-link" data-edit-recipe="${r.id}">Modifier</button></section>`}).join('')}</div>`:`<div class="empty">Aucune recette personnelle. Crée ta première recette.</div>`}`);
+}
+async function recipeEditorSheet(id=''){
+  const recipes=await getPersonalRecipes(),r=recipes.find(x=>x.id===id)||{id:'',name:'',portions:1,ingredients:[{}]};
+  state.recipeEditing={...r,ingredients:(r.ingredients?.length?r.ingredients:[{}]).map(x=>({...x}))};
+  renderRecipeEditor();
+}
+function renderRecipeEditor(){
+  const r=state.recipeEditing||{id:'',name:'',portions:1,ingredients:[{}]},t=recipeTotals(r.ingredients),p=Math.max(.01,Number(r.portions)||1);
+  showSheet(`<h2>${r.id?'Modifier':'Nouvelle'} recette</h2><form id="recipeForm"><div class="field"><label>Nom de la recette</label><input name="recipeName" required value="${escapeHtml(r.name||'')}" placeholder="Ex. Bowl cake"></div><div class="field"><label>Nombre de portions préparées</label><input name="recipePortions" type="number" min="0.25" step="0.25" required value="${r.portions||1}"><small>Ex. 4 si la recette complète donne quatre portions.</small></div><div class="recipe-section-title"><strong>Ingrédients</strong><button type="button" class="text-action" data-add-recipe-row>＋ Ajouter</button></div><div class="recipe-columns"><span>Aliment</span><span>Qté</span><span>Prot.</span><span>kcal</span><span>Gluc.</span><span>Lip.</span><span></span></div><div id="recipeIngredientRows">${r.ingredients.map((x,i)=>recipeIngredientRow(i,x)).join('')}</div><section class="recipe-preview"><strong>Par portion</strong><div><span>${Math.round(t.calories/p)} kcal</span><span>${(t.protein/p).toFixed(1)} g prot.</span><span>${(t.carbs/p).toFixed(1)} g gluc.</span><span>${(t.fat/p).toFixed(1)} g lip.</span></div></section><button class="action" type="submit">Enregistrer la recette</button></form>`);
+}
+function syncRecipeEditorFromForm(){
+  const f=$('#recipeForm');if(!f||!state.recipeEditing)return;
+  state.recipeEditing.name=String(f.recipeName?.value||'');
+  state.recipeEditing.portions=Number(f.recipePortions?.value)||1;
+  const rows=[...document.querySelectorAll('.recipe-ingredient-row')];
+  state.recipeEditing.ingredients=rows.map(row=>({name:row.querySelector('[name=ingredientName]')?.value||'',qty:Number(row.querySelector('[name=ingredientQty]')?.value)||0,protein:Number(row.querySelector('[name=ingredientProtein]')?.value)||0,calories:Number(row.querySelector('[name=ingredientCalories]')?.value)||0,carbs:Number(row.querySelector('[name=ingredientCarbs]')?.value)||0,fat:Number(row.querySelector('[name=ingredientFat]')?.value)||0}));
+}
+async function savePersonalRecipe(e){
+  e.preventDefault();syncRecipeEditorFromForm();
+  const r=state.recipeEditing;if(!r?.name.trim())return;
+  r.ingredients=(r.ingredients||[]).filter(x=>x.name.trim());
+  if(!r.ingredients.length){toast('Ajoute au moins un ingrédient');return;}
+  const now=new Date().toISOString();
+  await LTDB.put('memory',{...r,id:r.id||uid(),type:'personal-recipe',createdAt:r.createdAt||now,updatedAt:now});
+  toast('Recette enregistrée');await personalRecipesSheet();
+}
+async function usePersonalRecipe(id){
+  const recipes=await getPersonalRecipes(),r=recipes.find(x=>x.id===id);if(!r)return;
+  state.recipeToUse=r;
+  const t=recipeTotals(r.ingredients),p=Math.max(.01,Number(r.portions)||1);
+  showSheet(`<h2>${escapeHtml(r.name)}</h2><p class="subtle">Quelle quantité as-tu mangée ?</p><form id="useRecipeForm"><input type="hidden" name="recipeId" value="${r.id}"><div class="portion-pills">${[['0.25','¼'],['0.5','½'],['0.75','¾'],['1','1'],['1.5','1½'],['2','2']].map(([v,l])=>`<label><input type="radio" name="portionUsed" value="${v}" ${v==='1'?'checked':''}><span>${l}</span></label>`).join('')}</div><div class="field"><label>Ou saisir une portion</label><input name="customPortion" type="number" min="0.05" step="0.05" placeholder="Ex. 0.33"></div><div class="field"><label>Repas</label><select name="mealType">${mealTypeOptions(pendingNutritionMealType||'lunch')}</select></div><section class="recipe-preview"><strong>Pour 1 portion</strong><div><span>${Math.round(t.calories/p)} kcal</span><span>${(t.protein/p).toFixed(1)} g prot.</span><span>${(t.carbs/p).toFixed(1)} g gluc.</span><span>${(t.fat/p).toFixed(1)} g lip.</span></div></section><button class="action" type="submit">Ajouter au repas</button></form>`);
+}
+async function addRecipeToMeal(e){
+  e.preventDefault();const f=new FormData(e.currentTarget),r=state.recipeToUse;if(!r)return;
+  const used=Number(f.get('customPortion'))||Number(f.get('portionUsed'))||1,p=Math.max(.01,Number(r.portions)||1),t=recipeTotals(r.ingredients),factor=used/p;
+  await LTDB.put('food',{id:uid(),date:todayKey(),mealType:f.get('mealType')||'lunch',description:r.name,protein:Number((t.protein*factor).toFixed(1)),calories:Math.round(t.calories*factor),carbs:Number((t.carbs*factor).toFixed(1)),fat:Number((t.fat*factor).toFixed(1)),water:0,classic:false,source:'personal-recipe',recipeId:r.id,recipePortion:used,createdAt:new Date().toISOString()});
+  toast(`${r.name} ajouté · ${used} portion${used>1?'s':''}`);pendingNutritionMealType=null;await nutritionHubSheet();render();
+}
+
 async function nutritionHubSheet(){
   pendingNutritionMealType=null;
   const all=await LTDB.all('food');
@@ -505,7 +558,7 @@ async function nutritionHubSheet(){
     </section>
     <div class="nutrition-meals">${mealOrder.map(type=>nutritionMealCard(type,byMeal[type])).join('')}</div>
     <div class="nutrition-legacy-actions"><button class="action secondary" data-sheet="foodSearch">Rechercher</button><button class="action secondary" data-sheet="barcode">Scanner</button><button class="action secondary" data-sheet="photoFood">Photo</button><button class="action secondary" data-sheet="food">Saisie manuelle</button></div>
-    <p class="nutrition-safe-note">Tes fonctions actuelles restent disponibles. Recettes, copier depuis hier et calendrier arrivent dans les prochains blocs validés.</p>`);
+    <button type="button" class="action secondary nutrition-recipes-btn" data-personal-recipes>Mes recettes</button><p class="nutrition-safe-note">Recherche, scan, photo, saisie manuelle et copie depuis hier restent disponibles.</p>`);
 }
 async function editFoodSheet(id){
   const x=await LTDB.get('food',id); if(!x) return;
@@ -631,6 +684,16 @@ function bindSheet(){
   document.querySelectorAll('[data-sheet]').forEach(b=>b.addEventListener('click',()=>openSheet(b.dataset.sheet)));
   document.querySelectorAll('[data-meal-add]').forEach(b=>b.addEventListener('click',()=>{pendingNutritionMealType=b.dataset.mealAdd;openSheet('nutritionMealAdd')}));
   document.querySelectorAll('[data-copy-yesterday]').forEach(b=>b.addEventListener('click',()=>copyMealFromYesterday(b.dataset.copyYesterday)));
+
+  document.querySelectorAll('[data-personal-recipes]').forEach(b=>b.addEventListener('click',personalRecipesSheet));
+  $('[data-new-recipe]')?.addEventListener('click',()=>recipeEditorSheet());
+  document.querySelectorAll('[data-edit-recipe]').forEach(b=>b.addEventListener('click',()=>recipeEditorSheet(b.dataset.editRecipe)));
+  document.querySelectorAll('[data-use-recipe]').forEach(b=>b.addEventListener('click',()=>usePersonalRecipe(b.dataset.useRecipe)));
+  $('[data-add-recipe-row]')?.addEventListener('click',()=>{syncRecipeEditorFromForm();state.recipeEditing.ingredients.push({});renderRecipeEditor()});
+  document.querySelectorAll('[data-remove-recipe-row]').forEach(b=>b.addEventListener('click',()=>{syncRecipeEditorFromForm();state.recipeEditing.ingredients.splice(Number(b.dataset.removeRecipeRow),1);if(!state.recipeEditing.ingredients.length)state.recipeEditing.ingredients=[{}];renderRecipeEditor()}));
+  $('#recipeForm')?.addEventListener('submit',savePersonalRecipe);
+  $('#useRecipeForm')?.addEventListener('submit',addRecipeToMeal);
+
   document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>{stopBarcodeCamera();stopProgressCamera();$('#sheet').close()}));
   document.querySelectorAll('[data-workout-choice]').forEach(b=>b.addEventListener('click',()=>workoutDetailSheet(workoutById(b.dataset.workoutChoice))));
   document.querySelectorAll('[data-swap-exercise]').forEach(b=>b.addEventListener('click',()=>swapExerciseSheet(Number(b.dataset.swapExercise))));

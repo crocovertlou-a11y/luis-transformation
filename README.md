@@ -196,3 +196,14 @@ Basé sur Alimentation UX R1 + Recherche R2 validé.
 - Si le repas contient déjà des éléments : choix Ajouter ou Remplacer.
 - Les copies reçoivent de nouveaux identifiants ; la journée précédente n'est jamais modifiée.
 - Aucun changement au moteur Recherche, IA, scan, photo, Cardio, Strava, Force, Ressenti ou Évolution.
+
+
+## Mes recettes + portions R1
+Basé exclusivement sur Copier Hier R1 validé.
+- Bibliothèque Mes recettes.
+- Création/modification : nom, nombre de portions, ingrédients et macros.
+- Nutrition calculée par portion.
+- Ajout au repas avec ¼, ½, ¾, 1, 1½, 2 ou fraction personnalisée.
+- Recalcul automatique des macros selon la portion consommée.
+- Recherche/IA/scan/photo et Copier hier conservés.
+- Aucun changement aux autres modules.
