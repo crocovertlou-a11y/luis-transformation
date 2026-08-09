@@ -148,17 +148,20 @@ function renderCheckinSummary(t){
   return `<div class="summary-lines">${rows.join('')}</div>`;
 }
 async function renderEvolution(checkins,workouts,cardio){
-  const sorted=checkins.filter(x=>x.weight||x.waist).sort((a,b)=>a.date.localeCompare(b.date));
-  const first=sorted[0], last=sorted.at(-1);
-  const weightDelta=first?.weight&&last?.weight?+(last.weight-first.weight).toFixed(1):null;
-  const waistDelta=first?.waist&&last?.waist?+(last.waist-first.waist).toFixed(1):null;
+  const sorted=checkins.filter(x=>x.weight!=null||x.waist!=null).sort((a,b)=>a.date.localeCompare(b.date));
+  const weightRows=sorted.filter(x=>x.weight!=null);
+  const waistRows=sorted.filter(x=>x.waist!=null);
+  const latestWeight=weightRows.length?Number(weightRows.at(-1).weight):null;
+  const latestWaist=waistRows.length?Number(waistRows.at(-1).waist):null;
+  const weightDelta=weightRows.length>1?+(latestWeight-Number(weightRows[0].weight)).toFixed(1):null;
+  const waistDelta=waistRows.length>1?+(latestWaist-Number(waistRows[0].waist)).toFixed(1):null;
   const activities=workouts.filter(x=>daysAgo(x.date)<=30).length+cardio.filter(x=>daysAgo(x.date)<=30).length;
   const reading=sorted.length<2?'Je n’ai pas encore assez de recul pour lire une tendance fiable.':'Ton évolution reste cohérente avec ce que tu suis actuellement.';
   const photos=(await LTDB.all('photos')).sort((x,y)=>(y.date+y.createdAt).localeCompare(x.date+x.createdAt));
   const groups={}; photos.forEach(p=>(groups[p.date]??=[]).push(p));
   const gallery=Object.entries(groups).slice(0,12).map(([date,items])=>`<div class="photo-date-group"><div class="photo-date">${formatPhotoDate(date)}</div><div class="photo-thumbs">${items.map(p=>`<button class="photo-thumb" data-photo-view="${p.id}" aria-label="${escapeHtml(p.view||'Photo')} ${date}"><img src="${p.image}" alt="${escapeHtml(p.view||'Photo évolution')}"><span>${escapeHtml(p.view||'Photo')}</span></button>`).join('')}</div></div>`).join('');
   return `<div class="trend-hero"><div class="trend-mark"><svg viewBox="0 0 64 64"><path d="M13 44A23 23 0 0 1 45 12" class="fluidity-arc" style="stroke-width:6"/><path d="M51 19A23 23 0 0 1 20 52" class="fluidity-arc" style="stroke-width:6"/></svg><span class="initials" style="font-size:14px">${escapeHtml(state.profile.initials)}</span></div><div class="trend-copy">${reading}</div><p class="subtle">Le sens d’abord. Les graphiques seulement si tu veux creuser.</p></div>
-  <div class="signals"><div class="signal"><strong>${weightDelta===null?'—':signed(weightDelta)+' kg'}</strong><span>Poids</span></div><div class="signal"><strong>${waistDelta===null?'—':signed(waistDelta)+' cm'}</strong><span>Tour de taille</span></div><div class="signal"><strong>${activities}</strong><span>Activités · 30 j</span></div></div>
+  <div class="signals"><div class="signal"><strong>${latestWeight==null?'—':latestWeight.toFixed(1)+' kg'}</strong><span>Poids${weightDelta===null?'':` · ${signed(weightDelta)} kg`}</span></div><div class="signal"><strong>${latestWaist==null?'—':latestWaist.toFixed(1)+' cm'}</strong><span>Tour de taille${waistDelta===null?'':` · ${signed(waistDelta)} cm`}</span></div><div class="signal"><strong>${activities}</strong><span>Activités · 30 j</span></div></div>
   <div class="card photo-journal"><div class="card-kicker">Photos</div><div class="photo-title-row"><div><h3>Voir le changement</h3><p class="subtle">Même cadrage, même vue, une date. L’analyse IA viendra ensuite.</p></div><div class="photo-top-actions"><button class="action secondary compact" type="button" data-open="photoCompare">Comparer</button><button class="action compact" type="button" data-open="progressPhoto">Ajouter</button></div></div>${gallery||'<div class="empty">Tes photos d’évolution apparaîtront ici en petites vignettes, classées par date.</div>'}</div>
   <div class="card" style="margin-top:14px"><div class="card-kicker">Comprendre</div><h3>Pourquoi cette lecture ?</h3><p class="subtle">Les graphiques et l’historique détaillé restent au niveau suivant.</p><div class="card-actions"><button class="action secondary" data-open="details">Explorer les données</button></div></div>`;
 }

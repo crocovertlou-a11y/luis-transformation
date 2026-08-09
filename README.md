@@ -160,3 +160,10 @@ Correctif isolé :
 - le formulaire stable s'ouvre normalement puis recharge les valeurs du check-in du jour depuis IndexedDB ;
 - cache PWA versionné uniquement pour garantir que l'iPhone charge réellement ce nouveau app.js.
 Aucun changement fonctionnel aux modules Alimentation, Photos, Strava, Force, Cardio, IA ou Évolution.
+
+
+## Évolution R1 — uniquement
+- Évolution affiche désormais la dernière valeur réelle de poids et de tour de taille.
+- Le delta n'apparaît qu'à partir de deux mesures.
+- Le compteur Activités 30 j est inchangé.
+- Aucun changement Alimentation, Photos, Strava, Force, Cardio, IA ou Ressenti.
