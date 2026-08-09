@@ -153,3 +153,10 @@ Ajout isolé dans Alimentation : recherche par nom/marque via Open Food Facts, c
 - Boutons dynamiques rebondés de façon robuste.
 - Cache PWA et fichiers JS/CSS forcés en v0912.
 - Aucun changement fonctionnel sur Alimentation, Strava ou Entraînement IA.
+
+## Build 0.9.1.4 — Stabilisation Evolution + identité
+- Logo validé appliqué au header global, Profil et Évolution.
+- Évolution affiche désormais la dernière valeur réelle de poids et tour de taille.
+- Dès qu’au moins deux mesures existent, le delta est conservé en information secondaire.
+- Activités 30 j inchangé.
+- Aucun changement sur Photos, Strava, Force ou Alimentation.
