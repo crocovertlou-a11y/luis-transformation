@@ -207,3 +207,13 @@ Basé exclusivement sur Copier Hier R1 validé.
 - Recalcul automatique des macros selon la portion consommée.
 - Recherche/IA/scan/photo et Copier hier conservés.
 - Aucun changement aux autres modules.
+
+
+## Recettes + portions R2 — correctif ajout d'ingrédients
+- « Ajouter » ouvre maintenant Recherche / Scan / Photo / Saisie manuelle.
+- Recherche réutilise exactement le moteur alimentaire validé.
+- Scan réutilise Open Food Facts.
+- Photo réutilise le Compagnon IA.
+- L'ingrédient choisi est ajouté à la recette, pas au repas du jour.
+- Les macros de la recette et par portion se recalculent après chaque ingrédient.
+- Aucun changement aux autres blocs validés.

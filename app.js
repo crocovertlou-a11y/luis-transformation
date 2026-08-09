@@ -436,6 +436,13 @@ function openSheet(kind){
   if(kind==='cardioHistory') return LTDB.all('cardio').then(rows=>showSheet(`<h2>Historique Cardio</h2><div class="list">${rows.sort((a,b)=>b.date.localeCompare(a.date)).map(x=>`<button class="list-row history-button" data-edit-activity="Cardio:${x.id}"><div><strong>${escapeHtml(x.type||'Cardio')}</strong><div class="status">${formatPhotoDate(x.date)}${x.distance?` · ${x.distance} km`:''}${x.durationLabel?` · ${x.durationLabel}`:''}</div></div><span class="pill">Modifier</span></button>`).join('')||'<div class="empty">Aucune activité Cardio.</div>'}</div>`));
   if(kind==='cardio') return showSheet(`<h2>Ajouter une activité Cardio</h2><form id="cardioForm">${dateField('date',todayKey())}<div class="field"><label>Type</label><select name="type"><option>Course</option><option>Vélo</option><option>Natation</option><option>Marche</option><option>Autre</option></select></div><div class="field"><label>Distance (km)</label><input name="distance" type="number" step="0.01" inputmode="decimal"></div><div class="duration-picker"><div><label>Heures</label><input name="hours" type="number" min="0" max="23" inputmode="numeric" value="0"></div><span>:</span><div><label>Minutes</label><input name="minutes" type="number" min="0" max="59" inputmode="numeric" value="40"></div><span>:</span><div><label>Secondes</label><input name="seconds" type="number" min="0" max="59" inputmode="numeric" value="0"></div></div><div class="range-row"><div class="field"><label>FC moyenne</label><input name="hr" type="number" inputmode="numeric"></div><div class="field"><label>Cadence moy.</label><input name="cadence" type="number" inputmode="numeric"></div></div><div class="range-row"><div class="field"><label>Dénivelé + (m)</label><input name="elevation" type="number" inputmode="numeric"></div><div class="field"><label>Calories (kcal)</label><input name="calories" type="number" inputmode="numeric"></div></div><button class="action" type="submit">Enregistrer</button></form>`);
   if(kind==='nutritionHub') return nutritionHubSheet();
+  if(kind==='recipeIngredientAdd'){
+    return showSheet(`<h2>Ajouter un ingrédient</h2><p class="subtle">Utilise exactement les mêmes outils que pour tes repas.</p><div class="nutrition-actions meal-add-methods"><button class="sheet-choice" data-sheet="foodSearch">⌕<strong>Rechercher un aliment</strong><span>Nom, marque ou produit</span></button><button class="sheet-choice" data-sheet="barcode">▣<strong>Scanner un produit</strong><span>Code-barres</span></button><button class="sheet-choice" data-sheet="photoFood">◉<strong>Photo</strong><span>Le Compagnon analyse puis tu confirmes</span></button><button class="sheet-choice" data-sheet="recipeManualIngredient">＋<strong>Saisie manuelle</strong><span>Quantité + macros</span></button></div>`);
+  }
+  if(kind==='recipeManualIngredient'){
+    return showSheet(`<h2>Ingrédient manuel</h2><form id="recipeManualIngredientForm"><div class="field"><label>Nom</label><input name="name" required placeholder="Ex. flocons d’avoine"></div><div class="field"><label>Quantité (g)</label><input name="qty" type="number" min="0" step="0.1"></div><div class="range-row"><div class="field"><label>Protéines (g)</label><input name="protein" type="number" min="0" step="0.1"></div><div class="field"><label>Calories</label><input name="calories" type="number" min="0" step="1"></div></div><div class="range-row"><div class="field"><label>Glucides (g)</label><input name="carbs" type="number" min="0" step="0.1"></div><div class="field"><label>Lipides (g)</label><input name="fat" type="number" min="0" step="0.1"></div></div><button class="action" type="submit">Ajouter à la recette</button></form>`);
+  }
+
   if(kind==='nutritionMealAdd'){
     const type=pendingNutritionMealType||'lunch';
     return showSheet(`<h2>${mealTypeLabel(type)}</h2><p class="subtle">Comment veux-tu ajouter quelque chose à ce repas ?</p><div class="nutrition-actions meal-add-methods"><button class="sheet-choice" data-sheet="foodSearch">⌕<strong>Rechercher un aliment</strong><span>Nom, marque ou produit</span></button><button class="sheet-choice" data-sheet="barcode">▣<strong>Scanner un produit</strong><span>Code-barres</span></button><button class="sheet-choice" data-sheet="photoFood">◉<strong>Photo aliment / repas</strong><span>Le Compagnon analyse puis tu confirmes</span></button><button class="sheet-choice" data-personal-recipes>♨<strong>Mes recettes</strong><span>Ajouter une recette personnelle</span></button><button class="sheet-choice" data-sheet="food">＋<strong>Saisie manuelle</strong><span>Description + macros</span></button></div>`);
@@ -489,6 +496,24 @@ async function copyMealFromYesterday(type){
 }
 
 
+
+function addIngredientToCurrentRecipe(ingredient){
+  if(!state.recipeEditing) state.recipeEditing={id:'',name:'',portions:1,ingredients:[]};
+  if(!Array.isArray(state.recipeEditing.ingredients)) state.recipeEditing.ingredients=[];
+  state.recipeEditing.ingredients.push({
+    name:ingredient.name||'Ingrédient',
+    qty:Number(ingredient.qty)||0,
+    protein:Number(ingredient.protein)||0,
+    calories:Number(ingredient.calories)||0,
+    carbs:Number(ingredient.carbs)||0,
+    fat:Number(ingredient.fat)||0,
+    source:ingredient.source||'manual'
+  });
+  state.recipeIngredientMode=false;
+  renderRecipeEditor();
+  toast('Ingrédient ajouté à la recette');
+}
+
 async function getPersonalRecipes(){
   const rows=await LTDB.all('memory');
   return rows.filter(x=>x.type==='personal-recipe').sort((a,b)=>(b.updatedAt||b.createdAt||'').localeCompare(a.updatedAt||a.createdAt||''));
@@ -504,20 +529,21 @@ async function personalRecipesSheet(){
   return showSheet(`<div class="nutrition-page-head"><div><div class="card-kicker">Alimentation</div><h2>Mes recettes</h2></div><button class="action compact" type="button" data-new-recipe>＋ Nouvelle</button></div>${recipes.length?`<div class="personal-recipe-list">${recipes.map(r=>{const t=recipeTotals(r.ingredients),p=Math.max(1,Number(r.portions)||1);return `<section class="personal-recipe-card"><button type="button" class="personal-recipe-main" data-use-recipe="${r.id}"><div><strong>${escapeHtml(r.name||'Recette')}</strong><small>${r.ingredients?.length||0} ingrédient${(r.ingredients?.length||0)>1?'s':''} · ${p} portion${p>1?'s':''}</small></div><span>${Math.round(t.calories/p)} kcal<br><small>${Math.round(t.protein/p)} g prot. / portion</small></span></button><button type="button" class="recipe-edit-link" data-edit-recipe="${r.id}">Modifier</button></section>`}).join('')}</div>`:`<div class="empty">Aucune recette personnelle. Crée ta première recette.</div>`}`);
 }
 async function recipeEditorSheet(id=''){
-  const recipes=await getPersonalRecipes(),r=recipes.find(x=>x.id===id)||{id:'',name:'',portions:1,ingredients:[{}]};
-  state.recipeEditing={...r,ingredients:(r.ingredients?.length?r.ingredients:[{}]).map(x=>({...x}))};
+  const recipes=await getPersonalRecipes(),r=recipes.find(x=>x.id===id)||{id:'',name:'',portions:1,ingredients:[]};
+  state.recipeEditing={...r,ingredients:(r.ingredients||[]).map(x=>({...x}))};
   renderRecipeEditor();
 }
 function renderRecipeEditor(){
-  const r=state.recipeEditing||{id:'',name:'',portions:1,ingredients:[{}]},t=recipeTotals(r.ingredients),p=Math.max(.01,Number(r.portions)||1);
-  showSheet(`<h2>${r.id?'Modifier':'Nouvelle'} recette</h2><form id="recipeForm"><div class="field"><label>Nom de la recette</label><input name="recipeName" required value="${escapeHtml(r.name||'')}" placeholder="Ex. Bowl cake"></div><div class="field"><label>Nombre de portions préparées</label><input name="recipePortions" type="number" min="0.25" step="0.25" required value="${r.portions||1}"><small>Ex. 4 si la recette complète donne quatre portions.</small></div><div class="recipe-section-title"><strong>Ingrédients</strong><button type="button" class="text-action" data-add-recipe-row>＋ Ajouter</button></div><div class="recipe-columns"><span>Aliment</span><span>Qté</span><span>Prot.</span><span>kcal</span><span>Gluc.</span><span>Lip.</span><span></span></div><div id="recipeIngredientRows">${r.ingredients.map((x,i)=>recipeIngredientRow(i,x)).join('')}</div><section class="recipe-preview"><strong>Par portion</strong><div><span>${Math.round(t.calories/p)} kcal</span><span>${(t.protein/p).toFixed(1)} g prot.</span><span>${(t.carbs/p).toFixed(1)} g gluc.</span><span>${(t.fat/p).toFixed(1)} g lip.</span></div></section><button class="action" type="submit">Enregistrer la recette</button></form>`);
+  const r=state.recipeEditing||{id:'',name:'',portions:1,ingredients:[]},t=recipeTotals(r.ingredients),p=Math.max(.01,Number(r.portions)||1);
+  const ingredientList=(r.ingredients||[]).length
+    ? `<div class="recipe-added-list">${r.ingredients.map((x,i)=>`<div class="recipe-added-item"><div><strong>${escapeHtml(x.name||'Ingrédient')}</strong><small>${x.qty?`${x.qty} g · `:''}${Math.round(Number(x.calories)||0)} kcal · ${(Number(x.protein)||0).toFixed(1)} g prot.</small></div><button type="button" class="recipe-remove" data-remove-recipe-row="${i}">×</button></div>`).join('')}</div>`
+    : `<div class="empty recipe-empty">Aucun ingrédient. Appuie sur « Ajouter un ingrédient ».</div>`;
+  showSheet(`<h2>${r.id?'Modifier':'Nouvelle'} recette</h2><form id="recipeForm"><div class="field"><label>Nom de la recette</label><input name="recipeName" required value="${escapeHtml(r.name||'')}" placeholder="Ex. Bowl cake"></div><div class="field"><label>Nombre de portions préparées</label><input name="recipePortions" type="number" min="0.25" step="0.25" required value="${r.portions||1}"><small>Ex. 4 si la recette complète donne quatre portions.</small></div><div class="recipe-section-title"><strong>Ingrédients</strong><button type="button" class="text-action" data-add-recipe-ingredient>＋ Ajouter</button></div>${ingredientList}<section class="recipe-preview"><strong>Par portion</strong><div><span>${Math.round(t.calories/p)} kcal</span><span>${(t.protein/p).toFixed(1)} g prot.</span><span>${(t.carbs/p).toFixed(1)} g gluc.</span><span>${(t.fat/p).toFixed(1)} g lip.</span></div></section><button class="action" type="submit">Enregistrer la recette</button></form>`);
 }
 function syncRecipeEditorFromForm(){
   const f=$('#recipeForm');if(!f||!state.recipeEditing)return;
   state.recipeEditing.name=String(f.recipeName?.value||'');
   state.recipeEditing.portions=Number(f.recipePortions?.value)||1;
-  const rows=[...document.querySelectorAll('.recipe-ingredient-row')];
-  state.recipeEditing.ingredients=rows.map(row=>({name:row.querySelector('[name=ingredientName]')?.value||'',qty:Number(row.querySelector('[name=ingredientQty]')?.value)||0,protein:Number(row.querySelector('[name=ingredientProtein]')?.value)||0,calories:Number(row.querySelector('[name=ingredientCalories]')?.value)||0,carbs:Number(row.querySelector('[name=ingredientCarbs]')?.value)||0,fat:Number(row.querySelector('[name=ingredientFat]')?.value)||0}));
 }
 async function savePersonalRecipe(e){
   e.preventDefault();syncRecipeEditorFromForm();
@@ -689,8 +715,17 @@ function bindSheet(){
   $('[data-new-recipe]')?.addEventListener('click',()=>recipeEditorSheet());
   document.querySelectorAll('[data-edit-recipe]').forEach(b=>b.addEventListener('click',()=>recipeEditorSheet(b.dataset.editRecipe)));
   document.querySelectorAll('[data-use-recipe]').forEach(b=>b.addEventListener('click',()=>usePersonalRecipe(b.dataset.useRecipe)));
-  $('[data-add-recipe-row]')?.addEventListener('click',()=>{syncRecipeEditorFromForm();state.recipeEditing.ingredients.push({});renderRecipeEditor()});
-  document.querySelectorAll('[data-remove-recipe-row]').forEach(b=>b.addEventListener('click',()=>{syncRecipeEditorFromForm();state.recipeEditing.ingredients.splice(Number(b.dataset.removeRecipeRow),1);if(!state.recipeEditing.ingredients.length)state.recipeEditing.ingredients=[{}];renderRecipeEditor()}));
+
+  document.querySelectorAll('[data-remove-recipe-row]').forEach(b=>b.addEventListener('click',()=>{syncRecipeEditorFromForm();state.recipeEditing.ingredients.splice(Number(b.dataset.removeRecipeRow),1);renderRecipeEditor()}));
+
+  $('[data-add-recipe-ingredient]')?.addEventListener('click',()=>{syncRecipeEditorFromForm();state.recipeIngredientMode=true;openSheet('recipeIngredientAdd')});
+  $('#recipeManualIngredientForm')?.addEventListener('submit',e=>{e.preventDefault();const f=new FormData(e.currentTarget);addIngredientToCurrentRecipe({name:f.get('name'),qty:f.get('qty'),protein:f.get('protein'),calories:f.get('calories'),carbs:f.get('carbs'),fat:f.get('fat'),source:'manual'})});
+  $('#recipeSearchConfirmForm')?.addEventListener('submit',saveRecipeSearchIngredient);
+  $('#recipeSearchGrams')?.addEventListener('input',updateRecipeSearchPreview);
+  if($('#recipeSearchConfirmForm')) updateRecipeSearchPreview();
+  $('#recipeBarcodeConfirmForm')?.addEventListener('submit',e=>{e.preventDefault();const f=new FormData(e.currentTarget),g=Number(f.get('grams'))||0;addIngredientToCurrentRecipe({name:f.get('name'),qty:g,calories:macroForPortion(f.get('pCalories'),g),protein:macroForPortion(f.get('pProtein'),g),carbs:macroForPortion(f.get('pCarbs'),g),fat:macroForPortion(f.get('pFat'),g),source:'barcode'})});
+  $('#recipeAIConfirmForm')?.addEventListener('submit',e=>{e.preventDefault();const f=new FormData(e.currentTarget);addIngredientToCurrentRecipe({name:f.get('name'),qty:f.get('qty'),protein:f.get('protein'),calories:f.get('calories'),carbs:f.get('carbs'),fat:f.get('fat'),source:'ai-photo'});pendingFoodImageData=null});
+
   $('#recipeForm')?.addEventListener('submit',savePersonalRecipe);
   $('#useRecipeForm')?.addEventListener('submit',addRecipeToMeal);
 
@@ -901,9 +936,24 @@ async function searchFoods(e){
 }
 function showFoodSearchConfirm(x){
   const grams=Number(x.servingGrams)||100,p=x.per100||{};
+  if(state.recipeIngredientMode){
+    return showSheet(`<h2>Ajouter à la recette</h2><div class="identified-product">${x.image?`<img src="${escapeHtml(x.image)}" alt="">`:''}<div><div class="card-kicker">${escapeHtml(x.sourceLabel||'Base alimentaire')}</div><h3>${escapeHtml(x.name||'Aliment')}</h3><p>${escapeHtml(x.brand||'')}</p></div></div><form id="recipeSearchConfirmForm"><input type="hidden" name="name" value="${escapeHtml([x.name,x.brand].filter(Boolean).join(' · '))}"><input type="hidden" name="pCalories" value="${p.calories??0}"><input type="hidden" name="pProtein" value="${p.protein??0}"><input type="hidden" name="pCarbs" value="${p.carbs??0}"><input type="hidden" name="pFat" value="${p.fat??0}"><div class="field"><label>Quantité dans la recette (g)</label><input id="recipeSearchGrams" name="grams" type="number" min="1" step="1" value="${grams}"></div><section class="recipe-preview" id="recipeSearchPreview"></section><button class="action" type="submit">Ajouter l’ingrédient</button></form>`);
+  }
   showSheet(`<h2>Confirmer l’aliment</h2><div class="identified-product">${x.image?`<img src="${escapeHtml(x.image)}" alt="">`:''}<div><div class="card-kicker">${escapeHtml(x.sourceLabel||'Base alimentaire')}</div><h3>${escapeHtml(x.name||'Aliment')}</h3><p>${escapeHtml(x.brand||'')}${x.quantity?` · ${escapeHtml(x.quantity)}`:''}</p></div></div><form id="foodSearchConfirmForm"><input type="hidden" name="source" value="${escapeHtml(x.source||'food-search')}"><input type="hidden" name="sourceId" value="${escapeHtml(String(x.id||''))}"><input type="hidden" name="pCalories" value="${p.calories??0}"><input type="hidden" name="pProtein" value="${p.protein??0}"><input type="hidden" name="pCarbs" value="${p.carbs??0}"><input type="hidden" name="pFat" value="${p.fat??0}">${dateField('date',todayKey())}<div class="field"><label>Moment</label><select name="mealType">${mealTypeOptions(state.foodSearchMealContext||'lunch')}</select></div><div class="field"><label>Aliment</label><input name="description" value="${escapeHtml([x.name,x.brand].filter(Boolean).join(' · '))}"></div><div class="field"><label>Quantité consommée (g)</label><input id="foodSearchGrams" name="grams" type="number" min="1" step="1" value="${grams}"></div><div class="range-row"><div class="field"><label>Protéines (g)</label><input id="foodSearchProtein" name="protein" type="number" step="0.1" value="${macroForPortion(p.protein,grams)}"></div><div class="field"><label>Calories</label><input id="foodSearchCalories" name="calories" type="number" value="${Math.round(macroForPortion(p.calories,grams))}"></div></div><div class="range-row"><div class="field"><label>Glucides (g)</label><input id="foodSearchCarbs" name="carbs" type="number" step="0.1" value="${macroForPortion(p.carbs,grams)}"></div><div class="field"><label>Lipides (g)</label><input id="foodSearchFat" name="fat" type="number" step="0.1" value="${macroForPortion(p.fat,grams)}"></div></div><label class="checkline"><input type="checkbox" name="classic"> Ajouter à mes classiques</label><div class="confidence-box"><strong>Source : ${escapeHtml(x.sourceLabel||'Base alimentaire')}</strong><span>Valeurs calculées pour la quantité indiquée. Tu peux tout corriger.</span></div><button class="action" type="submit">Confirmer et enregistrer</button></form>`);
   $('#foodSearchGrams')?.addEventListener('input',updateFoodSearchPortion);
 }
+
+function updateRecipeSearchPreview(){
+  const f=$('#recipeSearchConfirmForm');if(!f)return;
+  const g=Number(f.elements.grams.value)||0;
+  const c=macroForPortion(f.elements.pCalories.value,g),p=macroForPortion(f.elements.pProtein.value,g),carb=macroForPortion(f.elements.pCarbs.value,g),fat=macroForPortion(f.elements.pFat.value,g);
+  const box=$('#recipeSearchPreview');if(box)box.innerHTML=`<strong>Pour ${g} g</strong><div><span>${Math.round(c)} kcal</span><span>${p.toFixed(1)} g prot.</span><span>${carb.toFixed(1)} g gluc.</span><span>${fat.toFixed(1)} g lip.</span></div>`;
+}
+function saveRecipeSearchIngredient(e){
+  e.preventDefault();const f=new FormData(e.currentTarget),g=Number(f.get('grams'))||0;
+  addIngredientToCurrentRecipe({name:f.get('name')||'Aliment',qty:g,calories:macroForPortion(f.get('pCalories'),g),protein:macroForPortion(f.get('pProtein'),g),carbs:macroForPortion(f.get('pCarbs'),g),fat:macroForPortion(f.get('pFat'),g),source:'food-search'});
+}
+
 function updateFoodSearchPortion(){
  const f=$('#foodSearchConfirmForm');if(!f)return;const g=Number(f.elements.grams.value)||0;
  const set=(id,v,round=false)=>{const el=$(id);if(el)el.value=round?Math.round(macroForPortion(v,g)):macroForPortion(v,g)};
@@ -926,6 +976,9 @@ function macroForPortion(value,grams){const n=Number(value);return Number.isFini
 function showBarcodeConfirmation(data,date,mealType){
   const grams=Number(data.servingGrams)||100;
   const p=data.per100||{};
+  if(state.recipeIngredientMode){
+    return showSheet(`<h2>Ajouter à la recette</h2><div class="identified-product">${data.image?`<img src="${escapeHtml(data.image)}" alt="">`:''}<div><div class="card-kicker">Trouvé par code-barres</div><h3>${escapeHtml(data.name||'Produit')}</h3><p>${escapeHtml(data.brands||'')}</p></div></div><form id="recipeBarcodeConfirmForm"><input type="hidden" name="name" value="${escapeHtml(data.name||'Produit')}"><input type="hidden" name="pCalories" value="${p.calories??0}"><input type="hidden" name="pProtein" value="${p.protein??0}"><input type="hidden" name="pCarbs" value="${p.carbs??0}"><input type="hidden" name="pFat" value="${p.fat??0}"><div class="field"><label>Quantité dans la recette (g)</label><input name="grams" type="number" min="1" step="1" value="${grams}"></div><button class="action" type="submit">Ajouter l’ingrédient</button></form>`);
+  }
   showSheet(`<h2>Confirmer le produit</h2>
     <div class="identified-product">${data.image?`<img src="${escapeHtml(data.image)}" alt="">`:''}<div><div class="card-kicker">Trouvé par code-barres</div><h3>${escapeHtml(data.name||'Produit')}</h3><p>${escapeHtml(data.brands||'')}${data.quantity?` · ${escapeHtml(data.quantity)}`:''}</p></div></div>
     <form id="barcodeConfirmForm">
@@ -1016,6 +1069,9 @@ async function analyzeFoodPhoto(){
 function showAIConfirmation(data,date,mealType){
   const confidence=Math.round((Number(data.confidence)||0)*100);
   const t=data.totals||{};
+  if(state.recipeIngredientMode){
+    return showSheet(`<h2>Ajouter à la recette</h2><div class="ai-result-head"><div>${companionMark("companion-mark-large")}</div><div><div class="card-kicker">Photo analysée</div><h3>${escapeHtml(data.description||data.name||'Ingrédient')}</h3></div></div><form id="recipeAIConfirmForm"><div class="field"><label>Nom</label><input name="name" value="${escapeHtml(data.description||data.name||'Ingrédient')}"></div><div class="field"><label>Quantité estimée (g)</label><input name="qty" type="number" min="0" step="1" value="${Number(t.grams)||0}"></div><div class="range-row"><div class="field"><label>Protéines</label><input name="protein" type="number" step="0.1" value="${Number(t.protein)||0}"></div><div class="field"><label>Calories</label><input name="calories" type="number" step="1" value="${Math.round(Number(t.calories)||0)}"></div></div><div class="range-row"><div class="field"><label>Glucides</label><input name="carbs" type="number" step="0.1" value="${Number(t.carbs)||0}"></div><div class="field"><label>Lipides</label><input name="fat" type="number" step="0.1" value="${Number(t.fat)||0}"></div></div><button class="action" type="submit">Ajouter l’ingrédient</button></form>`);
+  }
   showSheet(`<h2>Voilà ce que j’ai compris</h2>
     <div class="ai-result-head"><div>${companionMark("companion-mark-large")}</div><div><div class="card-kicker">${data.kind==='meal'?'Repas détecté':'Aliment détecté'}</div><h3>${escapeHtml(data.name||'Analyse')}</h3><p>Confiance : ${confidence}%</p></div></div>
     <div class="detected-items">${(data.items||[]).map(i=>`<div><strong>${escapeHtml(i.name)}</strong><span>≈ ${Math.round(Number(i.estimated_grams)||0)} g · ${Math.round(Number(i.calories)||0)} kcal · ${Math.round((Number(i.protein)||0)*10)/10} g prot.</span></div>`).join('')||'<div class="empty">Aucun élément détaillé.</div>'}</div>

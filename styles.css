@@ -250,3 +250,10 @@
 .recipe-preview>div{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px;font-size:11px}
 .portion-pills{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin:12px 0}.portion-pills input{display:none}.portion-pills span{display:grid;place-items:center;padding:10px 4px;border:1px solid var(--line);border-radius:13px;font-weight:750}.portion-pills input:checked+span{background:rgba(152,93,232,.12);border-color:rgba(152,93,232,.3)}
 @media(max-width:430px){.recipe-columns,.recipe-ingredient-row{grid-template-columns:1.5fr .55fr .55fr .55fr .55fr .55fr 26px;gap:3px}.recipe-ingredient-row input{padding:8px 3px;font-size:9px}.portion-pills{gap:4px}.portion-pills span{padding:9px 2px;font-size:11px}}
+
+/* Recettes R2 — ajout d'ingrédients via outils existants */
+.recipe-added-list{display:grid;gap:8px;margin-bottom:12px}
+.recipe-added-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;border:1px solid var(--line);border-radius:16px;background:var(--card)}
+.recipe-added-item>div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.recipe-added-item strong{font-size:14px}.recipe-added-item small{font-size:11px;color:var(--muted)}
+.recipe-empty{margin-bottom:12px}
