@@ -147,9 +147,9 @@ Variables Netlify requises : STRAVA_CLIENT_ID et STRAVA_CLIENT_SECRET. Optionnel
 Ajout isolé dans Alimentation : recherche par nom/marque via Open Food Facts, complétée par une petite référence générique locale. Quantité, macros recalculées, correction et confirmation avant enregistrement. Scan, photo IA, saisie manuelle, Strava, entraînement IA et historiques conservés.
 
 
-## Build 0.9.1.1 — Correctif Photos
-Cause identifiée : les boutons Ajouter/Comparer étaient encore affichés dans Évolution mais leurs routes `openSheet('progressPhoto')` et `openSheet('photoCompare')` avaient disparu lors d'une release précédente.
-- Routes Photos restaurées.
-- Ajout : caméra / photothèque → recadrage → sauvegarde.
-- Comparer : choix des deux dates → comparaison → IA conservée.
-- Aucun changement Alimentation, Strava ou Entraînement IA.
+## Build 0.9.1.2 — Correctif Photos structurel
+- Cause confirmée : les boutons Évolution existaient mais les routes `photoCompare` et `progressPhoto` avaient disparu de `openSheet`.
+- Routes restaurées.
+- Boutons dynamiques rebondés de façon robuste.
+- Cache PWA et fichiers JS/CSS forcés en v0912.
+- Aucun changement fonctionnel sur Alimentation, Strava ou Entraînement IA.
