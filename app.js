@@ -107,6 +107,11 @@ function displayDate(date){
 }
 
 
+function previousDayKey(dateKey=todayKey()){
+  const d=new Date(`${dateKey}T12:00:00`);
+  d.setDate(d.getDate()-1);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
 function mealIcon(type){
   return ({breakfast:'☕',lunch:'🍴',snack:'🍎',dinner:'◒'})[type]||'•';
 }
@@ -126,7 +131,7 @@ function nutritionMealCard(type,rows){
   return `<section class="nutrition-meal-card">
     <div class="nutrition-meal-head">
       <div class="nutrition-meal-title"><span class="nutrition-meal-icon">${mealIcon(type)}</span><div><strong>${mealTypeLabel(type)}</strong><small>${rows.length?`${Math.round(sum.calories)} kcal · ${Math.round(sum.protein)} g prot. · ${Math.round(sum.carbs)} g gluc. · ${Math.round(sum.fat)} g lip.`:'À compléter'}</small></div></div>
-      <button type="button" class="nutrition-meal-add" data-meal-add="${type}">＋ Ajouter</button>
+      <div class="nutrition-meal-actions"><button type="button" class="nutrition-copy-yesterday" data-copy-yesterday="${type}">Copier hier</button><button type="button" class="nutrition-meal-add" data-meal-add="${type}">＋ Ajouter</button></div>
     </div>
     ${details}
   </section>`;
@@ -458,6 +463,31 @@ function openSheet(kind){
   if(kind==='mealIdea') return mealIdeaSheet();
   if(kind==='details') return showSheet(`<h2>Données détaillées</h2><p class="subtle">Les graphiques restent volontairement derrière Évolution. Ce niveau sera enrichi sans changer l’écran principal.</p><button class="action secondary" data-close>Fermer</button>`);
 }
+
+async function copyMealFromYesterday(type){
+  const today=todayKey(),yesterday=previousDayKey(today);
+  const all=await LTDB.all('food');
+  const source=all.filter(x=>x.date===yesterday&&x.mealType===type);
+  if(!source.length){toast(`Aucun ${mealTypeLabel(type).toLowerCase()} hier`);return;}
+  const existing=all.filter(x=>x.date===today&&x.mealType===type);
+  let mode='add';
+  if(existing.length){
+    const replace=confirm(`${mealTypeLabel(type)} contient déjà ${existing.length} élément${existing.length>1?'s':''}.\n\nOK = remplacer par le repas d’hier\nAnnuler = ajouter le repas d’hier`);
+    mode=replace?'replace':'add';
+  }
+  if(mode==='replace'){
+    for(const x of existing) await LTDB.del('food',x.id);
+  }
+  const stamp=Date.now();
+  for(let i=0;i<source.length;i++){
+    const x=source[i];
+    const copy={...x,id:uid(),date:today,createdAt:new Date(stamp+i).toISOString(),copiedFromDate:yesterday,copiedFromId:x.id};
+    await LTDB.put('food',copy);
+  }
+  toast(`${mealTypeLabel(type)} copié depuis hier`);
+  await nutritionHubSheet();render();
+}
+
 async function nutritionHubSheet(){
   pendingNutritionMealType=null;
   const all=await LTDB.all('food');
@@ -600,6 +630,7 @@ function showTechnique(name){
 function bindSheet(){
   document.querySelectorAll('[data-sheet]').forEach(b=>b.addEventListener('click',()=>openSheet(b.dataset.sheet)));
   document.querySelectorAll('[data-meal-add]').forEach(b=>b.addEventListener('click',()=>{pendingNutritionMealType=b.dataset.mealAdd;openSheet('nutritionMealAdd')}));
+  document.querySelectorAll('[data-copy-yesterday]').forEach(b=>b.addEventListener('click',()=>copyMealFromYesterday(b.dataset.copyYesterday)));
   document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>{stopBarcodeCamera();stopProgressCamera();$('#sheet').close()}));
   document.querySelectorAll('[data-workout-choice]').forEach(b=>b.addEventListener('click',()=>workoutDetailSheet(workoutById(b.dataset.workoutChoice))));
   document.querySelectorAll('[data-swap-exercise]').forEach(b=>b.addEventListener('click',()=>swapExerciseSheet(Number(b.dataset.swapExercise))));

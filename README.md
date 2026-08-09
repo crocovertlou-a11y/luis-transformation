@@ -186,3 +186,13 @@ Bloc 1 uniquement, basé sur Cadence R1 validé.
 - La méthode choisie pré-sélectionne le bon moment du repas.
 - Aucune recette, copie d'hier ou calendrier ajouté dans ce bloc.
 - Aucun changement Force, Cardio, Strava, Photos, Ressenti, Évolution ou IA.
+
+
+## Copier hier R1 — repas uniquement
+Basé sur Alimentation UX R1 + Recherche R2 validé.
+- Bouton « Copier hier » sur chaque carte repas.
+- Copie uniquement les aliments/recettes enregistrés dans le même repas la veille.
+- Si le repas du jour est vide : copie directe.
+- Si le repas contient déjà des éléments : choix Ajouter ou Remplacer.
+- Les copies reçoivent de nouveaux identifiants ; la journée précédente n'est jamais modifiée.
+- Aucun changement au moteur Recherche, IA, scan, photo, Cardio, Strava, Force, Ressenti ou Évolution.
