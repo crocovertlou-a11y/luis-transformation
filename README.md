@@ -167,3 +167,11 @@ Aucun changement fonctionnel aux modules Alimentation, Photos, Strava, Force, Ca
 - Le delta n'apparaît qu'à partir de deux mesures.
 - Le compteur Activités 30 j est inchangé.
 - Aucun changement Alimentation, Photos, Strava, Force, Cardio, IA ou Ressenti.
+
+
+## Cadence R1 — uniquement
+- Strava : average_cadence d'une course/marche est convertie de foulées/min vers pas/min (x2).
+- Fichiers GPX/TCX/FIT : une cadence course/marche plausible en cadence par jambe (<130) est normalisée x2 ; une valeur déjà en ppm n'est pas doublée.
+- Vélo et saisie manuelle restent inchangés.
+- Libellé UI : Cadence moyenne (ppm).
+Cas de contrôle : Strava 86 -> 172 ppm pour une course ; 172 reste 172 ; vélo 86 reste 86.
