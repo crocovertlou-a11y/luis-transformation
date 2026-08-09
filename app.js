@@ -90,10 +90,6 @@ function companionMark(cls='companion-mark'){
     <path d="M39.5 15.5c6.2 3.7 9.7 9.5 9.7 16.5 0 7-3.5 12.8-9.7 16.5"/>
   </svg>`;
 }
-
-function identityMark(cls='identity-mark'){
-  return `<span class="${cls} profile-signature-logo" aria-label="Luis Transformation"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M8 21A24 24 0 0 1 21 8" class="profile-arc orange"/><path d="M43 8A24 24 0 0 1 56 21" class="profile-arc orange"/><path d="M56 43A24 24 0 0 1 43 56" class="profile-arc purple"/><path d="M21 56A24 24 0 0 1 8 43" class="profile-arc purple"/></svg><span>LS</span></span>`;
-}
 function mealTypeLabel(type){
   return ({breakfast:'Petit-déjeuner',lunch:'Déjeuner',dinner:'Dîner',snack:'Collation'})[type] || 'Repas';
 }
@@ -156,8 +152,8 @@ function renderCheckinSummary(t){
 async function renderEvolution(checkins,workouts,cardio){
   const sorted=checkins.filter(x=>x.weight!=null||x.waist!=null).sort((a,b)=>a.date.localeCompare(b.date));
   const weightRows=sorted.filter(x=>x.weight!=null), waistRows=sorted.filter(x=>x.waist!=null);
-  const firstWeight=weightRows[0]?.weight??null, latestWeight=weightRows.at(-1)?.weight??null;
-  const firstWaist=waistRows[0]?.waist??null, latestWaist=waistRows.at(-1)?.waist??null;
+  const firstWeight=weightRows[0]?.weight??null, latestWeight=weightRows.length?weightRows[weightRows.length-1].weight:null;
+  const firstWaist=waistRows[0]?.waist??null, latestWaist=waistRows.length?waistRows[waistRows.length-1].waist:null;
   const weightDelta=weightRows.length>1?+(latestWeight-firstWeight).toFixed(1):null;
   const waistDelta=waistRows.length>1?+(latestWaist-firstWaist).toFixed(1):null;
   const activities=workouts.filter(x=>daysAgo(x.date)<=30).length+cardio.filter(x=>daysAgo(x.date)<=30).length;
@@ -165,7 +161,7 @@ async function renderEvolution(checkins,workouts,cardio){
   const photos=(await LTDB.all('photos')).sort((x,y)=>(y.date+y.createdAt).localeCompare(x.date+x.createdAt));
   const groups={}; photos.forEach(p=>(groups[p.date]??=[]).push(p));
   const gallery=Object.entries(groups).slice(0,12).map(([date,items])=>`<div class="photo-date-group"><div class="photo-date">${formatPhotoDate(date)}</div><div class="photo-thumbs">${items.map(p=>`<button class="photo-thumb" data-photo-view="${p.id}" aria-label="${escapeHtml(p.view||'Photo')} ${date}"><img src="${p.image}" alt="${escapeHtml(p.view||'Photo évolution')}"><span>${escapeHtml(p.view||'Photo')}</span></button>`).join('')}</div></div>`).join('');
-  return `<div class="trend-hero"><div class="trend-mark">${identityMark('evolution-identity-mark')}</div><div class="trend-copy">${reading}</div><p class="subtle">Le sens d’abord. Les graphiques seulement si tu veux creuser.</p></div>
+  return `<div class="trend-hero"><div class="trend-mark"><span class="evolution-identity-mark profile-signature-logo" aria-label="Luis Transformation"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M8 21A24 24 0 0 1 21 8" class="profile-arc orange"/><path d="M43 8A24 24 0 0 1 56 21" class="profile-arc orange"/><path d="M56 43A24 24 0 0 1 43 56" class="profile-arc purple"/><path d="M21 56A24 24 0 0 1 8 43" class="profile-arc purple"/></svg><span>LS</span></span></div><div class="trend-copy">${reading}</div><p class="subtle">Le sens d’abord. Les graphiques seulement si tu veux creuser.</p></div>
   <div class="signals"><div class="signal"><strong>${latestWeight==null?'—':latestWeight+' kg'}</strong><span>Poids${weightDelta===null?'':` · ${signed(weightDelta)} kg`}</span></div><div class="signal"><strong>${latestWaist==null?'—':latestWaist+' cm'}</strong><span>Tour de taille${waistDelta===null?'':` · ${signed(waistDelta)} cm`}</span></div><div class="signal"><strong>${activities}</strong><span>Activités · 30 j</span></div></div>
   <div class="card photo-journal"><div class="card-kicker">Photos</div><div class="photo-title-row"><div><h3>Voir le changement</h3><p class="subtle">Même cadrage, même vue, une date. L’analyse IA viendra ensuite.</p></div><div class="photo-top-actions"><button class="action secondary compact" type="button" data-open="photoCompare">Comparer</button><button class="action compact" type="button" data-open="progressPhoto">Ajouter</button></div></div>${gallery||'<div class="empty">Tes photos d’évolution apparaîtront ici en petites vignettes, classées par date.</div>'}</div>
   <div class="card" style="margin-top:14px"><div class="card-kicker">Comprendre</div><h3>Pourquoi cette lecture ?</h3><p class="subtle">Les graphiques et l’historique détaillé restent au niveau suivant.</p><div class="card-actions"><button class="action secondary" data-open="details">Explorer les données</button></div></div>`;
@@ -366,10 +362,10 @@ async function renderCompanion(){
 }
 
 async function renderProfile(){
-  return `<section class="hero"><div class="profile-head">${identityMark('profile-page-identity-mark')}<div><div class="hello" style="font-size:28px;margin:0">Profil</div><div class="subtle">Tes informations personnelles</div></div></div></section>
+  return `<section class="hero"><div class="profile-head"><div class="profile-signature-logo" aria-label="Luis Transformation"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M8 21A24 24 0 0 1 21 8" class="profile-arc orange"/><path d="M43 8A24 24 0 0 1 56 21" class="profile-arc orange"/><path d="M56 43A24 24 0 0 1 43 56" class="profile-arc purple"/><path d="M21 56A24 24 0 0 1 8 43" class="profile-arc purple"/></svg><span>LS</span></div><div><div class="hello" style="font-size:28px;margin:0">Profil</div><div class="subtle">Tes informations personnelles</div></div></div></section>
   <div class="card"><div class="card-kicker">Mon objectif</div><div class="list"><div class="list-row"><div><strong>Objectif actuel</strong><div class="status">${escapeHtml(state.profile.goal||'À définir')}</div></div><button class="profile-edit-btn" data-open="profileGoal" type="button">Modifier</button></div><div class="list-row"><div><strong>Ma vision</strong><div class="status">${escapeHtml(state.profile.vision||'Décris ce que tu veux construire dans la durée.')}</div></div><button class="profile-edit-btn" data-open="profileVision" type="button">Modifier</button></div></div></div>
   <div class="card"><div class="switch-row"><div><strong>Accompagnement alimentation</strong><div class="status">Masqué lorsqu’il est désactivé.</div></div><input id="nutritionToggle" class="toggle" type="checkbox" ${state.profile.nutritionEnabled?'checked':''}></div></div>
-  <div class="card"><div class="card-kicker">Tes données</div><h3>Export / Import</h3><p class="subtle">Tes données restent récupérables.</p><div class="card-actions"><button class="action" id="exportBtn">Exporter JSON</button><label class="action secondary">Importer JSON<input id="importInput" type="file" accept="application/json" hidden></label></div></div><div class="version">Luis Transformation · Build 0.9.1.4</div>`;
+  <div class="card"><div class="card-kicker">Tes données</div><h3>Export / Import</h3><p class="subtle">Tes données restent récupérables.</p><div class="card-actions"><button class="action" id="exportBtn">Exporter JSON</button><label class="action secondary">Importer JSON<input id="importInput" type="file" accept="application/json" hidden></label></div></div><div class="version">Luis Transformation · Build 0.9.1.4.1</div>`;
 }
 function bindPage(){
   document.querySelectorAll('[data-home-view]').forEach(b=>b.addEventListener('click',()=>{state.homeView=b.dataset.homeView;render();}));

@@ -202,5 +202,9 @@
 /* Build 0.9.1.3 · Profil signature */
 .profile-signature-logo{width:76px;height:76px;position:relative;display:grid;place-items:center;flex:0 0 auto}.profile-signature-logo svg{position:absolute;inset:0;width:100%;height:100%}.profile-arc{fill:none;stroke-width:3.2;stroke-linecap:round}.profile-arc.orange{stroke:#ff6b3d}.profile-arc.purple{stroke:#7c5cff}.profile-signature-logo span{position:relative;color:#7c5cff;font-family:"Snell Roundhand","Segoe Script","Bradley Hand",cursive;font-style:italic;font-weight:300;font-size:22px;letter-spacing:-.08em;transform:rotate(-5deg)}.profile-edit-btn{border:0;background:#fff3ed;color:#ff5b24;border-radius:13px;padding:10px 13px;font-weight:750}.profile-edit-btn:active{transform:scale(.98)}
 
-/* Build 0.9.1.4 — identité globale + Evolution valeurs réelles */
-.header-identity-mark{width:52px!important;height:52px!important}.header-identity-mark span{font-size:16px!important}.evolution-identity-mark{width:126px!important;height:126px!important;margin:auto}.evolution-identity-mark span{font-size:31px!important}.profile-page-identity-mark{width:76px!important;height:76px!important}.signal span{line-height:1.35}
+/* Build 0.9.1.4.1 — identité stable */
+.header-identity-mark{width:52px!important;height:52px!important}
+.header-identity-mark span{font-size:16px!important}
+.evolution-identity-mark{width:126px!important;height:126px!important;margin:auto}
+.evolution-identity-mark span{font-size:31px!important}
+.signal span{line-height:1.35}

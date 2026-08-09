@@ -154,9 +154,10 @@ Ajout isolé dans Alimentation : recherche par nom/marque via Open Food Facts, c
 - Cache PWA et fichiers JS/CSS forcés en v0912.
 - Aucun changement fonctionnel sur Alimentation, Strava ou Entraînement IA.
 
-## Build 0.9.1.4 — Stabilisation Evolution + identité
-- Logo validé appliqué au header global, Profil et Évolution.
-- Évolution affiche désormais la dernière valeur réelle de poids et tour de taille.
-- Dès qu’au moins deux mesures existent, le delta est conservé en information secondaire.
-- Activités 30 j inchangé.
-- Aucun changement sur Photos, Strava, Force ou Alimentation.
+
+## Build 0.9.1.4.1 — Emergency stable
+Repart de 0.9.1.3. Corrige uniquement :
+- identité Luis dans le header et Évolution ;
+- valeur actuelle Poids/Tour de taille dans Évolution + delta seulement si plusieurs mesures ;
+- service worker simplifié et sécurisé : plus de double listener hérité, plus de fallback HTML pour un fichier JS/CSS.
+Aucune refonte Alimentation ni nouvelle logique IA.
