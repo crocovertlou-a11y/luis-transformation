@@ -33,23 +33,3 @@
   for = "/sw.js"
   [headers.values]
     Cache-Control = "no-cache, no-store, must-revalidate"
-
-[[headers]]
-  for = "/index.html"
-  [headers.values]
-    Cache-Control = "no-store, no-cache, must-revalidate"
-
-[[headers]]
-  for = "/app-recovery-0913.js"
-  [headers.values]
-    Cache-Control = "no-store, no-cache, must-revalidate"
-
-[[headers]]
-  for = "/db-recovery-0913.js"
-  [headers.values]
-    Cache-Control = "no-store, no-cache, must-revalidate"
-
-[[headers]]
-  for = "/styles-recovery-0913.css"
-  [headers.values]
-    Cache-Control = "no-store, no-cache, must-revalidate"

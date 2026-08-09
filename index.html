@@ -7,10 +7,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="Luis" />
-  <title>Luis Transformation — Build 0.9.1.3 RECOVERY</title>
+  <title>Luis Transformation — Build 0.9.1.2</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="icon-192.png" />
-  <link rel="stylesheet" href="styles-recovery-0913.css?recovery=1" />
+  <link rel="stylesheet" href="styles.css?v=0912" />
 </head>
 <body>
   <div id="app" class="app-shell">
@@ -42,23 +42,6 @@
   </div>
   <dialog id="sheet" class="sheet"><div class="sheet-handle"></div><div id="sheetContent"></div></dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  
-<script>
-(function(){
-  try{
-    if('serviceWorker' in navigator){
-      navigator.serviceWorker.getRegistrations().then(function(rs){
-        rs.forEach(function(r){ r.unregister(); });
-      });
-    }
-    if('caches' in window){
-      caches.keys().then(function(keys){
-        keys.forEach(function(k){ caches.delete(k); });
-      });
-    }
-  }catch(e){}
-})();
-</script>
-<script src="db-recovery-0913.js?recovery=1"></script><script src="app-recovery-0913.js?recovery=1"></script>
+  <script src="db.js?v=0912"></script><script src="app.js?v=0912"></script>
 </body>
 </html>
