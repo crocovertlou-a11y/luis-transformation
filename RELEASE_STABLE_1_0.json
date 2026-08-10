@@ -1,0 +1,19 @@
+{
+  "release": "Fluidité Stable 1.0",
+  "based_on": "Today UX R2 P3 Stabilisation",
+  "status": "baseline_stable",
+  "scope": [
+    "Aujourd'hui UX",
+    "Fluidité IA V1 engine",
+    "Alimentation UX V2",
+    "Recherche aliments",
+    "Code-barres",
+    "IA alimentation",
+    "Recettes et portions",
+    "Historique calendrier",
+    "Force",
+    "Cardio",
+    "Persistance locale / PWA"
+  ],
+  "policy": "No new feature changes in this release; only version/cache freeze."
+}

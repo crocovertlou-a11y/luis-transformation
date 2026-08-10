@@ -243,3 +243,9 @@ Basé exclusivement sur Historique + Calendrier R1 validé.
 
 ## Fluidité IA V1 R1
 Moteur déterministe Aujourd'hui, états validés, respiration du logo, commentaires nutritionnels contextuels et garde-fous de cohérence.
+
+
+## Fluidité Stable 1.0
+Baseline figée après tests utilisateurs finalisés.
+Aucune nouvelle fonctionnalité ajoutée par rapport à R2 P3 Stabilisation.
+Cette archive sert désormais de point de restauration / socle des prochains développements.
