@@ -78,19 +78,30 @@
     return `<svg class="fvis-svg ${mini?'mini':''}" viewBox="0 0 280 210"><defs><linearGradient id="body" x1="0" x2="1"><stop stop-color="#e7e7e7"/><stop offset=".55" stop-color="#bcbcbc"/><stop offset="1" stop-color="#8d8d8d"/></linearGradient><linearGradient id="muscle" x1="0" x2="1"><stop stop-color="#ff8058"/><stop offset="1" stop-color="#e95232"/></linearGradient></defs>${art}</svg>`;
   }
 
+  const visualCard=(name,k,kind='thumb')=>{
+    const d=DATA[k]||DATA.generic;
+    const glyph={
+      lateral:'↔',facepull:'⇠',curl:'↥',triceps:'↧',squat:'↕',lunge:'⇣',rdl:'⌄',calf:'↟',plank:'━',generic:'◎'
+    }[k]||'◎';
+    return `<span class="freal-fallback freal-${kind}" role="img" aria-label="${esc(name)}">
+      <span class="freal-silhouette"><i class="head"></i><i class="torso"></i><i class="arms"></i><i class="legs"></i><b>${glyph}</b></span>
+      <small>${esc(d.primary)}</small>
+    </span>`;
+  };
+
   window.forceVisualThumb=name=>{
     const k=key(name),r=REAL[k];
-    return `<span class="fstep-thumb fvis-thumb">${r?.thumb?photo(r.thumb,name,'freal-thumb'):mannequin(k,'start',true)}</span>`;
+    return `<span class="fstep-thumb fvis-thumb">${r?.thumb?photo(r.thumb,name,'freal-thumb'):visualCard(name,k,'thumb')}</span>`;
   };
 
   window.forceTechniqueStep2=name=>{
     const k=key(name),d=DATA[k]||DATA.generic;
     const youtube='https://www.youtube.com/results?search_query='+encodeURIComponent(name+' technique musculation');
     const r=REAL[k];
-    const startVisual=r?.start?photo(r.start,name+' — position de départ','freal-tech'):mannequin(k,'start');
-    const secondVisual=r?.profile?photo(r.profile,name+' — vue de profil','freal-tech'):mannequin(k,'end');
-    const muscleVisual=r?.muscles?photo(r.muscles,'Muscles sollicités — '+d.primary,'freal-muscles'):mannequin(k,'end',true);
-    const secondLabel=r?.profile?'PROFIL':'POSITION 2';
+    const startVisual=r?.start?photo(r.start,name+' — position de départ','freal-tech'):visualCard(name,k,'tech');
+    const secondVisual=r?.profile?photo(r.profile,name+' — vue de profil','freal-tech'):visualCard(name,k,'profile');
+    const muscleVisual=r?.muscles?photo(r.muscles,'Muscles sollicités — '+d.primary,'freal-muscles'):visualCard(name,k,'muscles');
+    const secondLabel='PROFIL';
     showSheet(`<div class="fvis-tech"><div class="fvis-head"><div><div class="fstep-top">TECHNIQUE</div><h2>${esc(name)}</h2><p>${esc(d.focus)}</p></div><span>${esc(d.primary)}</span></div>
     <div class="fvis-positions freal-positions"><section><strong><b>1</b>DÉPART</strong>${startVisual}</section><section><strong><b>2</b>${secondLabel}</strong>${secondVisual}</section></div>
     <section class="fvis-muscles"><div class="fvis-muscle-model">${muscleVisual}</div><div><strong>MUSCLES SOLLICITÉS</strong><p><i></i><b>Principal</b><br>${esc(d.primary)}</p><p><i class="secondary"></i><b>Secondaires</b><br>${esc(d.secondary)}</p></div></section>
