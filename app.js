@@ -164,6 +164,10 @@ function fluidityIntensityFromCardio(x){
   return 'moderate';
 }
 function fluidityEngine(today,todayWorkout,todayCardio,workouts,cardio,food){
+  todayCardio=Array.isArray(todayCardio)?todayCardio:[];
+  workouts=Array.isArray(workouts)?workouts:[];
+  cardio=Array.isArray(cardio)?cardio:[];
+  food=Array.isArray(food)?food:[];
   const allowed=['planned_session','adapted_session','alternative_session','recovery','day_complete','insufficient_data'];
   if(!today)return {decision:'insufficient_data',allowedActions:['insufficient_data'],confidence:'high',priority:'high',shouldSpeak:true,title:'Comment vas-tu aujourd’hui ?',message:'Donne-moi ton ressenti et je t’aide à construire ta journée.',action:'checkin'};
   const energy=Number(today.energy)||3,stress=Number(today.stress)||3,sleep=Number(today.sleep)||7;
@@ -195,6 +199,11 @@ function fluidityNutritionComment(decision,todayCardio,protein,calories,foodCoun
 }
 
 async function renderToday(today,todayWorkout,todayCardio,protein,calories,foodCount){
+  todayCardio=Array.isArray(todayCardio)?todayCardio:[];
+  protein=Number(protein)||0;
+  calories=Number(calories)||0;
+  foodCount=Number(foodCount)||0;
+
   const [workoutsAll,cardioAll,foodAll,checkinsAll]=await Promise.all(['workouts','cardio','food','checkins'].map(s=>LTDB.all(s)));
   const decision=fluidityEngine(today,todayWorkout,todayCardio,workoutsAll,cardioAll,foodAll);
   const todayFood=foodAll.filter(x=>x.date===todayKey());
