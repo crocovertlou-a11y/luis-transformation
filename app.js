@@ -723,18 +723,49 @@ async function workoutDetailSheet(workout){
   const history=(await LTDB.all('workouts')).sort((a,b)=>b.date.localeCompare(a.date));
   const plan=workout.plan.map(x=>({...x,last:lastExercisePerformance(x.name,history)}));
   state.pendingWorkout={...workout,plan};
-  const muscles=workout.id==='lower'?['Jambes','Fessiers','Core']:workout.id==='pull'?['Dos','Biceps','Arrière épaules']:['Pectoraux','Dos','Épaules'];
-  showSheet(`<div class="force-v1-detail">
-    <div class="force-v1-kicker">✦ &nbsp;DÉTAIL DE TA SÉANCE</div>
-    <h2>${escapeHtml(workout.title)}</h2>
-    <p class="force-v1-lead">Séance adaptée à ton état du jour et à ta progression.</p>
-    <div class="force-v1-chips">${muscles.map(x=>`<span>${escapeHtml(x)}</span>`).join('')}</div>
-    <div class="force-v1-stats"><div><b>◷</b><strong>${parseInt(workout.subtitle)||40} min</strong><small>Durée</small></div><div><b>▥</b><strong>Modérée</strong><small>Intensité</small></div><div><b>◎</b><strong>${plan.length}</strong><small>Exercices</small></div></div>
-    <div class="force-v1-note"><strong>♡ Pourquoi cette séance ?</strong><p>Fluidité conserve une charge de travail cohérente tout en te laissant ajuster chaque exercice si nécessaire.</p></div>
-    <h3 class="force-v1-section-title">Ta séance</h3>
-    <div class="force-v1-exercises">${plan.map((x,i)=>`<div class="force-v1-exercise"><div class="force-v1-num">${i+1}</div><button type="button" class="force-v1-exercise-main" data-technique="${escapeHtml(x.name)}"><strong>${escapeHtml(x.name)}</strong><span>${x.sets} × ${x.reps} · repos conseillé ${x.rest}</span>${x.last?`<small>Dernière fois : ${escapeHtml(x.last.performance||'enregistrée')}</small>`:'<small>Toucher pour voir la technique</small>'}</button><button class="force-v1-swap" type="button" data-swap-exercise="${i}" aria-label="Remplacer">↻</button></div>`).join('')}</div>
-    <button class="action orange force-v1-start" id="startChosenWorkout">Démarrer la séance</button>
-    <button class="action secondary" data-sheet="workoutIdeas">Choisir une autre séance</button>
+  const isUpper=workout.id!=='lower';
+  const intensity=isUpper?'Modérée 6/10':'Modérée 6/10';
+  const calories=isUpper?'350–450':'400–500';
+  const why=isUpper?"Tu as bien récupéré, ton énergie est bonne et c’est le moment idéal pour un travail de qualité sur le haut du corps.":"Ta disponibilité du jour permet une séance structurée tout en gardant une intensité maîtrisée.";
+  const preview=plan.slice(0,4);
+  const muscleFor=n=>{
+    const s=n.toLowerCase();
+    if(s.includes('couch'))return 'Pectoraux';
+    if(s.includes('rowing')||s.includes('traction'))return 'Dos';
+    if(s.includes('épaule')||s.includes('militaire'))return 'Épaules';
+    if(s.includes('dip')||s.includes('triceps'))return 'Triceps';
+    if(s.includes('squat')||s.includes('fente'))return 'Jambes';
+    if(s.includes('gainage'))return 'Core';
+    return 'Force';
+  };
+  const iconFor=n=>{
+    const s=n.toLowerCase();
+    if(s.includes('couch'))return '🏋️';
+    if(s.includes('rowing'))return '🚣';
+    if(s.includes('traction'))return '💪';
+    if(s.includes('épaule')||s.includes('militaire'))return '🏋️';
+    if(s.includes('dip'))return '🤸';
+    if(s.includes('gainage'))return '🧘';
+    return '🏋️';
+  };
+  showSheet(`<div class="force-mock-detail">
+    <div class="force-mock-top"><button type="button" class="force-back" data-close-sheet>‹ Retour</button><strong>DÉTAIL DE TA SÉANCE</strong></div>
+    <section class="force-mock-hero">
+      <div class="force-mock-title"><div><span class="force-type">◉ &nbsp; FORCE</span><h2>${isUpper?'Haut du corps – Modérée':escapeHtml(workout.title)}</h2><p>Stimuler le haut du corps pour développer force & volume, tout en restant dans une intensité modérée pour favoriser la récupération.</p></div>
+      <div class="force-anatomy" aria-label="Zones musculaires sollicitées"><div class="head"></div><div class="torso"></div><i class="arm l"></i><i class="arm r"></i><b class="chest"></b><b class="abs"></b></div></div>
+      <div class="force-mock-metrics">
+        <div><i>◷</i><small>Durée</small><strong>${parseInt(workout.subtitle)||40} min</strong></div>
+        <div><i>▥</i><small>Intensité</small><strong>${intensity}</strong></div>
+        <div><i>◎</i><small>Objectif</small><strong>Force &<br>Volume</strong></div>
+        <div><i>♨</i><small>Calories est.</small><strong>${calories}<br>kcal</strong></div>
+      </div>
+      <div class="force-why"><strong>☆ &nbsp; POURQUOI AUJOURD’HUI ?</strong><p>${why}</p></div>
+      <div class="force-preview-head"><strong>APERÇU DES EXERCICES</strong><button type="button" data-force-all>Voir tout (${plan.length}) &nbsp;›</button></div>
+      <div class="force-preview-list">${preview.map((x,i)=>`<button type="button" class="force-preview-row" data-technique="${escapeHtml(x.name)}"><span class="force-ex-thumb">${iconFor(x.name)}</span><span class="force-ex-copy"><b>${i+1}. ${escapeHtml(x.name)}</b><small>${x.sets} séries · ${x.reps} reps · Repos ${x.rest}</small></span><em>${muscleFor(x.name)}</em></button>`).join('')}</div>
+      ${plan.length>4?`<button type="button" class="force-more" data-force-all>+ ${plan.length-4} exercices supplémentaires</button>`:''}
+      <button class="action orange force-mock-start" id="startChosenWorkout">▶ &nbsp; DÉMARRER LA SÉANCE</button>
+    </section>
+    <button type="button" class="force-daily-tip" data-technique="${escapeHtml(plan[0]?.name||'Développé couché')}"><span>▣</span><div><strong>Conseil du jour</strong><small>Reste concentré sur la qualité d’exécution.</small></div><b>›</b></button>
   </div>`);
 }
 function exerciseAlternatives(current){
@@ -859,6 +890,7 @@ function bindSheet(){
   document.querySelectorAll('[data-exercise-replace]').forEach(b=>b.addEventListener('click',()=>{const [idx,name]=b.dataset.exerciseReplace.split('|');const i=Number(idx);if(state.pendingWorkout){state.pendingWorkout.plan[i]={...state.pendingWorkout.plan[i],name};workoutDetailSheet(state.pendingWorkout)}}));
   $('#startChosenWorkout')?.addEventListener('click',chosenWorkoutForm);
   $('[data-force-back]')?.addEventListener('click',chosenWorkoutForm);
+  $$('[data-force-all]').forEach(b=>b.addEventListener('click',()=>{const w=state.pendingWorkout;if(!w)return;showSheet(`<div class="force-all"><div class="force-v1-kicker">TA SÉANCE</div><h2>${escapeHtml(w.title)}</h2><div class="force-v1-exercises">${w.plan.map((x,i)=>`<div class="force-v1-exercise"><div class="force-v1-num">${i+1}</div><button type="button" class="force-v1-exercise-main" data-technique="${escapeHtml(x.name)}"><strong>${escapeHtml(x.name)}</strong><span>${x.sets} × ${x.reps} · repos conseillé ${x.rest}</span><small>Toucher pour voir la technique</small></button></div>`).join('')}</div><button class="action orange" id="startChosenWorkout">Démarrer la séance</button></div>`);}));
   document.querySelectorAll('[data-pick-workout]').forEach(b=>b.addEventListener('click',()=>{openSheet('workout'); setTimeout(()=>{const f=$('#workoutForm'); if(f) f.elements.name.value=b.dataset.pickWorkout;},0)}));
   document.querySelectorAll('input[type="range"]').forEach(r=>r.addEventListener('input',()=>updateRange(r)));
   $('#checkinForm')?.addEventListener('submit',saveCheckin); $('#workoutForm')?.addEventListener('submit',saveWorkout); $('#cardioForm')?.addEventListener('submit',saveCardio); $('#cardioImportInput')?.addEventListener('change',handleCardioImport); $('#cardioImportConfirmForm')?.addEventListener('submit',saveImportedCardio); $('#fetchStravaActivities')?.addEventListener('click',fetchStravaActivities); $('#askSmartTraining')?.addEventListener('click',loadSmartTrainingSuggestion); $('#stravaConfirmForm')?.addEventListener('submit',saveStravaCardio); $('#hydrationQuickForm')?.addEventListener('submit',saveHydrationQuick); $('#foodForm')?.addEventListener('submit',saveFood); $('#foodSearchForm')?.addEventListener('submit',searchFoods); $('#foodSearchConfirmForm')?.addEventListener('submit',saveSearchedFood); $('#barcodeForm')?.addEventListener('submit',lookupBarcode); $('#startBarcodeCamera')?.addEventListener('click',startBarcodeCamera); $('#toggleManualBarcode')?.addEventListener('click',()=>$('#barcodeForm')?.classList.toggle('hidden')); $('#barcodeConfirmForm')?.addEventListener('submit',saveBarcodeFood); $('#aiFoodConfirmForm')?.addEventListener('submit',saveAIFood);
