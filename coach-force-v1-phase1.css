@@ -1,0 +1,9 @@
+
+/* Fluidité Coach Force V1 — Phase 1 */
+.coach-intro{display:flex;flex-direction:column;gap:3px;background:#302641;border:1px solid #493b5d;border-radius:14px;padding:12px 14px;margin:12px 0;color:#f5efff}
+.coach-intro strong{color:#d8c6ff;font-size:.82rem}.coach-intro span{font-size:.73rem;color:#c8bdd0}
+.coach-exercise{padding:14px!important}.coach-why{background:#2c2436;border-radius:12px;padding:10px 11px;margin:11px 0}.coach-why span{display:block;color:#cdbaff;font-size:.66rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em}.coach-why p{margin:5px 0 0!important;color:#ddd3e3!important;font-size:.75rem!important;line-height:1.35}
+.coach-set-head,.coach-set-row{display:grid;grid-template-columns:34px 58px minmax(54px,1fr) 70px minmax(58px,1fr);gap:6px;align-items:center}
+.coach-set-head{font-size:.57rem;color:#a99eb0;text-align:center;padding:5px 0 2px}.coach-set-row{margin:7px 0}.coach-set-n{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#392c4c;color:#d9c6ff!important;font-weight:800}
+.coach-set-row>div{text-align:center}.coach-set-row>div small,.coach-set-row>div b{display:block}.coach-set-row>div small{font-size:.5rem;color:#9f94a7}.coach-set-row>div b{font-size:.72rem;color:#e9e1ef;margin-top:1px}.coach-set-row input{min-width:0;text-align:center;padding:9px 5px!important}
+@media(max-width:390px){.coach-set-head,.coach-set-row{grid-template-columns:30px 50px minmax(48px,1fr) 62px minmax(52px,1fr);gap:4px}.coach-set-row input{font-size:.78rem;padding:8px 3px!important}}
