@@ -751,7 +751,7 @@ async function workoutDetailSheet(workout){
       </div>
       <div class="force-why"><strong>☆ &nbsp; POURQUOI AUJOURD’HUI ?</strong><p>${why}</p></div>
       <div class="force-preview-head"><strong>APERÇU DES EXERCICES</strong><button type="button" data-force-all>Voir tout (${plan.length}) &nbsp;›</button></div>
-      <div class="force-preview-list">${preview.map((x,i)=>`<button type="button" class="force-preview-row" data-technique="${escapeHtml(x.name)}"><span class="force-ex-thumb">${iconFor(x.name)}</span><span class="force-ex-copy"><b>${i+1}. ${escapeHtml(x.name)}</b><small>${x.sets} séries · ${x.reps} reps · Repos ${x.rest}</small></span><em>${muscleFor(x.name)}</em></button>`).join('')}</div>
+      <div class="force-preview-list">${preview.map((x,i)=>`<button type="button" class="force-preview-row" data-technique="${escapeHtml(x.name)}">${forceThumb(x.name)}<span class="force-ex-copy"><b>${i+1}. ${escapeHtml(x.name)}</b><small>${x.sets} séries · ${x.reps} reps · Repos ${x.rest}</small></span><em>${muscleFor(x.name)}</em></button>`).join('')}</div>
       ${plan.length>4?`<button type="button" class="force-more" data-force-all>+ ${plan.length-4} exercices supplémentaires</button>`:''}
       <button class="action orange force-mock-start" id="startChosenWorkout">▶ &nbsp; DÉMARRER LA SÉANCE</button>
     </section>
@@ -828,19 +828,59 @@ async function updateActivity(e){
 }
 async function deleteActivity(kind,id){const store=kind==='Force'?'workouts':'cardio'; await LTDB.del(store,id); $('#sheet').close(); toast('Saisie supprimée'); render();}
 
+function forceVisualKey(name){
+  const s=String(name||'').toLowerCase();
+  if(s.includes('couch'))return 'bench';
+  if(s.includes('traction'))return 'pullup';
+  if(s.includes('rowing'))return 'row';
+  return 'generic';
+}
+function forceFigureSvg(name,phase='start',mini=false){
+  const k=forceVisualKey(name),end=phase==='end',w=mini?92:250,h=mini?74:190;
+  const common=`<defs><linearGradient id="skin" x1="0" x2="1"><stop stop-color="#dadada"/><stop offset="1" stop-color="#9c9c9c"/></linearGradient><linearGradient id="mus" x1="0" x2="1"><stop stop-color="#ff7448"/><stop offset="1" stop-color="#e95331"/></linearGradient></defs>`;
+  let body='';
+  if(k==='bench'){
+    const barY=end?42:78,handY=barY;
+    body=`<rect x="34" y="137" width="175" height="10" rx="5" fill="#303033"/><rect x="48" y="145" width="8" height="35" fill="#3b3b3e"/><rect x="190" y="145" width="8" height="35" fill="#3b3b3e"/>
+    <ellipse cx="126" cy="117" rx="47" ry="20" fill="url(#skin)"/><circle cx="178" cy="108" r="13" fill="url(#skin)"/><path d="M92 112 Q126 91 160 112 L151 128 Q126 118 101 128Z" fill="url(#mus)"/>
+    <path d="M103 109 L${end?91:78} ${handY+5}" stroke="url(#skin)" stroke-width="13" stroke-linecap="round"/><path d="M150 109 L${end?161:174} ${handY+5}" stroke="url(#skin)" stroke-width="13" stroke-linecap="round"/>
+    <path d="M104 108 L${end?92:82} ${handY+6}" stroke="url(#mus)" stroke-width="8" stroke-linecap="round"/><path d="M149 108 L${end?160:170} ${handY+6}" stroke="url(#mus)" stroke-width="8" stroke-linecap="round"/>
+    <line x1="54" y1="${barY}" x2="202" y2="${barY}" stroke="#333" stroke-width="7"/><circle cx="66" cy="${barY}" r="20" fill="#28282b"/><circle cx="190" cy="${barY}" r="20" fill="#28282b"/>`;
+  }else if(k==='pullup'){
+    const headY=end?72:105,shoulderY=end?88:122,handY=38;
+    body=`<line x1="38" y1="30" x2="214" y2="30" stroke="#27272a" stroke-width="9"/><line x1="48" y1="30" x2="48" y2="180" stroke="#333" stroke-width="7"/><line x1="204" y1="30" x2="204" y2="180" stroke="#333" stroke-width="7"/>
+    <circle cx="126" cy="${headY}" r="14" fill="url(#skin)"/><path d="M98 ${shoulderY} Q126 ${shoulderY-15} 154 ${shoulderY} L145 ${shoulderY+55} Q126 ${shoulderY+68} 107 ${shoulderY+55}Z" fill="url(#skin)"/>
+    <path d="M101 ${shoulderY+7} Q126 ${shoulderY+22} 151 ${shoulderY+7} L145 ${shoulderY+48} Q126 ${shoulderY+58} 107 ${shoulderY+48}Z" fill="url(#mus)"/>
+    <line x1="104" y1="${shoulderY+5}" x2="84" y2="${handY}" stroke="url(#skin)" stroke-width="12" stroke-linecap="round"/><line x1="148" y1="${shoulderY+5}" x2="168" y2="${handY}" stroke="url(#skin)" stroke-width="12" stroke-linecap="round"/>
+    <line x1="114" y1="${shoulderY+55}" x2="112" y2="180" stroke="url(#skin)" stroke-width="13"/><line x1="138" y1="${shoulderY+55}" x2="140" y2="180" stroke="url(#skin)" stroke-width="13"/>`;
+  }else if(k==='row'){
+    const barY=end?112:151;
+    body=`<circle cx="157" cy="63" r="14" fill="url(#skin)"/><path d="M83 91 Q119 66 151 77 L142 111 Q111 102 78 116Z" fill="url(#skin)"/><path d="M88 91 Q117 76 145 80 L138 102 Q110 95 83 108Z" fill="url(#mus)"/>
+    <line x1="91" y1="105" x2="${end?110:94}" y2="${barY}" stroke="url(#skin)" stroke-width="12" stroke-linecap="round"/><line x1="136" y1="102" x2="${end?145:153}" y2="${barY}" stroke="url(#skin)" stroke-width="12" stroke-linecap="round"/>
+    <line x1="89" y1="111" x2="68" y2="174" stroke="url(#skin)" stroke-width="15"/><line x1="126" y1="111" x2="151" y2="174" stroke="url(#skin)" stroke-width="15"/>
+    <line x1="48" y1="${barY}" x2="202" y2="${barY}" stroke="#303033" stroke-width="7"/><circle cx="57" cy="${barY}" r="18" fill="#28282b"/><circle cx="193" cy="${barY}" r="18" fill="#28282b"/>`;
+  }else{
+    body=`<circle cx="126" cy="45" r="20" fill="url(#skin)"/><path d="M91 70 Q126 55 161 70 L150 138 Q126 150 102 138Z" fill="url(#skin)"/><path d="M99 75 Q126 63 153 75 L146 105 Q126 96 106 105Z" fill="url(#mus)"/><line x1="102" y1="80" x2="72" y2="140" stroke="url(#skin)" stroke-width="14"/><line x1="150" y1="80" x2="180" y2="140" stroke="url(#skin)" stroke-width="14"/><line x1="113" y1="137" x2="102" y2="182" stroke="url(#skin)" stroke-width="15"/><line x1="139" y1="137" x2="150" y2="182" stroke="url(#skin)" stroke-width="15"/>`;
+  }
+  return `<svg class="force-render ${mini?'mini':''}" viewBox="0 0 250 190" role="img" aria-label="${escapeHtml(name)} ${end?'arrivée':'départ'}">${common}${body}</svg>`;
+}
+function forceThumb(name){return `<span class="force-ex-thumb force-ex-thumb-render">${forceFigureSvg(name,'start',true)}</span>`;}
 function showTechnique(name){
   const guides={
     'Développé couché':{focus:'Pectoraux · Triceps · Épaules',steps:['Pieds stables au sol, omoplates serrées.','Descends la barre avec contrôle vers le bas des pectoraux.','Pousse sans décoller les épaules du banc.'],errors:['Coudes trop écartés','Rebond sur la poitrine','Épaules qui partent vers l’avant'],video:'développé couché technique'},
     'Tractions':{focus:'Dos · Biceps',steps:['Pars bras tendus avec les épaules actives.','Amène la poitrine vers la barre sans balancer.','Redescends sous contrôle jusqu’à l’extension.'],errors:['Élan des jambes','Amplitude raccourcie','Nuque projetée'],video:'tractions technique'},
     'Rowing':{focus:'Dos · Biceps',steps:['Garde le tronc stable et le dos neutre.','Tire les coudes vers l’arrière.','Contrôle le retour sans arrondir le dos.'],errors:['Dos arrondi','Élan du buste','Épaules remontées'],video:'rowing musculation technique'}
   };
+
   const g=guides[name]||{focus:'Mouvement contrôlé',steps:['Installe-toi dans une position stable.','Garde une amplitude confortable et contrôlée.','Expire pendant l’effort et conserve la maîtrise du retour.'],errors:['Charge trop lourde','Mouvement précipité','Amplitude forcée'],video:name+' technique musculation'};
   const q='https://www.youtube.com/results?search_query='+encodeURIComponent(g.video);
-  showSheet(`<div class="force-v1-tech"><div class="force-v1-kicker">TECHNIQUE</div><h2>${escapeHtml(name)}</h2><p class="subtle">${escapeHtml(g.focus)}</p>
-    <div class="force-v1-3d"><div class="force-v1-figure"><i></i><b></b><span></span></div><div><strong>Guide visuel 3D</strong><p>Repères de posture et trajectoire à consulter sans quitter ta séance.</p></div></div>
-    <div class="force-v1-tech-card"><h3>Exécution</h3>${g.steps.map((x,i)=>`<div class="force-v1-tech-step"><b>${i+1}</b><span>${escapeHtml(x)}</span></div>`).join('')}</div>
-    <div class="force-v1-tech-card danger"><h3>À éviter</h3>${g.errors.map(x=>`<p>× &nbsp;${escapeHtml(x)}</p>`).join('')}</div>
-    <a class="action secondary force-v1-video" href="${q}" target="_blank" rel="noopener">▶ Voir une vidéo technique</a>
+  const primary=forceVisualKey(name)==='bench'?'Pectoraux':(forceVisualKey(name)==='pullup'||forceVisualKey(name)==='row'?'Grand dorsal':'Zone principale');
+  showSheet(`<div class="force-v4-tech"><div class="force-v4-tech-head"><div><div class="force-v1-kicker">TECHNIQUE</div><h2>${escapeHtml(name)}</h2><p>${escapeHtml(g.focus)}</p></div><span class="force-muscle-pill">${escapeHtml(primary)}</span></div>
+    <div class="force-v4-positions"><section><strong><b>1</b> DÉPART</strong>${forceFigureSvg(name,'start')}</section><section><strong><b>2</b> ARRIVÉE</strong>${forceFigureSvg(name,'end')}</section></div>
+    <div class="force-v4-muscles"><div class="force-v4-muscle-body">${forceFigureSvg(name,'end',true)}</div><div><strong>MUSCLES SOLLICITÉS</strong><p><i></i><b>Principal</b><br>${escapeHtml(primary)}</p><p><i class="secondary"></i><b>Secondaires</b><br>${escapeHtml(g.focus)}</p></div></div>
+    <div class="force-v4-exec"><strong>COMMENT EXÉCUTER</strong>${g.steps.map((x,i)=>`<div><b>${i+1}</b><span>${escapeHtml(x)}</span></div>`).join('')}</div>
+    <div class="force-v4-advice"><strong>💡 &nbsp; CONSEIL</strong><p>${escapeHtml(g.errors.length?'Évite : '+g.errors.join(' · '):'Privilégie la qualité du mouvement.')}</p></div>
+    <a class="action secondary force-v1-video" href="${q}" target="_blank" rel="noopener">▶ Voir la vidéo</a>
     <button class="action orange" type="button" data-force-back>Retour à la séance</button></div>`);
 }
 
