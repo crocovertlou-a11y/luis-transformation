@@ -206,6 +206,7 @@ async function renderToday(today,todayWorkout,todayCardio,protein,calories,foodC
 
   const [workoutsAll,cardioAll,foodAll,checkinsAll]=await Promise.all(['workouts','cardio','food','checkins'].map(s=>LTDB.all(s)));
   const decision=fluidityEngine(today,todayWorkout,todayCardio,workoutsAll,cardioAll,foodAll);
+  const nutritionAdvice=fluidityNutritionComment(decision.decision,todayCardio,protein,calories,foodCount);
   const todayFood=foodAll.filter(x=>x.date===todayKey());
   const water=todayFood.reduce((n,x)=>n+(Number(x.water)||0),0), waterTarget=3;
   const recovery=today?.recovery!=null?Number(today.recovery):null;
