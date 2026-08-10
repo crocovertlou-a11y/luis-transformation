@@ -18,6 +18,13 @@
     if(s.includes('gainage')) return 'plank';
     return 'generic';
   };
+  const REAL={
+    bench:{thumb:'force-bench-thumb.webp',start:'force-bench-start.webp',profile:'force-bench-profile.webp',muscles:'force-bench-muscles.webp'},
+    pullup:{thumb:'force-pullup-thumb.webp'},
+    row:{thumb:'force-row-thumb.webp'},
+    shoulder:{thumb:'force-shoulder-thumb.webp'}
+  };
+  const photo=(src,alt,cls='')=>`<img class="freal-photo ${cls}" src="${src}" alt="${esc(alt)}" loading="eager">`;
   const DATA={
     bench:{focus:'Pectoraux · Triceps · Deltoïdes antérieurs',primary:'Pectoraux',secondary:'Triceps · Deltoïdes antérieurs',
       steps:['Pieds bien ancrés, omoplates serrées et épaules basses.','Descends la barre sous contrôle vers le bas des pectoraux.','Pousse la barre en gardant les poignets alignés et les épaules stables.'],
@@ -71,14 +78,22 @@
     return `<svg class="fvis-svg ${mini?'mini':''}" viewBox="0 0 280 210"><defs><linearGradient id="body" x1="0" x2="1"><stop stop-color="#e7e7e7"/><stop offset=".55" stop-color="#bcbcbc"/><stop offset="1" stop-color="#8d8d8d"/></linearGradient><linearGradient id="muscle" x1="0" x2="1"><stop stop-color="#ff8058"/><stop offset="1" stop-color="#e95232"/></linearGradient></defs>${art}</svg>`;
   }
 
-  window.forceVisualThumb=name=>`<span class="fstep-thumb fvis-thumb">${mannequin(key(name),'start',true)}</span>`;
+  window.forceVisualThumb=name=>{
+    const k=key(name),r=REAL[k];
+    return `<span class="fstep-thumb fvis-thumb">${r?.thumb?photo(r.thumb,name,'freal-thumb'):mannequin(k,'start',true)}</span>`;
+  };
 
   window.forceTechniqueStep2=name=>{
     const k=key(name),d=DATA[k]||DATA.generic;
     const youtube='https://www.youtube.com/results?search_query='+encodeURIComponent(name+' technique musculation');
+    const r=REAL[k];
+    const startVisual=r?.start?photo(r.start,name+' — position de départ','freal-tech'):mannequin(k,'start');
+    const secondVisual=r?.profile?photo(r.profile,name+' — vue de profil','freal-tech'):mannequin(k,'end');
+    const muscleVisual=r?.muscles?photo(r.muscles,'Muscles sollicités — '+d.primary,'freal-muscles'):mannequin(k,'end',true);
+    const secondLabel=r?.profile?'PROFIL':'POSITION 2';
     showSheet(`<div class="fvis-tech"><div class="fvis-head"><div><div class="fstep-top">TECHNIQUE</div><h2>${esc(name)}</h2><p>${esc(d.focus)}</p></div><span>${esc(d.primary)}</span></div>
-    <div class="fvis-positions"><section><strong><b>1</b>DÉPART</strong>${mannequin(k,'start')}</section><section><strong><b>2</b>ARRIVÉE</strong>${mannequin(k,'end')}</section></div>
-    <section class="fvis-muscles"><div class="fvis-muscle-model">${mannequin(k,'end',true)}</div><div><strong>MUSCLES SOLLICITÉS</strong><p><i></i><b>Principal</b><br>${esc(d.primary)}</p><p><i class="secondary"></i><b>Secondaires</b><br>${esc(d.secondary)}</p></div></section>
+    <div class="fvis-positions freal-positions"><section><strong><b>1</b>DÉPART</strong>${startVisual}</section><section><strong><b>2</b>${secondLabel}</strong>${secondVisual}</section></div>
+    <section class="fvis-muscles"><div class="fvis-muscle-model">${muscleVisual}</div><div><strong>MUSCLES SOLLICITÉS</strong><p><i></i><b>Principal</b><br>${esc(d.primary)}</p><p><i class="secondary"></i><b>Secondaires</b><br>${esc(d.secondary)}</p></div></section>
     <section class="fvis-exec"><strong>COMMENT EXÉCUTER</strong>${d.steps.map((x,i)=>`<div><b>${i+1}</b><span>${esc(x)}</span></div>`).join('')}</section>
     <section class="fvis-tip"><strong>💡 &nbsp; CONSEIL</strong><p>${esc(d.tip)}</p></section>
     <a class="action secondary fvis-video" href="${youtube}" target="_blank" rel="noopener">▶ Voir la vidéo</a>
