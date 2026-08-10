@@ -15,6 +15,7 @@
   }
 
   function thumb(name){
+    if(window.forceVisualThumb) return window.forceVisualThumb(name);
     const m=muscleFor(name);
     const cls=m==='Pectoraux'?'chest':m==='Dos'?'back':m==='Épaules'?'shoulders':m==='Jambes'?'legs':'core';
     return `<span class="fstep-thumb ${cls}" aria-hidden="true"><i></i><b></b><em></em></span>`;
@@ -88,7 +89,7 @@
   // One delegated listener, independent from bindSheet and therefore from Nutrition.
   document.addEventListener('click', e => {
     const tech=e.target.closest('[data-fstep-tech]');
-    if(tech){ e.preventDefault(); e.stopPropagation(); showTechnique(tech.dataset.fstepTech); return; }
+    if(tech){ e.preventDefault(); e.stopPropagation(); (window.forceTechniqueStep2||showTechnique)(tech.dataset.fstepTech); return; }
     const all=e.target.closest('[data-fstep-all]');
     if(all){ e.preventDefault(); e.stopPropagation(); allExercises(); return; }
     const start=e.target.closest('[data-fstep-start]');
