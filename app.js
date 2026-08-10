@@ -254,46 +254,57 @@ async function renderEvolution(checkins,workouts,cardio){
 function formatPhotoDate(d){try{return new Intl.DateTimeFormat('fr-CH',{day:'2-digit',month:'short',year:'numeric'}).format(new Date(d+'T12:00:00'))}catch{return d}}
 
 async function renderTraining(){
-  const [workouts,cardio,checkins]=await Promise.all([LTDB.all('workouts'),LTDB.all('cardio'),LTDB.all('checkins')]);
-  workouts.sort((a,b)=>b.date.localeCompare(a.date));
-  cardio.sort((a,b)=>b.date.localeCompare(a.date));
-  const today=todayKey();
-  const todayCheckin=checkins.find(x=>x.date===today);
-  const todayCardio=cardio.filter(x=>x.date===today);
-  const todayWorkout=workouts.find(x=>x.date===today);
-  const decision=fluidityEngine({checkin:todayCheckin,cardioToday:todayCardio,workoutToday:todayWorkout});
-  const recommended=workoutById('upper');
-  const lastForce=workouts[0];
+  const workouts=(await LTDB.all('workouts')).sort((a,b)=>b.date.localeCompare(a.date));
+  const cardio=(await LTDB.all('cardio')).sort((a,b)=>b.date.localeCompare(a.date));
+  const suggestion=suggestWorkout(workouts);
+  const lastForce=workouts[0], lastCardio=cardio[0];
   const forceCount30=workouts.filter(x=>daysAgo(x.date)<=30).length;
-  const canTrain=decision.action==='training';
-  const title=canTrain?(decision.decision==='alternative_session'?'Haut du corps aujourd’hui':'Séance Force – adaptée à toi'):decision.title;
-  const message=canTrain?decision.message:'Ton état du jour reste prioritaire. Fluidité adapte la proposition à ce que tu as renseigné.';
-  return `<section class="training-unified">
-    <div class="training-unified-heading"><div class="today-kicker">✦ &nbsp;FLUIDITÉ TE RECOMMANDE</div><h1>${escapeHtml(title)}</h1><p>${escapeHtml(message)}</p></div>
-    <section class="today-companion-card training-companion-card">
-      <div class="companion-left">
-        <div class="session-mini">
-          <div class="session-icon">⌁</div>
-          <div class="session-copy"><strong>${canTrain?'Séance Force – Haut du corps':escapeHtml(decision.title)}</strong><small>${canTrain?'Une proposition cohérente avec ta disponibilité du jour.':'La récupération fait aussi partie de la progression.'}</small></div>
-          <span class="adapt-pill">Adaptée pour toi</span>
-          <div class="session-stats"><span>◷ <b>${canTrain?'40':'20'} min</b></span><span>◎ <b>${canTrain?'Force & volume':'Récupération'}</b></span><span>▥ <b>${canTrain?'Modérée':'Légère'}</b></span><span>♡ <b>${decision.confidence==='high'?'Bonne':'À écouter'}</b></span></div>
+  const cardioCount30=cardio.filter(x=>daysAgo(x.date)<=30).length;
+  return `<section class="hero"><div class="hello">Entraînement</div><div class="subtle">Une proposition simple, basée sur ton historique. Tu restes toujours libre de changer.</div></section>
+
+  <div class="card training-v2-feature">
+    <div class="card-kicker">${companionMark("choice-companion")} Suggestion du Compagnon</div>
+    <div id="smartTrainingSuggestion">
+      <div class="training-v2-head">
+        <div>
+          <h3>${escapeHtml(suggestion.title)}</h3>
+          <p class="subtle">${escapeHtml(suggestion.subtitle)}</p>
         </div>
-        <div class="companion-actions">${canTrain?'<button class="action secondary outline" data-training-force="detail">Voir le détail</button><button class="action orange" data-training-force="start">Démarrer la séance</button>':'<button class="action secondary outline" data-open="checkin">Réévaluer</button>'}</div>
+        <span class="pill">${escapeHtml(suggestion.goalLabel)}</span>
       </div>
-      <div class="companion-right"><div class="fluidity-breath today-big-breath">${companionMark('companion-mark-large')}</div><h3>Respire.<br><em>Recentre-toi.</em><br><b>Avance.</b></h3><i></i><p>Un pas après l’autre,<br>avec régularité<br>et bienveillance.</p></div>
-    </section>
+      <div class="training-v2-reason">${escapeHtml(suggestion.reason)}</div>
+      <div class="smart-fallback-note">Suggestion locale immédiate · le Compagnon peut l’affiner avec ton contexte récent.</div>
+      <div class="card-actions">
+        <button class="action" id="askSmartTraining" type="button">Affiner avec le Compagnon</button>
+        <button class="action secondary" data-open="workoutIdeas">Choisir moi-même</button>
+      </div>
+    </div>
+  </div>
 
-    <button type="button" class="training-choose-self" data-open="workoutIdeas"><span>Choisir moi-même</span><b>›</b></button>
-
-    <section class="card compact-history-card training-force-history">
+  <div class="training-history-grid">
+    <div class="card compact-history-card">
       <div class="card-kicker">Historique Force</div>
       <h3>${lastForce?escapeHtml(lastForce.name||'Séance Force'):'Aucune séance'}</h3>
-      <p class="subtle">${lastForce?`${formatPhotoDate(lastForce.date)} · ${lastForce.durationLabel||''}`:'Commence à enregistrer tes séances pour personnaliser les propositions.'}</p>
+      <p class="subtle">${lastForce?`${formatPhotoDate(lastForce.date)} · ${lastForce.durationLabel||''}`:`Commence à enregistrer tes séances pour personnaliser les propositions.`}</p>
       <div class="history-mini-stat"><strong>${forceCount30}</strong><span>séance${forceCount30>1?'s':''} · 30 j</span></div>
       <button class="action secondary compact full" data-open="forceHistory">Voir l’historique</button>
-    </section>
-  </section>`;
+    </div>
+
+    <div class="card compact-history-card">
+      <div class="card-kicker">Historique Cardio</div>
+      <h3>${lastCardio?escapeHtml(lastCardio.type||'Cardio'):'Aucune activité'}</h3>
+      <p class="subtle">${lastCardio?`${formatPhotoDate(lastCardio.date)}${lastCardio.distance?` · ${lastCardio.distance} km`:''}${lastCardio.durationLabel?` · ${lastCardio.durationLabel}`:''}`:'Course, vélo, natation, marche…'}</p>
+      <div class="history-mini-stat"><strong>${cardioCount30}</strong><span>activité${cardioCount30>1?'s':''} · 30 j</span></div>
+      <div class="history-card-actions">
+        <button class="action compact full" data-open="cardio">Ajouter manuellement</button>
+        <button class="action secondary compact full" data-open="cardioImport">Importer un fichier</button>
+        <button class="action secondary compact full strava-action" data-open="stravaHub">Strava</button>
+        <button class="text-action history-link" data-open="cardioHistory">Voir / modifier l’historique</button>
+      </div>
+    </div>
+  </div>`;
 }
+
 
 async function smartTrainingContext(){
   const [workouts,cardio,checkins,nutrition]=await Promise.all([LTDB.all('workouts'),LTDB.all('cardio'),LTDB.all('checkins'),LTDB.all('nutrition')]);
@@ -445,7 +456,6 @@ function bindPage(){
   document.querySelectorAll('[data-home-view]').forEach(b=>b.addEventListener('click',()=>{state.homeView=b.dataset.homeView;render();}));
   document.querySelectorAll('[data-route-card]').forEach(b=>b.addEventListener('click',()=>navigate(b.dataset.routeCard)));
   document.querySelectorAll('[data-fluidity-force]').forEach(b=>b.addEventListener('click',async()=>{const w=workoutById('upper');if(b.dataset.fluidityForce==='detail')return workoutDetailSheet(w);await workoutDetailSheet(w);chosenWorkoutForm();}));
-  document.querySelectorAll('[data-training-force]').forEach(b=>b.addEventListener('click',async()=>{const w=workoutById('upper');if(b.dataset.trainingForce==='detail')return workoutDetailSheet(w);await workoutDetailSheet(w);chosenWorkoutForm();}));
   document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>openSheet(b.dataset.open)); document.querySelectorAll('[data-photo-view]').forEach(b=>b.onclick=()=>viewProgressPhoto(b.dataset.photoView));
   document.querySelectorAll('[data-edit-activity]').forEach(b=>b.addEventListener('click',()=>{const [kind,id]=b.dataset.editActivity.split(':'); editActivitySheet(kind,id);}));
   $('#sendChat')?.addEventListener('click',sendChat); $('#chatInput')?.addEventListener('keydown',e=>{if(e.key==='Enter')sendChat();});
