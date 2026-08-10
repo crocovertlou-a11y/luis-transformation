@@ -17,13 +17,13 @@ const GENERIC=[
 {name:'Avocat',aliases:'avocat avocado',p:{calories:160,protein:2,carbs:8.5,fat:14.7}}
 ];
 const n=v=>Number.isFinite(Number(v))?Number(v):0;
-function generic(q){const terms=q.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu,'').split(/\s+/).filter(Boolean);return GENERIC.filter(x=>{const hay=(x.name+' '+x.aliases).toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu,'');return terms.every(t=>hay.includes(t))}).slice(0,5).map((x,i)=>({id:'generic-'+i+'-'+x.name,source:'generic-reference',sourceLabel:'Référence générique',name:x.name,brand:'',quantity:'',image:'',servingGrams:100,per100:x.p}))}
+function generic(q){const terms=q.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu,'').split(/\s+/).filter(Boolean);const hay=x=>(x.name+' '+x.aliases).toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu,'');let rows=GENERIC.filter(x=>terms.every(t=>hay(x).includes(t)));if(!rows.length&&terms.length>1)rows=GENERIC.filter(x=>terms.some(t=>t.length>2&&hay(x).includes(t)));return rows.slice(0,5).map((x,i)=>({id:'generic-'+i+'-'+x.name,source:'generic-reference',sourceLabel:'Référence générique',name:x.name,brand:'',quantity:'',image:'',servingGrams:100,per100:x.p}))}
 exports.handler=async function(event){
  const q=String(event.queryStringParameters?.q||'').trim();if(q.length<2)return{statusCode:400,body:JSON.stringify({error:'QUERY_TOO_SHORT'})};
  try{
-  const url='https://world.openfoodfacts.org/cgi/search.pl?search_terms='+encodeURIComponent(q)+'&search_simple=1&action=process&json=1&page_size=12&fields=code,product_name,brands,quantity,image_front_small_url,nutriments,serving_quantity';
-  const r=await fetch(url,{headers:{'User-Agent':'LuisTransformation/0.9.1'}});
-  const d=r.ok?await r.json():{products:[]};
+  const search=async term=>{const url='https://world.openfoodfacts.org/cgi/search.pl?search_terms='+encodeURIComponent(term)+'&search_simple=1&action=process&json=1&page_size=12&fields=code,product_name,brands,quantity,image_front_small_url,nutriments,serving_quantity';const r=await fetch(url,{headers:{'User-Agent':'LuisTransformation/0.9.1'}});return r.ok?await r.json():{products:[]}};
+  let d=await search(q);
+  if(!(d.products||[]).length){const relaxed=q.split(/\s+/).filter(x=>x.length>2)[0];if(relaxed&&relaxed.toLowerCase()!==q.toLowerCase())d=await search(relaxed)}
   const branded=(d.products||[]).filter(x=>x.product_name&&x.nutriments).map(x=>({id:x.code||'',source:'open-food-facts-search',sourceLabel:'Open Food Facts',name:x.product_name,brand:x.brands||'',quantity:x.quantity||'',image:x.image_front_small_url||'',servingGrams:n(x.serving_quantity)||100,per100:{calories:n(x.nutriments['energy-kcal_100g']),protein:n(x.nutriments.proteins_100g),carbs:n(x.nutriments.carbohydrates_100g),fat:n(x.nutriments.fat_100g)}})).filter(x=>x.per100.calories||x.per100.protein||x.per100.carbs||x.per100.fat).slice(0,8);
   const gens=generic(q);const results=[...branded,...gens].slice(0,12);
   return{statusCode:200,headers:{'Content-Type':'application/json','Cache-Control':'public, max-age=300'},body:JSON.stringify({results})};
