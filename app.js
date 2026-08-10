@@ -137,13 +137,14 @@ function mealSummary(rows){
 }
 function nutritionMealCard(type,rows){
   const sum=mealSummary(rows);
+  const preview=rows.slice(0,3).map(x=>x.description||'Aliment').filter(Boolean).join(', ');
   const details=rows.length
     ? `<div class="meal-items">${rows.map(x=>`<button type="button" class="meal-item-row" data-edit-food="${x.id}"><span>${escapeHtml(x.description||'Aliment')}</span><small>${x.calories?Math.round(x.calories)+' kcal':''}${x.protein?` · ${Math.round(x.protein)} g prot.`:''}</small><b>›</b></button>`).join('')}</div>`
-    : `<div class="meal-empty">Rien de saisi pour le moment.</div>`;
-  return `<section class="nutrition-meal-card">
+    : '';
+  return `<section class="nutrition-meal-card nutrition-meal-card-v2">
     <div class="nutrition-meal-head">
-      <div class="nutrition-meal-title"><span class="nutrition-meal-icon">${mealIcon(type)}</span><div><strong>${mealTypeLabel(type)}</strong><small>${rows.length?`${Math.round(sum.calories)} kcal · ${Math.round(sum.protein)} g prot. · ${Math.round(sum.carbs)} g gluc. · ${Math.round(sum.fat)} g lip.`:'À compléter'}</small></div></div>
-      <div class="nutrition-meal-actions"><button type="button" class="nutrition-copy-yesterday" data-copy-yesterday="${type}">Copier hier</button><button type="button" class="nutrition-meal-add" data-meal-add="${type}">＋ Ajouter</button></div>
+      <div class="nutrition-meal-title"><span class="nutrition-meal-icon">${mealIcon(type)}</span><div><strong>${mealTypeLabel(type)}</strong><small>${rows.length?`${Math.round(sum.calories)} kcal · ${Math.round(sum.protein)} g prot.`:'À compléter'}</small>${preview?`<em>${escapeHtml(preview)}${rows.length>3?'…':''}</em>`:''}</div></div>
+      <div class="nutrition-meal-actions"><button type="button" class="nutrition-meal-add" data-meal-add="${type}">＋ Ajouter</button><button type="button" class="nutrition-copy-yesterday" data-copy-yesterday="${type}">▣ Copier hier</button></div>
     </div>
     ${details}
   </section>`;
@@ -609,18 +610,27 @@ async function nutritionHubSheet(){
   const food=all.filter(x=>x.date===todayKey()).sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||''));
   const total=mealSummary(food);
   const target=state.profile.proteinTarget||170;
+  const calorieTarget=2250;
   const proteinPct=Math.min(100,target?total.protein/target*100:0);
+  const caloriePct=Math.min(100,calorieTarget?total.calories/calorieTarget*100:0);
+  const remain=Math.max(0,target-total.protein);
   const mealOrder=['breakfast','lunch','snack','dinner'];
   const byMeal=Object.fromEntries(mealOrder.map(type=>[type,food.filter(x=>x.mealType===type)]));
-  return showSheet(`<div class="nutrition-page-head"><div><div class="card-kicker">Alimentation</div><h2>Aujourd’hui</h2></div><div class="nutrition-head-actions"><span class="nutrition-date">${new Intl.DateTimeFormat('fr-CH',{weekday:'short',day:'numeric',month:'short'}).format(new Date())}</span><button type="button" class="nutrition-calendar-button" data-nutrition-history aria-label="Historique">▦</button></div></div>
-    <section class="nutrition-day-summary">
-      <div class="nutrition-day-top"><strong>${Math.round(total.calories)} kcal</strong><span>Objectif protéines ${target} g</span></div>
-      <div class="nutrition-day-macros"><div><b>${Math.round(total.protein)} g</b><span>Protéines</span></div><div><b>${Math.round(total.carbs)} g</b><span>Glucides</span></div><div><b>${Math.round(total.fat)} g</b><span>Lipides</span></div></div>
-      <div class="nutrition-bar"><i style="width:${proteinPct}%"></i></div>
+  const fluidityText=remain>0
+    ? `<strong>${Math.round(remain)} g de protéines restantes.</strong><span>${remain>60?'Tu as encore de la marge pour compléter tranquillement.':remain>25?'La journée avance bien, complète au prochain repas.':'Tu es tout près de ton repère du jour.'}</span>`
+    : `<strong>Repère protéines atteint.</strong><span>Pas besoin d’en faire plus : garde simplement ton équilibre.</span>`;
+  return showSheet(`<div class="nutrition-page-head nutrition-page-head-v2"><div><div class="card-kicker">Alimentation</div><h2>Aujourd’hui</h2></div><div class="nutrition-head-actions"><span class="nutrition-date">${new Intl.DateTimeFormat('fr-CH',{weekday:'short',day:'numeric',month:'short'}).format(new Date())}</span><button type="button" class="nutrition-calendar-button" data-nutrition-history aria-label="Historique">▦</button></div></div>
+    <section class="nutrition-day-summary nutrition-day-summary-v2">
+      <div class="nutrition-calorie-ring" style="--progress:${caloriePct*3.6}deg"><div><strong>${Math.round(total.calories)}</strong><span>kcal</span><small>sur ${calorieTarget}</small></div></div>
+      <div class="nutrition-v2-macros">
+        <div><span>Protéines</span><b>${Math.round(total.protein)} <small>g</small></b><em>sur ${target} g</em><i><u style="width:${proteinPct}%"></u></i></div>
+        <div><span>Glucides</span><b>${Math.round(total.carbs)} <small>g</small></b><em>aujourd’hui</em></div>
+        <div><span>Lipides</span><b>${Math.round(total.fat)} <small>g</small></b><em>aujourd’hui</em></div>
+      </div>
+      <div class="nutrition-fluidity-note">${companionMark("companion-mark-mini")}<div>${fluidityText}</div></div>
     </section>
-    <div class="nutrition-meals">${mealOrder.map(type=>nutritionMealCard(type,byMeal[type])).join('')}</div>
-    <div class="nutrition-legacy-actions"><button class="action secondary" data-sheet="foodSearch">Rechercher</button><button class="action secondary" data-sheet="barcode">Scanner</button><button class="action secondary" data-sheet="photoFood">Photo</button><button class="action secondary" data-sheet="food">Saisie manuelle</button></div>
-    <button type="button" class="action secondary nutrition-recipes-btn" data-personal-recipes>Mes recettes</button><p class="nutrition-safe-note">Recherche, scan, photo, saisie manuelle et copie depuis hier restent disponibles.</p>`);
+    <div class="nutrition-meals nutrition-meals-v2">${mealOrder.map(type=>nutritionMealCard(type,byMeal[type])).join('')}</div>
+    <button type="button" class="nutrition-recipes-link" data-personal-recipes><span>▤</span><div><strong>Mes recettes</strong><small>Voir et gérer tes recettes</small></div><b>›</b></button>`);
 }
 async function editFoodSheet(id){
   const x=await LTDB.get('food',id); if(!x) return;

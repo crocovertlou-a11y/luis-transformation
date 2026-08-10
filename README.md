@@ -229,3 +229,14 @@ Basé exclusivement sur Recettes + Portions R2 validé.
 - Après modification d'une journée passée, retour sur cette même journée.
 - Aucun ajout/copie dans les jours passés dans ce bloc pour limiter les risques.
 - Recherche, IA, scan, Copier hier et Recettes/portions conservés.
+
+
+## Alimentation UX V2 R1
+Basé exclusivement sur Historique + Calendrier R1 validé.
+- Nouvelle couche visuelle Alimentation conforme à la maquette validée.
+- Palette existante : crème, orange fonctionnel, violet Fluidité.
+- Résumé nutritionnel compact avec intervention Fluidité.
+- 4 cartes repas : Ajouter + Copier hier sur chacune.
+- Accès Mes recettes allégé.
+- Calendrier conservé.
+- Aucune modification des moteurs Recherche, IA, Scan, Recettes, Portions, Copier hier ou Historique.

@@ -273,3 +273,31 @@
 .calendar-day.is-today{outline:1.5px solid rgba(152,93,232,.45)}
 .calendar-day i{position:absolute;bottom:5px;width:4px;height:4px;border-radius:50%;background:var(--accent)}
 .history-meals{display:grid;gap:10px}
+
+/* Alimentation UX V2 — couche visuelle uniquement */
+.nutrition-page-head-v2{margin-bottom:14px}
+.nutrition-page-head-v2 h2{font-size:28px;letter-spacing:-.035em}
+.nutrition-day-summary-v2{display:grid;grid-template-columns:145px 1fr;gap:14px;padding:18px;border-radius:26px;background:var(--card);border:1px solid var(--line);box-shadow:0 10px 30px rgba(31,25,22,.055)}
+.nutrition-calorie-ring{width:126px;height:126px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--accent) var(--progress),rgba(255,108,55,.08) 0);position:relative}
+.nutrition-calorie-ring:after{content:"";position:absolute;inset:10px;border-radius:50%;background:var(--card)}
+.nutrition-calorie-ring>div{position:relative;z-index:1;text-align:center;display:flex;flex-direction:column;line-height:1.05}
+.nutrition-calorie-ring strong{font-size:26px}.nutrition-calorie-ring span{font-size:12px;margin-top:4px}.nutrition-calorie-ring small{font-size:10px;color:var(--muted);margin-top:8px}
+.nutrition-v2-macros{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;align-items:center}
+.nutrition-v2-macros>div{min-width:0;padding-left:8px;border-left:1px solid var(--line);display:flex;flex-direction:column;gap:5px}
+.nutrition-v2-macros span{font-size:10px;font-weight:750}.nutrition-v2-macros b{font-size:19px}.nutrition-v2-macros b small{font-size:10px;color:var(--muted)}.nutrition-v2-macros em{font-size:9px;color:var(--muted);font-style:normal}
+.nutrition-v2-macros i{height:4px;border-radius:99px;background:rgba(255,108,55,.09);overflow:hidden}.nutrition-v2-macros u{display:block;height:100%;background:var(--accent);border-radius:99px}
+.nutrition-fluidity-note{grid-column:1/-1;display:flex;align-items:center;gap:10px;padding-top:13px;border-top:1px solid var(--line)}
+.nutrition-fluidity-note .companion-logo{flex:0 0 auto}.nutrition-fluidity-note>div{display:flex;flex-direction:column;gap:2px}.nutrition-fluidity-note strong{font-size:12px}.nutrition-fluidity-note span{font-size:11px;color:var(--muted)}
+.nutrition-meals-v2{display:grid;gap:10px;margin-top:12px}
+.nutrition-meal-card-v2{border-radius:22px;padding:14px 14px 10px;box-shadow:0 7px 22px rgba(31,25,22,.045)}
+.nutrition-meal-card-v2 .nutrition-meal-head{align-items:center}.nutrition-meal-card-v2 .nutrition-meal-title>div{display:flex;flex-direction:column;gap:2px}
+.nutrition-meal-card-v2 .nutrition-meal-title strong{font-size:15px}.nutrition-meal-card-v2 .nutrition-meal-title small{font-size:11px;color:var(--ink)}
+.nutrition-meal-card-v2 .nutrition-meal-title em{font-size:10px;color:var(--muted);font-style:normal;max-width:175px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nutrition-meal-card-v2 .nutrition-meal-icon{color:var(--accent);background:rgba(255,108,55,.06)}
+.nutrition-meal-card-v2 .nutrition-meal-actions{display:grid;gap:3px;justify-items:stretch}
+.nutrition-meal-card-v2 .nutrition-meal-add{background:rgba(255,108,55,.08);color:var(--accent);border:0;border-radius:13px;padding:9px 11px;font-weight:800}
+.nutrition-meal-card-v2 .nutrition-copy-yesterday{background:transparent;color:var(--ink);padding:5px 8px;font-size:9px}
+.nutrition-meal-card-v2 .meal-items{margin-top:8px;border-top:1px solid var(--line)}
+.nutrition-recipes-link{width:100%;margin-top:12px;padding:15px;border:1px solid var(--line);border-radius:20px;background:var(--card);display:grid;grid-template-columns:38px 1fr auto;align-items:center;gap:10px;text-align:left;color:inherit}
+.nutrition-recipes-link>span{font-size:23px;color:#8c5de8}.nutrition-recipes-link>div{display:flex;flex-direction:column;gap:2px}.nutrition-recipes-link strong{font-size:14px}.nutrition-recipes-link small{font-size:10px;color:var(--muted)}.nutrition-recipes-link>b{font-size:24px}
+@media(max-width:390px){.nutrition-day-summary-v2{grid-template-columns:112px 1fr;padding:14px;gap:8px}.nutrition-calorie-ring{width:102px;height:102px}.nutrition-calorie-ring strong{font-size:21px}.nutrition-v2-macros{gap:3px}.nutrition-v2-macros b{font-size:15px}.nutrition-meal-card-v2{padding:12px 10px}.nutrition-meal-card-v2 .nutrition-meal-title em{max-width:135px}.nutrition-meal-card-v2 .nutrition-meal-add{padding:8px 8px;font-size:10px}}
