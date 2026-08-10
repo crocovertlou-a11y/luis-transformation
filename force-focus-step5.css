@@ -1,0 +1,13 @@
+/* Fluidité STEP 5 — dark focus only while a workout is actively being entered */
+#sheet:has(.force-v1-active){background:#17131f;color:#f7f3fb}
+#sheet:has(.force-v1-active) #sheetContent{background:#17131f}
+#sheet:has(.force-v1-active) .sheet-x{color:#f7f3fb;background:#292231}
+#sheet:has(.force-v1-active) .force-v1-active-head,
+#sheet:has(.force-v1-active) .force-v1-live-exercise,
+#sheet:has(.force-v1-active) .force-v1-finish{background:#211b29;border-color:#352b41;color:#f7f3fb}
+#sheet:has(.force-v1-active) .force-v1-active p,
+#sheet:has(.force-v1-active) .force-v1-active span,
+#sheet:has(.force-v1-active) .force-v1-active small,
+#sheet:has(.force-v1-active) .field label{color:#c9becf}
+#sheet:has(.force-v1-active) input{background:#2a2332;border-color:#40354b;color:#fff}
+#sheet:has(.force-v1-active) .technique-btn{background:#302641;color:#cdbaff;border-color:#493b5d}
