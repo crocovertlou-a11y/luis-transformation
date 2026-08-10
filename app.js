@@ -27,6 +27,7 @@ function bindGlobal(){
 function navigate(route){ state.route=route; document.querySelectorAll('.nav-item[data-route]').forEach(b=>b.classList.toggle('active',b.dataset.route===route)); render(); $('#main').focus(); }
 async function render(){
   const main=$('#main'); let html='';
+  const brand=document.querySelector('.brand-title'); if(brand) brand.textContent=state.route==='home'?'FLUIDITÉ':(state.route==='training'?'Entraînement':state.route==='companion'?'Compagnon':'Profil');
   if(!state.online) html+='<div class="offline-banner">Hors ligne · l’app reste utilisable et les données restent sur cet appareil.</div>';
   if(state.route==='home') html+=await renderHome();
   if(state.route==='training') html+=await renderTraining();
@@ -43,11 +44,8 @@ async function renderHome(){
   const protein=todayFood.reduce((s,x)=>s+(Number(x.protein)||0),0);
   const calories=todayFood.reduce((s,x)=>s+(Number(x.calories)||0),0);
   const view=state.homeView;
-  return `
-    <section class="hero home-hero"><div class="hello">Bonjour ${escapeHtml(state.profile.firstName)}.</div></section>
-    <div class="segmented"><button data-home-view="today" class="${view==='today'?'active':''}">Aujourd’hui</button><button data-home-view="evolution" class="${view==='evolution'?'active':''}">Évolution</button></div>
-    ${view==='today' ? await renderToday(today,todayWorkout,todayCardio,protein,calories,todayFood.length) : await renderEvolution(checkins,workouts,cardio)}
-  `;
+  if(view==='evolution') return `<div class="today-backline"><button class="action ghost" data-home-view="today">‹ Aujourd’hui</button></div>${await renderEvolution(checkins,workouts,cardio)}`;
+  return `<section class="today-welcome"><h1>Bonjour ${escapeHtml(state.profile.firstName)} <span>👋</span></h1><p>Prêt à prendre soin de toi aujourd’hui ?</p></section>${await renderToday(today,todayWorkout,todayCardio,protein,calories,todayFood.length)}`;
 }
 
 function dateField(name='date',value=todayKey(),label='Date'){
@@ -197,29 +195,23 @@ function fluidityNutritionComment(decision,todayCardio,protein,calories,foodCoun
 }
 
 async function renderToday(today,todayWorkout,todayCardio,protein,calories,foodCount){
-  const [workoutsAll,cardioAll,foodAll]=await Promise.all(['workouts','cardio','food'].map(s=>LTDB.all(s)));
+  const [workoutsAll,cardioAll,foodAll,checkinsAll]=await Promise.all(['workouts','cardio','food','checkins'].map(s=>LTDB.all(s)));
   const decision=fluidityEngine(today,todayWorkout,todayCardio,workoutsAll,cardioAll,foodAll);
-  const target=state.profile.proteinTarget||170,remain=Math.max(0,target-protein);
-  const nutritionAdvice=fluidityNutritionComment(decision.decision,todayCardio,protein,calories,foodCount);
-  const checkinBlock=today
-    ? `<div class="today-checkin fluidity-checkin-v1 clickable" data-open="checkin"><div><span class="fluidity-checkin-dot"></span><span>Ressenti enregistré</span></div><strong>Modifier</strong></div>`
-    : `<div class="fluidity-morning-card clickable" data-open="checkin"><div class="fluidity-breath">${companionMark("companion-mark-large")}</div><div><div class="card-kicker">Fluidité</div><h3>Comment vas-tu aujourd’hui ?</h3><p>Donne-moi ton ressenti et je t’aide à construire ta journée.</p><span class="fluidity-cta">Renseigner mon ressenti</span></div></div>`;
-  const recommendation=today?`<section class="fluidity-recommendation-v1"><div class="fluidity-breath fluidity-breath-small">${companionMark("companion-mark-large")}</div><div class="fluidity-rec-copy"><div class="card-kicker">Fluidité te recommande</div><h3>${escapeHtml(decision.title)}</h3><p>${escapeHtml(decision.message)}</p>${nutritionAdvice?`<div class="fluidity-nutrition-advice">${escapeHtml(nutritionAdvice)}</div>`:''}<div class="fluidity-rec-actions">${decision.action==='training'?'<button class="action" type="button" data-route-card="training">Voir la proposition</button>':''}${decision.decision!=='day_complete'?'<button class="action secondary" type="button" data-open="checkin">Réévaluer</button>':''}</div></div></section>`:'';
-  const cardioBlock=todayCardio.length?(()=>{
-    const x=todayCardio[0];
-    return `<div class="today-domain clickable" data-route-card="training"><div class="today-domain-top"><span class="domain-badge">Cardio</span><span>›</span></div><h3>${escapeHtml(x.type||'Cardio')}${x.distance?` · ${x.distance} km`:''}${x.durationLabel?` · ${x.durationLabel}`:''}</h3><p>${todayCardio.length>1?`${todayCardio.length} activités aujourd’hui. `:''}Ta saisie est dans ton journal d’entraînement.</p></div>`;
-  })():'';
-  const nutritionBlock=state.profile.nutritionEnabled?`<div class="today-domain nutrition-today clickable" data-open="nutritionHub"><div class="today-domain-top"><span class="domain-badge">Alimentation</span><span>›</span></div><h3>${foodCount?`${Math.round(protein)} / ${target} g de protéines`:'Commencer ma journée alimentaire'}</h3><p>${foodCount?`${Math.round(remain)} g restent sur ton repère${calories?` · ${Math.round(calories)} kcal saisies`:''}.`:'Ajouter un repas, voir mes saisies ou demander une idée au Compagnon.'}</p><div class="mini-progress"><i style="width:${Math.min(100,(protein/target)*100)}%"></i></div></div>`:'';
-  return `
-    ${checkinBlock}
-    ${recommendation}
-    <div class="section-title"><h2>Ta journée</h2><span class="status">${new Intl.DateTimeFormat('fr-CH',{weekday:'long',day:'numeric',month:'long'}).format(new Date())}</span></div>
-    <div class="today-flow">
-      <div class="today-domain clickable" data-route-card="training"><div class="today-domain-top"><span class="domain-badge">Force</span><span>›</span></div><h3>${todayWorkout?'Séance enregistrée':'Une séance prête quand tu l’es'}</h3><p>${todayWorkout?'Je garde les séries et les charges pour préparer la suite.':'Tu peux simplement suivre la proposition, sans construire ta séance.'}</p></div>
-      ${cardioBlock}
-      ${nutritionBlock}
-    </div>
-  `;
+  const todayFood=foodAll.filter(x=>x.date===todayKey());
+  const water=todayFood.reduce((n,x)=>n+(Number(x.water)||0),0), waterTarget=3;
+  const recovery=today?.recovery!=null?Number(today.recovery):null;
+  const metric=(icon,label,val,n,kind='purple')=>`<div class="today-vital ${kind}"><div class="vital-label"><span>${icon}</span>${label}</div><strong>${val}</strong><div class="vital-track"><i style="width:${Math.max(8,Math.min(100,n))}%"></i></div></div>`;
+  const vitals=today?`${metric('⚡','Énergie',`${today.energy??'—'}/5`,Number(today.energy||0)*20,'orange')}${metric('◉','Stress',`${today.stress??'—'}/5`,Number(today.stress||0)*20,'purple')}${metric('☾','Sommeil',today.sleep!=null?`${today.sleep}h`:'—',Math.min(100,Number(today.sleep||0)/8*100),'blue')}${metric('♡','Récupération',recovery!=null?`${recovery}/5`:'—',recovery!=null?recovery*20:50,'green')}${metric('◔','Faim',`${today.hunger??'—'}/5`,Number(today.hunger||0)*20,'orange')}`:'';
+  const checkin=`<section class="today-wellbeing clickable" data-open="checkin"><div class="today-card-head"><h2>♡ &nbsp;Comment vas-tu aujourd’hui ?</h2><span>${today?'Modifier ›':'Renseigner ›'}</span></div>${today?`<div class="today-vitals">${vitals}</div>`:`<div class="today-empty-feel">Quelques secondes suffisent pour adapter ta journée.</div>`}<div class="hydration-line"><div><span class="water-icon">💧</span><strong>Hydratation</strong> <b>${water.toFixed(1).replace('.',',')} L / ${waterTarget} L</b></div><div class="water-drops">${Array.from({length:6},(_,i)=>`<i class="${i<Math.round(water/waterTarget*6)?'on':''}">●</i>`).join('')} <span>›</span></div></div></section>`;
+  const recommendation=today?`<section class="today-companion-card"><div class="companion-left"><div class="today-kicker">✦ &nbsp;Fluidité te recommande</div><h2>${escapeHtml(decision.title)}</h2><p>${escapeHtml(decision.message)}</p><div class="session-mini"><div class="session-icon">⌁</div><div class="session-copy"><strong>${decision.decision==='alternative_session'?'Séance Force – Haut du corps':decision.decision==='recovery'?'Récupération active':decision.decision==='day_complete'?'Journée accomplie':'Séance Force – adaptée à toi'}</strong><small>${decision.decision==='day_complete'?'La récupération fait partie de la progression.':'Une proposition cohérente avec ta disponibilité du jour.'}</small></div><span class="adapt-pill">Adaptée pour toi</span><div class="session-stats"><span>◷ <b>${decision.decision==='recovery'?'20':'40'} min</b></span><span>◎ <b>${decision.decision==='recovery'?'Mobilité':'Force & volume'}</b></span><span>▥ <b>${decision.decision==='recovery'?'Légère':'Modérée'}</b></span><span>♡ <b>${decision.confidence==='high'?'Bonne':'À écouter'}</b></span></div></div><div class="companion-actions">${decision.action==='training'?'<button class="action secondary outline" data-route-card="training">Voir le détail</button><button class="action orange" data-route-card="training">Démarrer la séance</button>':'<button class="action secondary outline" data-open="checkin">Réévaluer</button>'}</div>${nutritionAdvice?`<div class="fluidity-nutrition-advice">${escapeHtml(nutritionAdvice)}</div>`:''}</div><div class="companion-right"><div class="fluidity-breath today-big-breath">${companionMark('companion-mark-large')}</div><h3>Respire.<br><em>Recentre-toi.</em><br><b>Avance.</b></h3><i></i><p>Un pas après l’autre,<br>avec régularité<br>et bienveillance.</p></div></section>`:`<section class="today-companion-card empty-companion"><div class="companion-left"><div class="today-kicker">✦ &nbsp;Ton compagnon Fluidité</div><h2>Je m’adapte à toi.</h2><p>Renseigne ton ressenti pour que je puisse te proposer la meilleure prochaine action.</p><button class="action orange" data-open="checkin">Comment vas-tu ?</button></div><div class="companion-right"><div class="fluidity-breath today-big-breath">${companionMark('companion-mark-large')}</div><h3>Respire.<br><em>Recentre-toi.</em><br><b>Avance.</b></h3></div></section>`;
+  const run=todayCardio[0];
+  const done=[`<div class="done-tile green"><span>🏃</span><div><strong>Course à pied</strong><small>${run?(run.distance?`${run.distance} km aujourd’hui`:'Activité enregistrée'):'Aucune activité enregistrée'}</small></div></div>`,`<div class="done-tile orange"><span>◉</span><div><strong>Force</strong><small>${todayWorkout?'Séance enregistrée':'Aucune activité enregistrée'}</small></div></div>`,`<div class="done-tile purple"><span>♨</span><div><strong>Alimentation</strong><small>${foodCount?`${Math.round(protein)} g de protéines`:'Aucun repas enregistré'}</small></div></div>`,`<div class="done-tile blue"><span>▣</span><div><strong>Eau</strong><small>${water?`${water.toFixed(1).replace('.',',')} L enregistrés`:'Aucune donnée enregistrée'}</small></div></div>`].join('');
+  const validCheckins=checkinsAll.filter(x=>x.weight!=null||x.waist!=null).sort((a,b)=>a.date.localeCompare(b.date));
+  const first=validCheckins[0]||{}, last=validCheckins.at(-1)||{};
+  const delta=(a,b,u)=>a!=null&&b!=null?`${(Number(b)-Number(a)>0?'+':'')+(Number(b)-Number(a)).toFixed(1).replace('.',',')} ${u}`:'—';
+  const active7=new Set([...workoutsAll,...cardioAll].filter(x=>daysAgo(x.date)<=6).map(x=>x.date)).size;
+  const evolution=`<section class="today-evolution clickable" data-home-view="evolution"><div class="today-card-head"><h2>↗ &nbsp;Ton évolution</h2><span>7 derniers jours⌄</span></div><div class="evo-grid"><div><label>Poids</label><strong>${last.weight!=null?`${Number(last.weight).toFixed(1).replace('.',',')} kg`:'— kg'}</strong><small>${delta(first.weight,last.weight,'kg')}</small><i class="spark">⌁⌁</i></div><div><label>Tour de taille</label><strong>${last.waist!=null?`${Number(last.waist).toFixed(1).replace('.',',')} cm`:'— cm'}</strong><small>${delta(first.waist,last.waist,'cm')}</small><i class="spark">⌁⌁</i></div><div><label>Séances</label><strong>${workoutsAll.filter(x=>daysAgo(x.date)<=6).length}</strong><small>7 derniers jours</small><i class="spark">⌁⌁</i></div><div><label>Jours actifs</label><strong>${active7}</strong><small>7 derniers jours</small><i class="spark">⌁⌁</i></div></div></section>`;
+  return `${checkin}${recommendation}<section class="today-accomplished"><div class="today-card-head"><h2>⚑ &nbsp;Ce que tu as déjà accompli</h2><span>Voir tout ›</span></div><div class="done-grid">${done}</div><button class="add-activity" data-action="quickAdd">＋ &nbsp;Ajouter une activité</button></section>${evolution}`;
 }
 function renderCheckinSummary(t){
   const rows=[];
@@ -465,11 +457,11 @@ function slider(name,label,min,max,step,value,unit=''){ return `<div class="slid
 function openSheet(kind){
   if(kind==='quick') return showSheet(`<h2>Donner quelque chose</h2><div class="sheet-grid"><button class="sheet-choice" data-sheet="checkin">◌<strong>Ressenti</strong></button><button class="sheet-choice" data-sheet="workout">◎<strong>Force</strong></button><button class="sheet-choice" data-sheet="cardio">⌁<strong>Cardio</strong></button>${state.profile.nutritionEnabled?'<button class="sheet-choice" data-sheet="nutritionHub">◒<strong>Alimentation</strong></button>':''}</div>`);
   if(kind==='checkin') {
-    showSheet(`<h2>Comment vas-tu aujourd’hui ?</h2><form id="checkinForm">${dateField('date',todayKey())}${slider('sleep','Sommeil','0','12','0.25','7',' h')}${slider('energy','Énergie','1','5','1','3','/5')}${slider('stress','Stress','1','5','1','2','/5')}${slider('hunger','Faim','1','5','1','3','/5')}<div class="field"><label>Poids (kg)</label><input name="weight" type="number" min="20" max="300" step="0.1" inputmode="decimal" placeholder="80.4"></div><div class="field"><label>Tour de taille (cm)</label><input name="waist" type="number" min="30" max="250" step="0.1" inputmode="decimal" placeholder="90.0"></div><button class="action" type="submit">Enregistrer</button></form>`);
+    showSheet(`<h2>Comment vas-tu aujourd’hui ?</h2><form id="checkinForm">${dateField('date',todayKey())}${slider('sleep','Sommeil','0','12','0.25','7',' h')}${slider('energy','Énergie','1','5','1','3','/5')}${slider('stress','Stress','1','5','1','2','/5')}${slider('recovery','Récupération','1','5','1','3','/5')}${slider('hunger','Faim','1','5','1','3','/5')}<div class="field"><label>Poids (kg)</label><input name="weight" type="number" min="20" max="300" step="0.1" inputmode="decimal" placeholder="80.4"></div><div class="field"><label>Tour de taille (cm)</label><input name="waist" type="number" min="30" max="250" step="0.1" inputmode="decimal" placeholder="90.0"></div><button class="action" type="submit">Enregistrer</button></form>`);
     const form=$('#checkinForm'), date=todayKey();
     LTDB.get('checkins',date).then(existing=>{
       if(!existing || !form || !form.isConnected) return;
-      ['sleep','energy','stress','hunger','weight','waist'].forEach(name=>{
+      ['sleep','energy','stress','recovery','hunger','weight','waist'].forEach(name=>{
         if(existing[name]!==null && existing[name]!==undefined && form.elements[name]){
           form.elements[name].value=existing[name];
           if(form.elements[name].type==='range') updateRange(form.elements[name]);
@@ -845,7 +837,7 @@ function bindSheet(){
 }
 function updateAllRanges(){ document.querySelectorAll('input[type="range"]').forEach(updateRange); }
 function updateRange(r){ const out=document.querySelector(`[data-output="${r.name}"]`); if(out) out.value=`${r.value}${r.dataset.rangeUnit||''}`; }
-async function saveCheckin(e){e.preventDefault(); const f=new FormData(e.currentTarget); const date=f.get('date')||todayKey(); const row={id:date,date,sleep:num(f.get('sleep')),energy:num(f.get('energy')),stress:num(f.get('stress')),hunger:num(f.get('hunger')),weight:num(f.get('weight')),waist:num(f.get('waist')),source:'manual',updatedAt:new Date().toISOString()}; await LTDB.put('checkins',row); $('#sheet').close(); toast('Point du jour enregistré'); render();}
+async function saveCheckin(e){e.preventDefault(); const f=new FormData(e.currentTarget); const date=f.get('date')||todayKey(); const row={id:date,date,sleep:num(f.get('sleep')),energy:num(f.get('energy')),stress:num(f.get('stress')),recovery:num(f.get('recovery')),hunger:num(f.get('hunger')),weight:num(f.get('weight')),waist:num(f.get('waist')),source:'manual',updatedAt:new Date().toISOString()}; await LTDB.put('checkins',row); $('#sheet').close(); toast('Point du jour enregistré'); render();}
 async function saveWorkout(e){
   e.preventDefault(); const f=new FormData(e.currentTarget);
   const pending=state.pendingWorkout||workoutById('upper');
