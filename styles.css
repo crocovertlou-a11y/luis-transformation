@@ -301,3 +301,18 @@
 .nutrition-recipes-link{width:100%;margin-top:12px;padding:15px;border:1px solid var(--line);border-radius:20px;background:var(--card);display:grid;grid-template-columns:38px 1fr auto;align-items:center;gap:10px;text-align:left;color:inherit}
 .nutrition-recipes-link>span{font-size:23px;color:#8c5de8}.nutrition-recipes-link>div{display:flex;flex-direction:column;gap:2px}.nutrition-recipes-link strong{font-size:14px}.nutrition-recipes-link small{font-size:10px;color:var(--muted)}.nutrition-recipes-link>b{font-size:24px}
 @media(max-width:390px){.nutrition-day-summary-v2{grid-template-columns:112px 1fr;padding:14px;gap:8px}.nutrition-calorie-ring{width:102px;height:102px}.nutrition-calorie-ring strong{font-size:21px}.nutrition-v2-macros{gap:3px}.nutrition-v2-macros b{font-size:15px}.nutrition-meal-card-v2{padding:12px 10px}.nutrition-meal-card-v2 .nutrition-meal-title em{max-width:135px}.nutrition-meal-card-v2 .nutrition-meal-add{padding:8px 8px;font-size:10px}}
+
+/* Fluidité IA V1 — Aujourd'hui */
+.fluidity-morning-card,.fluidity-recommendation-v1{border:1px solid rgba(152,93,232,.16);border-radius:26px;background:linear-gradient(135deg,rgba(152,93,232,.10),rgba(255,108,55,.07));padding:18px;display:grid;grid-template-columns:92px 1fr;gap:16px;align-items:center;margin-bottom:14px}
+.fluidity-breath{width:84px;height:84px;border-radius:50%;display:grid;place-items:center;position:relative}
+.fluidity-breath:before,.fluidity-breath:after{content:"";position:absolute;inset:4px;border-radius:50%;border:1px solid rgba(152,93,232,.18);animation:fluidityBreath 4.6s ease-in-out infinite}
+.fluidity-breath:after{inset:-6px;animation-delay:-2.3s;border-color:rgba(255,108,55,.14)}
+.fluidity-breath .companion-logo{width:58px;height:58px;position:relative;z-index:1}
+@keyframes fluidityBreath{0%,100%{transform:scale(.92);opacity:.35}50%{transform:scale(1.08);opacity:.9}}
+.fluidity-morning-card h3,.fluidity-recommendation-v1 h3{margin:4px 0 5px;font-size:20px}.fluidity-morning-card p,.fluidity-recommendation-v1 p{margin:0;color:var(--muted);font-size:12px;line-height:1.45}
+.fluidity-cta{display:inline-block;margin-top:11px;padding:9px 12px;border-radius:13px;background:var(--accent);color:white;font-size:11px;font-weight:800}
+.fluidity-checkin-v1{margin-bottom:10px}.fluidity-checkin-dot{width:7px;height:7px;border-radius:50%;background:#8c5de8;display:inline-block;margin-right:4px}
+.fluidity-recommendation-v1{grid-template-columns:110px 1fr;padding:20px}.fluidity-breath-small{width:104px;height:104px}.fluidity-breath-small .companion-logo{width:72px;height:72px}
+.fluidity-rec-copy{min-width:0}.fluidity-rec-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}.fluidity-rec-actions .action{padding:9px 12px;font-size:11px}
+.fluidity-nutrition-advice{margin-top:10px;padding:10px 11px;border-radius:14px;background:rgba(255,255,255,.62);font-size:11px;line-height:1.4}
+@media(max-width:390px){.fluidity-morning-card{grid-template-columns:72px 1fr;padding:14px}.fluidity-morning-card .fluidity-breath{width:66px;height:66px}.fluidity-recommendation-v1{grid-template-columns:84px 1fr;padding:15px;gap:10px}.fluidity-breath-small{width:80px;height:80px}.fluidity-breath-small .companion-logo{width:58px;height:58px}}

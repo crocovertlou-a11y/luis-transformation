@@ -46,7 +46,7 @@ async function renderHome(){
   return `
     <section class="hero home-hero"><div class="hello">Bonjour ${escapeHtml(state.profile.firstName)}.</div></section>
     <div class="segmented"><button data-home-view="today" class="${view==='today'?'active':''}">Aujourd’hui</button><button data-home-view="evolution" class="${view==='evolution'?'active':''}">Évolution</button></div>
-    ${view==='today' ? renderToday(today,todayWorkout,todayCardio,protein,calories,todayFood.length) : await renderEvolution(checkins,workouts,cardio)}
+    ${view==='today' ? await renderToday(today,todayWorkout,todayCardio,protein,calories,todayFood.length) : await renderEvolution(checkins,workouts,cardio)}
   `;
 }
 
@@ -158,21 +158,61 @@ function nutritionEntry(x){
     <small>Source : ${x.source==='companion-ai'?'Compagnon IA':x.source==='open-food-facts'?'Open Food Facts':x.source==='companion'?'Compagnon':'Saisie manuelle'} · Modifier ›</small>
   </button>`;
 }
-function renderToday(today,todayWorkout,todayCardio,protein,calories,foodCount){
-  const attention=today ? recoveryText(today) : null;
-  const target=state.profile.proteinTarget||170;
-  const remain=Math.max(0,target-protein);
+
+function fluidityIntensityFromCardio(x){
+  const type=String(x.type||'').toLowerCase(),dist=Number(x.distance)||0,dur=Number(x.durationMin)||0,hr=Number(x.avgHr)||Number(x.heartRate)||0;
+  if(/fraction|interval|tempo|course|race/.test(type)||dist>=12||dur>=75||hr>=165)return 'high';
+  if(dist>=8||dur>=45||hr>=145)return 'moderate_high';
+  return 'moderate';
+}
+function fluidityEngine(today,todayWorkout,todayCardio,workouts,cardio,food){
+  const allowed=['planned_session','adapted_session','alternative_session','recovery','day_complete','insufficient_data'];
+  if(!today)return {decision:'insufficient_data',allowedActions:['insufficient_data'],confidence:'high',priority:'high',shouldSpeak:true,title:'Comment vas-tu aujourd’hui ?',message:'Donne-moi ton ressenti et je t’aide à construire ta journée.',action:'checkin'};
+  const energy=Number(today.energy)||3,stress=Number(today.stress)||3,sleep=Number(today.sleep)||7;
+  const recentActs=[...workouts,...cardio].filter(x=>daysAgo(x.date)>=1&&daysAgo(x.date)<=3);
+  const recentHeavy=recentActs.length>=3;
+  const cardioLoad=todayCardio.some(x=>fluidityIntensityFromCardio(x)==='high')?'high':todayCardio.some(x=>fluidityIntensityFromCardio(x)==='moderate_high')?'moderate_high':todayCardio.length?'moderate':'none';
+  if(todayWorkout){
+    return {decision:'day_complete',allowedActions:['day_complete','recovery'],confidence:'high',priority:'low',shouldSpeak:true,title:'Journée accomplie',message:'Belle séance aujourd’hui. Tu as fait ce qu’il fallait — profite maintenant de la récupération.',action:null};
+  }
+  if(cardioLoad==='high'||cardioLoad==='moderate_high'){
+    return {decision:'alternative_session',allowedActions:['alternative_session','recovery','day_complete'],confidence:'high',priority:'high',shouldSpeak:true,title:'Ta journée a déjà bien commencé',message:'Ta sortie a déjà bien sollicité les jambes. Si tu veux t’entraîner encore, privilégie plutôt le haut du corps ou garde simplement la récupération.',action:'training'};
+  }
+  const lowSignals=(energy<=2?1:0)+(stress>=4?1:0)+(sleep<6?1:0);
+  if(lowSignals>=2||recentHeavy&&energy<=3){
+    return {decision:'recovery',allowedActions:['adapted_session','recovery','day_complete'],confidence:'high',priority:'high',shouldSpeak:true,title:'Allège aujourd’hui',message:'Plusieurs signaux vont dans le même sens. Je privilégierais une journée légère plutôt que de forcer la séance prévue.',action:'training'};
+  }
+  if(sleep<6&&energy>=4){
+    return {decision:'planned_session',allowedActions:['planned_session','adapted_session'],confidence:'medium',priority:'low',shouldSpeak:true,title:'Séance maintenue',message:'Tes sensations sont bonnes malgré une nuit courte. Garde la séance prévue et reste attentif à ton énergie pendant l’échauffement.',action:'training'};
+  }
+  return {decision:'planned_session',allowedActions:['planned_session','adapted_session'],confidence:'high',priority:'low',shouldSpeak:true,title:'Tu peux suivre le plan',message:'Ton ressenti est cohérent avec une séance normale aujourd’hui.',action:'training'};
+}
+function fluidityNutritionComment(decision,todayCardio,protein,calories,foodCount){
+  if(!foodCount)return null;
+  const hour=new Date().getHours(),target=state.profile.proteinTarget||170;
+  const hard=todayCardio.some(x=>['high','moderate_high'].includes(fluidityIntensityFromCardio(x)));
+  if(hard&&hour>=16&&(protein<target*.75||calories<1500))return 'Ta journée a été active. Ton prochain repas peut être plus complet, avec protéines et glucides pour accompagner la récupération.';
+  if(decision==='day_complete'&&protein<target*.65&&hour>=18)return 'Après ta séance, garde simplement un dîner complet selon ta faim.';
+  return null;
+}
+
+async function renderToday(today,todayWorkout,todayCardio,protein,calories,foodCount){
+  const [workoutsAll,cardioAll,foodAll]=await Promise.all(['workouts','cardio','food'].map(s=>LTDB.all(s)));
+  const decision=fluidityEngine(today,todayWorkout,todayCardio,workoutsAll,cardioAll,foodAll);
+  const target=state.profile.proteinTarget||170,remain=Math.max(0,target-protein);
+  const nutritionAdvice=fluidityNutritionComment(decision.decision,todayCardio,protein,calories,foodCount);
   const checkinBlock=today
-    ? `<div class="today-checkin clickable" data-open="checkin"><div>${companionMark("companion-mark-mini")}<span>Ressenti enregistré</span></div><strong>Modifier</strong></div>`
-    : `<div class="companion-prompt clickable" data-open="checkin"><div class="companion-orbit">${companionMark("companion-mark-large")}</div><div><div class="card-kicker">Compagnon</div><h3>Comment vas-tu aujourd’hui ?</h3><p>Quelques gestes suffisent. J’utiliserai le reste en silence.</p></div></div>`;
+    ? `<div class="today-checkin fluidity-checkin-v1 clickable" data-open="checkin"><div><span class="fluidity-checkin-dot"></span><span>Ressenti enregistré</span></div><strong>Modifier</strong></div>`
+    : `<div class="fluidity-morning-card clickable" data-open="checkin"><div class="fluidity-breath">${companionMark("companion-mark-large")}</div><div><div class="card-kicker">Fluidité</div><h3>Comment vas-tu aujourd’hui ?</h3><p>Donne-moi ton ressenti et je t’aide à construire ta journée.</p><span class="fluidity-cta">Renseigner mon ressenti</span></div></div>`;
+  const recommendation=today?`<section class="fluidity-recommendation-v1"><div class="fluidity-breath fluidity-breath-small">${companionMark("companion-mark-large")}</div><div class="fluidity-rec-copy"><div class="card-kicker">Fluidité te recommande</div><h3>${escapeHtml(decision.title)}</h3><p>${escapeHtml(decision.message)}</p>${nutritionAdvice?`<div class="fluidity-nutrition-advice">${escapeHtml(nutritionAdvice)}</div>`:''}<div class="fluidity-rec-actions">${decision.action==='training'?'<button class="action" type="button" data-route-card="training">Voir la proposition</button>':''}${decision.decision!=='day_complete'?'<button class="action secondary" type="button" data-open="checkin">Réévaluer</button>':''}</div></div></section>`:'';
   const cardioBlock=todayCardio.length?(()=>{
     const x=todayCardio[0];
     return `<div class="today-domain clickable" data-route-card="training"><div class="today-domain-top"><span class="domain-badge">Cardio</span><span>›</span></div><h3>${escapeHtml(x.type||'Cardio')}${x.distance?` · ${x.distance} km`:''}${x.durationLabel?` · ${x.durationLabel}`:''}</h3><p>${todayCardio.length>1?`${todayCardio.length} activités aujourd’hui. `:''}Ta saisie est dans ton journal d’entraînement.</p></div>`;
   })():'';
   const nutritionBlock=state.profile.nutritionEnabled?`<div class="today-domain nutrition-today clickable" data-open="nutritionHub"><div class="today-domain-top"><span class="domain-badge">Alimentation</span><span>›</span></div><h3>${foodCount?`${Math.round(protein)} / ${target} g de protéines`:'Commencer ma journée alimentaire'}</h3><p>${foodCount?`${Math.round(remain)} g restent sur ton repère${calories?` · ${Math.round(calories)} kcal saisies`:''}.`:'Ajouter un repas, voir mes saisies ou demander une idée au Compagnon.'}</p><div class="mini-progress"><i style="width:${Math.min(100,(protein/target)*100)}%"></i></div></div>`:'';
   return `
-    ${attention?`<div class="companion-inline"><span class="fluidity-mini-static">${companionMark("companion-mark-mini")}</span><div><strong>${attention.title}</strong><p>${attention.text}</p></div></div>`:''}
     ${checkinBlock}
+    ${recommendation}
     <div class="section-title"><h2>Ta journée</h2><span class="status">${new Intl.DateTimeFormat('fr-CH',{weekday:'long',day:'numeric',month:'long'}).format(new Date())}</span></div>
     <div class="today-flow">
       <div class="today-domain clickable" data-route-card="training"><div class="today-domain-top"><span class="domain-badge">Force</span><span>›</span></div><h3>${todayWorkout?'Séance enregistrée':'Une séance prête quand tu l’es'}</h3><p>${todayWorkout?'Je garde les séries et les charges pour préparer la suite.':'Tu peux simplement suivre la proposition, sans construire ta séance.'}</p></div>

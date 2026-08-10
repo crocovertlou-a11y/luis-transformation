@@ -1,0 +1,12 @@
+{
+  "decisions": [
+    "planned_session",
+    "adapted_session",
+    "alternative_session",
+    "recovery",
+    "day_complete",
+    "insufficient_data"
+  ],
+  "principle": "Fluidité recommande la meilleure prochaine action, pas le maximum d'actions.",
+  "guardrail": "Aucune recommandation hors allowedActions."
+}

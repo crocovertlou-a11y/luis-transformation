@@ -240,3 +240,6 @@ Basé exclusivement sur Historique + Calendrier R1 validé.
 - Accès Mes recettes allégé.
 - Calendrier conservé.
 - Aucune modification des moteurs Recherche, IA, Scan, Recettes, Portions, Copier hier ou Historique.
+
+## Fluidité IA V1 R1
+Moteur déterministe Aujourd'hui, états validés, respiration du logo, commentaires nutritionnels contextuels et garde-fous de cohérence.
