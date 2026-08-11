@@ -7,3 +7,6 @@
 .coach-set-head{font-size:.57rem;color:#a99eb0;text-align:center;padding:5px 0 2px}.coach-set-row{margin:7px 0}.coach-set-n{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#392c4c;color:#d9c6ff!important;font-weight:800}
 .coach-set-row>div{text-align:center}.coach-set-row>div small,.coach-set-row>div b{display:block}.coach-set-row>div small{font-size:.5rem;color:#9f94a7}.coach-set-row>div b{font-size:.72rem;color:#e9e1ef;margin-top:1px}.coach-set-row input{min-width:0;text-align:center;padding:9px 5px!important}
 @media(max-width:390px){.coach-set-head,.coach-set-row{grid-template-columns:30px 50px minmax(48px,1fr) 62px minmax(52px,1fr);gap:4px}.coach-set-row input{font-size:.78rem;padding:8px 3px!important}}
+
+/* V2.1 — set-by-set recommendations now respect the shared day decision */
+.coach-exercise .coach-why span{max-width:100%;overflow-wrap:anywhere}

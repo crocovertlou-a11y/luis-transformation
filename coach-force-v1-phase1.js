@@ -84,12 +84,71 @@
     return {name:spec.name,confidence,reason,sets:Array.from({length:count},()=>({reps:target,weight}))};
   }
 
+  function applyDailyMode(spec,rec,workouts,mode){
+    if(!rec || !['adapted_session','recovery'].includes(mode)) return rec;
+    const hist=historyFor(spec.name,workouts).slice(0,1);
+    const lastWeight=hist.length?sessionWeight(hist[0].entry):null;
+    const sets=(rec.sets||[]).map(x=>({...x}));
+
+    // Adapted day: never push a new load progression beyond the last mastered load.
+    if(mode==='adapted_session' && lastWeight!=null){
+      let capped=false;
+      sets.forEach(x=>{
+        if(x.weight!=null && x.weight>lastWeight){
+          x.weight=lastWeight;
+          capped=true;
+        }
+      });
+      return {
+        ...rec,
+        sets,
+        dailyMode:mode,
+        reason:capped
+          ? `Mode adapté aujourd’hui : je bloque la hausse de charge et je reste à ${lastWeight} kg. L’objectif est une exécution propre, pas un record.`
+          : `Mode adapté aujourd’hui : je conserve une proposition prudente et je privilégie la qualité du mouvement. ${rec.reason}`
+      };
+    }
+
+    // Recovery mode: if the user still chooses Force, lower one normal load step rather than chase performance.
+    if(mode==='recovery' && lastWeight!=null && !bodyweight(spec.name)){
+      const step=loadStep(spec.name);
+      const reduced=Math.max(0,roundTo(lastWeight-step,0.5));
+      sets.forEach(x=>{ if(x.weight!=null) x.weight=Math.min(x.weight,reduced); });
+      return {
+        ...rec,
+        sets,
+        dailyMode:mode,
+        reason:`Mode récupération : si tu maintiens cet exercice, je propose ${reduced} kg maximum aujourd’hui et je privilégie le contrôle.`
+      };
+    }
+    return {
+      ...rec,
+      dailyMode:mode,
+      reason:`${mode==='recovery'?'Mode récupération':'Mode adapté'} : ${rec.reason}`
+    };
+  }
+
   async function buildCoachSession(workout){
-    const workouts=(await LTDB.all('workouts')).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+    const [workouts,checkins,cardio,food]=await Promise.all([
+      LTDB.all('workouts'),LTDB.all('checkins'),LTDB.all('cardio'),LTDB.all('food')
+    ]);
+    workouts.sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+    const today=todayKey();
+    let dailyDecision=null;
+    try{
+      const todayCheckin=checkins.find(x=>x.date===today)||null;
+      const todayWorkout=workouts.find(x=>x.date===today)||null;
+      const todayCardio=cardio.filter(x=>x.date===today);
+      dailyDecision=fluidityEngine(todayCheckin,todayWorkout,todayCardio,workouts,cardio,food);
+    }catch(err){
+      console.warn('Coach Force daily mode unavailable; using validated progression only',err);
+    }
+    const mode=dailyDecision?.decision||'planned_session';
     return {
       createdAt:new Date().toISOString(),
       workoutTitle:workout.title,
-      exercises:workout.plan.map(x=>recommendExercise(x,workouts))
+      dailyDecision:dailyDecision||null,
+      exercises:workout.plan.map(x=>applyDailyMode(x,recommendExercise(x,workouts),workouts,mode))
     };
   }
 
