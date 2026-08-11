@@ -163,6 +163,24 @@ function fluidityIntensityFromCardio(x){
   if(dist>=8||dur>=45||hr>=145)return 'moderate_high';
   return 'moderate';
 }
+function fluidityNutritionContext(food){
+  food=Array.isArray(food)?food:[];
+  const today=todayKey(),target=Number(state.profile.proteinTarget)||170;
+  const rows=food.filter(x=>x.date===today);
+  const protein=rows.reduce((a,x)=>a+(Number(x.protein)||0),0);
+  const calories=rows.reduce((a,x)=>a+(Number(x.calories)||0),0);
+  const hour=new Date().getHours();
+  const proteinRatio=target>0?protein/target:0;
+  // Nutrition is a context signal, never a standalone reason to cancel training.
+  let support='unknown';
+  if(rows.length){
+    if(hour>=16 && proteinRatio<.5) support='low';
+    else if(proteinRatio>=.7) support='good';
+    else support='partial';
+  }
+  return {rows:rows.length,protein,calories,target,proteinRatio,hour,support};
+}
+
 function fluidityEngine(today,todayWorkout,todayCardio,workouts,cardio,food){
   todayCardio=Array.isArray(todayCardio)?todayCardio:[];
   workouts=Array.isArray(workouts)?workouts:[];
@@ -171,6 +189,7 @@ function fluidityEngine(today,todayWorkout,todayCardio,workouts,cardio,food){
   const allowed=['planned_session','adapted_session','alternative_session','recovery','day_complete','insufficient_data'];
   if(!today)return {decision:'insufficient_data',allowedActions:['insufficient_data'],confidence:'high',priority:'high',shouldSpeak:true,title:'Comment vas-tu aujourd’hui ?',message:'Donne-moi ton ressenti et je t’aide à construire ta journée.',action:'checkin'};
   const energy=Number(today.energy)||3,stress=Number(today.stress)||3,sleep=Number(today.sleep)||7;
+  const nutrition=fluidityNutritionContext(food);
   const recentActs=[...workouts,...cardio].filter(x=>daysAgo(x.date)>=1&&daysAgo(x.date)<=3);
   const recentHeavy=recentActs.length>=3;
   const cardioLoad=todayCardio.some(x=>fluidityIntensityFromCardio(x)==='high')?'high':todayCardio.some(x=>fluidityIntensityFromCardio(x)==='moderate_high')?'moderate_high':todayCardio.length?'moderate':'none';
@@ -182,7 +201,8 @@ function fluidityEngine(today,todayWorkout,todayCardio,workouts,cardio,food){
   }
   const lowSignals=(energy<=2?1:0)+(stress>=4?1:0)+(sleep<6?1:0)+(Number(today?.recovery||3)<=2?1:0);
   if(energy<=1){
-    return {decision:'adapted_session',allowedActions:['adapted_session','recovery'],confidence:'high',priority:'high',shouldSpeak:true,title:'Aujourd’hui, on adapte',message:'Ton énergie est très basse. Je garde l’entraînement possible, mais sans chercher une progression agressive : priorité au mouvement propre et à une séance maîtrisée.',action:'training'};
+    const nutritionNote=nutrition.support==='low'?' Ton alimentation enregistrée est encore légère aujourd’hui : pense aussi à soutenir ta récupération avec un repas complet selon ta faim.':'';
+    return {decision:'adapted_session',allowedActions:['adapted_session','recovery'],confidence:'high',priority:'high',shouldSpeak:true,title:'Aujourd’hui, on adapte',message:'Ton énergie est très basse. Je garde l’entraînement possible, mais sans chercher une progression agressive : priorité au mouvement propre et à une séance maîtrisée.'+nutritionNote,action:'training',nutritionContext:nutrition};
   }
   if(lowSignals>=2||recentHeavy&&energy<=3){
     return {decision:'recovery',allowedActions:['adapted_session','recovery','day_complete'],confidence:'high',priority:'high',shouldSpeak:true,title:'Allège aujourd’hui',message:'Plusieurs signaux vont dans le même sens. Je privilégierais une journée légère plutôt que de forcer la séance prévue.',action:'training'};
@@ -190,7 +210,10 @@ function fluidityEngine(today,todayWorkout,todayCardio,workouts,cardio,food){
   if(sleep<6&&energy>=4){
     return {decision:'planned_session',allowedActions:['planned_session','adapted_session'],confidence:'medium',priority:'low',shouldSpeak:true,title:'Séance maintenue',message:'Tes sensations sont bonnes malgré une nuit courte. Garde la séance prévue et reste attentif à ton énergie pendant l’échauffement.',action:'training'};
   }
-  return {decision:'planned_session',allowedActions:['planned_session','adapted_session'],confidence:'high',priority:'low',shouldSpeak:true,title:'Tu peux suivre le plan',message:'Ton ressenti est cohérent avec une séance normale aujourd’hui.',action:'training'};
+  if(nutrition.support==='low' && nutrition.hour>=16){
+    return {decision:'adapted_session',allowedActions:['planned_session','adapted_session'],confidence:'medium',priority:'low',shouldSpeak:true,title:'Séance maintenue, progression prudente',message:`Ton ressenti permet de t’entraîner. En revanche, tes apports enregistrés sont encore légers aujourd’hui (${Math.round(nutrition.protein)} g de protéines sur ${nutrition.target} g) : je garde la séance, mais je ne pousse pas une hausse agressive des charges.`,action:'training',nutritionContext:nutrition};
+  }
+  return {decision:'planned_session',allowedActions:['planned_session','adapted_session'],confidence:'high',priority:'low',shouldSpeak:true,title:'Tu peux suivre le plan',message:'Ton ressenti est cohérent avec une séance normale aujourd’hui.',action:'training',nutritionContext:nutrition};
 }
 function fluidityNutritionComment(decision,todayCardio,protein,calories,foodCount){
   if(!foodCount)return null;
