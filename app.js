@@ -260,6 +260,20 @@ async function renderTraining(){
   const workouts=(await LTDB.all('workouts')).sort((a,b)=>b.date.localeCompare(a.date));
   const cardio=(await LTDB.all('cardio')).sort((a,b)=>b.date.localeCompare(a.date));
   const suggestion=suggestWorkout(workouts);
+  const [checkins,food]=await Promise.all([LTDB.all('checkins'),LTDB.all('food')]);
+  const today=todayKey(),todayCheckin=checkins.find(x=>x.date===today)||null;
+  const todayWorkout=workouts.find(x=>x.date===today)||null;
+  const todayCardio=cardio.filter(x=>x.date===today);
+  const dailyDecision=fluidityEngine(todayCheckin,todayWorkout,todayCardio,workouts,cardio,food);
+  const adapted=dailyDecision.decision==='adapted_session';
+  const recoveryMode=dailyDecision.decision==='recovery';
+  const forceSuggestion={
+    ...suggestion,
+    title:adapted?`${forceSuggestion.title} · adapté aujourd’hui`:recoveryMode?'Récupération active':forceSuggestion.title,
+    subtitle:adapted?forceSuggestion.subtitle.replace('~40 min','~30–40 min'):recoveryMode?'~20 min · mobilité + récupération':forceSuggestion.subtitle,
+    goalLabel:adapted?'Force contrôlée':recoveryMode?'Récupération':forceSuggestion.goalLabel,
+    reason:(adapted||recoveryMode)?dailyDecision.message:forceSuggestion.reason
+  };
   const lastForce=workouts[0], lastCardio=cardio[0];
   const forceCount30=workouts.filter(x=>daysAgo(x.date)<=30).length;
   const cardioCount30=cardio.filter(x=>daysAgo(x.date)<=30).length;
@@ -270,13 +284,13 @@ async function renderTraining(){
     <div id="smartTrainingSuggestion">
       <div class="training-v2-head">
         <div>
-          <h3>${escapeHtml(suggestion.title)}</h3>
-          <p class="subtle">${escapeHtml(suggestion.subtitle)}</p>
+          <h3>${escapeHtml(forceSuggestion.title)}</h3>
+          <p class="subtle">${escapeHtml(forceSuggestion.subtitle)}</p>
         </div>
-        <span class="pill">${escapeHtml(suggestion.goalLabel)}</span>
+        <span class="pill">${escapeHtml(forceSuggestion.goalLabel)}</span>
       </div>
-      <div class="training-v2-reason">${escapeHtml(suggestion.reason)}</div>
-      <div class="smart-fallback-note">Suggestion locale immédiate · le Compagnon peut l’affiner avec ton contexte récent.</div>
+      <div class="training-v2-reason">${escapeHtml(forceSuggestion.reason)}</div>
+      <div class="smart-fallback-note">${adapted||recoveryMode?'Décision du jour synchronisée avec Accueil · le Compagnon respecte ce cadre.':'Suggestion locale immédiate · le Compagnon peut l’affiner avec ton contexte récent.'}</div>
       <div class="card-actions">
         <button class="action" id="askSmartTraining" type="button">Affiner avec le Compagnon</button>
         <button class="action secondary" data-open="workoutIdeas">Choisir moi-même</button>
@@ -318,7 +332,14 @@ async function smartTrainingContext(){
     cardio:recent(cardio,14).slice(0,15).map(c=>({date:c.date,type:c.type,name:c.name||null,distance:c.distance??null,duration:c.durationLabel||null,heartRateAvg:c.heartRateAvg??null,elevationGain:c.elevationGain??null,source:c.importSource||c.source||null})),
     recovery:recent(checkins,7).slice(0,7).map(c=>({date:c.date,sleep:c.sleep??null,stress:c.stress??null,energy:c.energy??null,hunger:c.hunger??null,weight:c.weight??null,waist:c.waist??null})),
     nutrition:recent(nutrition,3).slice(0,20).map(n=>({date:n.date,meal:n.meal||n.type||null,protein:n.protein??null,calories:n.calories??null})),
-    constraints:{preferredDurationMin:40,primaryFocus:'force et recomposition corporelle',freedom:'L’utilisateur peut toujours changer la séance'}
+    constraints:{preferredDurationMin:40,primaryFocus:'force et recomposition corporelle',freedom:'L’utilisateur peut toujours changer la séance'},
+    dailyDecision:(await (async()=>{
+      const today=todayKey();
+      const todayCheckin=checkins.find(x=>x.date===today)||null;
+      const todayWorkout=workouts.find(x=>x.date===today)||null;
+      const todayCardio=cardio.filter(x=>x.date===today);
+      return fluidityEngine(todayCheckin,todayWorkout,todayCardio,workouts,cardio,nutrition);
+    })())
   };
 }
 async function loadSmartTrainingSuggestion(){
@@ -328,8 +349,13 @@ async function loadSmartTrainingSuggestion(){
     const context=await smartTrainingContext();
     const r=await fetch('/.netlify/functions/training-ai-v1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({context})});
     const data=await r.json();if(!r.ok)throw new Error(data.detail||data.error||'Analyse impossible');
+    const dd=context.dailyDecision||{};
+    const controlled=['adapted_session','recovery'].includes(dd.decision);
     state.aiWorkout=data.workout;
-    box.innerHTML=`<div class="training-v2-head"><div><h3>${escapeHtml(data.workout.title)}</h3><p class="subtle">${escapeHtml(data.workout.subtitle)}</p></div><span class="pill">${escapeHtml(data.workout.goalLabel||'Force')}</span></div><div class="training-v2-reason">${escapeHtml(data.reason)}</div>${data.contextNote?`<div class="smart-context-note">${escapeHtml(data.contextNote)}</div>`:''}<div class="card-actions"><button class="action" id="viewAIWorkout" type="button">Voir la séance</button><button class="action secondary" id="regenerateAIWorkout" type="button">Une autre proposition</button><button class="text-action" data-open="workoutIdeas">Choisir moi-même</button></div>`;
+    const aiTitle=controlled?(dd.decision==='recovery'?'Récupération active':`${data.workout.title} · adapté aujourd’hui`):data.workout.title;
+    const aiGoal=controlled?(dd.decision==='recovery'?'Récupération':'Force contrôlée'):(data.workout.goalLabel||'Force');
+    const aiReason=controlled?dd.message:data.reason;
+    box.innerHTML=`<div class="training-v2-head"><div><h3>${escapeHtml(aiTitle)}</h3><p class="subtle">${escapeHtml(data.workout.subtitle)}</p></div><span class="pill">${escapeHtml(aiGoal)}</span></div><div class="training-v2-reason">${escapeHtml(aiReason)}</div>${data.contextNote?`<div class="smart-context-note">${escapeHtml(data.contextNote)}</div>`:''}<div class="card-actions"><button class="action" id="viewAIWorkout" type="button">Voir la séance</button><button class="action secondary" id="regenerateAIWorkout" type="button">Une autre proposition</button><button class="text-action" data-open="workoutIdeas">Choisir moi-même</button></div>`;
     $('#viewAIWorkout')?.addEventListener('click',()=>workoutDetailSheet(state.aiWorkout));
     $('#regenerateAIWorkout')?.addEventListener('click',loadSmartTrainingSuggestion);
     document.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>openSheet(b.dataset.open)));
