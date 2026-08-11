@@ -17,18 +17,17 @@
 .fvis-muscle-model:has(.freal-muscles){background:#f6f6f6;padding:0}
 @media(max-width:380px){.freal-positions section{min-height:185px}.freal-tech{min-height:160px}}
 
-/* Full Visual Library — no legacy 3D fallback */
-.freal-fallback{position:relative;display:flex;width:100%;height:100%;min-height:82px;overflow:hidden;border-radius:12px;background:linear-gradient(145deg,#eee9e3,#d8d1ca);align-items:center;justify-content:center;color:#382d42}
-.freal-fallback small{position:absolute;left:8px;bottom:6px;right:8px;font-size:.55rem;font-weight:800;text-align:center;color:#514759;background:rgba(255,255,255,.76);border-radius:7px;padding:3px}
-.freal-silhouette{position:relative;width:58px;height:76px;display:block}
-.freal-silhouette i{position:absolute;display:block;background:linear-gradient(135deg,#a8a3a0,#716d70)}
-.freal-silhouette .head{width:16px;height:16px;border-radius:50%;left:21px;top:2px}
-.freal-silhouette .torso{width:26px;height:34px;border-radius:12px 12px 9px 9px;left:16px;top:20px}
-.freal-silhouette .arms{width:52px;height:8px;border-radius:8px;left:3px;top:27px;transform:rotate(-4deg)}
-.freal-silhouette .legs{width:22px;height:30px;left:18px;top:49px;background:linear-gradient(90deg,#7e797b 0 42%,transparent 42% 58%,#7e797b 58%)}
-.freal-silhouette b{position:absolute;right:-14px;top:23px;color:#ff6b3d;font-size:1.35rem;line-height:1}
-.freal-tech,.freal-profile{min-height:185px}
-.freal-tech .freal-silhouette,.freal-profile .freal-silhouette{transform:scale(1.65)}
-.freal-profile .freal-silhouette{transform:scale(1.65) rotateY(62deg)}
-.freal-muscles .freal-silhouette{transform:scale(1.35)}
-.freal-muscles .freal-silhouette .torso{background:linear-gradient(135deg,#ff8058,#e95232)}
+/* Stable pre-optimisation — validated exercise boards */
+.flib-thumb{display:block;width:100%;height:100%;object-fit:cover;object-position:center;border-radius:inherit}
+.flib-noasset{display:grid!important;place-items:center;background:#f5f1fb!important;color:#7253cc;font-size:.58rem;font-weight:800}
+.flib-tech-card{margin:14px 0 16px;border:1px solid #e8e1ef;border-radius:16px;overflow:hidden;background:#fff}
+.flib-tech-card img{display:block;width:100%;height:auto}
+.flib-tech-missing{margin:14px 0;border:1px dashed #d8ccef;border-radius:16px;padding:22px;text-align:center;background:#faf8ff}
+.flib-tech-missing strong,.flib-tech-missing span{display:block}.flib-tech-missing span{font-size:.75rem;color:#776f7b;margin-top:4px}
+@media(orientation:landscape) and (max-height:520px){
+  #sheet:has(.flib-tech){max-width:980px;width:96vw}
+  .flib-tech{display:grid;grid-template-columns:minmax(320px,1.2fr) minmax(300px,.8fr);gap:18px;align-items:start}
+  .flib-tech .fvis-head,.flib-tech .fvis-video,.flib-tech>[data-fvis-back]{grid-column:1/-1}
+  .flib-tech-card{grid-column:1;grid-row:2/5;margin:0}
+  .flib-tech .fvis-exec,.flib-tech .fvis-tip{grid-column:2;margin-top:0}
+}
