@@ -54,6 +54,7 @@
     if(!hist.length) return empty;
 
     const last=hist[0],lastWeight=sessionWeight(last.entry);
+    const lastLearning=last.workout?.coach?.learning?.exercises?.find(x=>x.name===spec.name)||null;
     if(lastWeight==null && bodyweight(spec.name)){
       return {name:spec.name,confidence:'medium',reason:'Je garde le travail au poids du corps et je consolide les répétitions avant d’ajouter de la charge.',sets:Array.from({length:count},()=>({reps:target,weight:null}))};
     }
@@ -65,7 +66,15 @@
     const step=loadStep(spec.name);
     let weight=lastWeight,reason='',confidence=hist.length>=2?'high':'medium';
 
-    if(lastComp.hit && prevComp?.hit && (effort==null || effort<=3)){
+    if(lastLearning?.signal==='below'){
+      weight=lastWeight;
+      reason=`La dernière fois, tu as ajusté la proposition à la baisse pendant la séance. Je garde ${lastWeight} kg comme référence et je consolide avant de reproposer une hausse.`;
+      confidence=hist.length>=2?'high':'medium';
+    }else if(lastLearning?.signal==='above' && lastComp.hit && (effort==null || effort<=3)){
+      weight=roundTo(lastWeight+step,0.5);
+      reason=`La dernière fois, tu as dépassé la proposition tout en atteignant la cible. Je prends ce réalisé comme nouveau signal et je propose ${weight} kg.`;
+      confidence=hist.length>=2?'high':'medium';
+    }else if(lastComp.hit && prevComp?.hit && (effort==null || effort<=3)){
       weight=roundTo(lastWeight+step,0.5);
       reason=`Tes deux dernières exécutions ont atteint la cible${effort!=null?` avec un ressenti ${effort}/5`:''}. Je propose une petite progression de ${step} kg.`;
     }else if(lastComp.hit){
@@ -189,6 +198,36 @@
       </form></div>`);
   };
 
+  function buildLearningSummary(saved,proposal){
+    const actualByName=new Map((saved?.exerciseEntries||[]).map(x=>[x.name,x]));
+    const items=(proposal?.exercises||[]).map(p=>{
+      const actual=actualByName.get(p.name);
+      const proposedSets=p.sets||[];
+      const actualSets=actual?.series||[];
+      let repDelta=0,weightDelta=0,comparedReps=0,comparedWeights=0;
+      for(let i=0;i<Math.max(proposedSets.length,actualSets.length);i++){
+        const ps=proposedSets[i]||{},as=actualSets[i]||{};
+        const pr=n(ps.reps),ar=n(as.reps),pw=n(ps.weight),aw=n(as.weight);
+        if(pr!=null&&ar!=null){repDelta+=ar-pr;comparedReps++;}
+        if(pw!=null&&aw!=null){weightDelta+=aw-pw;comparedWeights++;}
+      }
+      let signal='matched';
+      if((comparedReps&&repDelta<0)||(comparedWeights&&weightDelta<0)) signal='below';
+      if((comparedReps&&repDelta>0)||(comparedWeights&&weightDelta>0)) signal='above';
+      return {name:p.name,signal,repDelta,weightDelta,comparedReps,comparedWeights};
+    });
+    const below=items.filter(x=>x.signal==='below').length;
+    const above=items.filter(x=>x.signal==='above').length;
+    const matched=items.filter(x=>x.signal==='matched').length;
+    return {
+      version:'v2.1-learning-1',
+      createdAt:new Date().toISOString(),
+      effort:n(saved?.effort),
+      summary:{below,matched,above,total:items.length},
+      exercises:items
+    };
+  }
+
   // Preserve the coach proposal next to the real workout, without changing the validated core save logic.
   saveWorkout = async function(e){
     const form=e.currentTarget;
@@ -202,11 +241,12 @@
       const rows=(await LTDB.all('workouts')).filter(w=>w.date===date && (w.name===name || w.name===pending?.title)).sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
       const saved=rows[0];
       if(saved){
-        saved.coach={version:'force-v1-phase1',proposal,recordedAt:new Date().toISOString()};
+        const learning=buildLearningSummary(saved,proposal);
+        saved.coach={version:'force-v2.1-learning',proposal,learning,recordedAt:new Date().toISOString()};
         await LTDB.put('workouts',saved);
       }
     }catch(err){ console.error('Coach proposal persistence failed',err); }
   };
 
-  window.FluiditeCoachForceV1={buildCoachSession,recommendExercise};
+  window.FluiditeCoachForceV1={buildCoachSession,recommendExercise,buildLearningSummary};
 })();
