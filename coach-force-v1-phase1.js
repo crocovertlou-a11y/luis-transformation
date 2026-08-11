@@ -148,7 +148,7 @@
       const todayCheckin=checkins.find(x=>x.date===today)||null;
       const todayWorkout=workouts.find(x=>x.date===today)||null;
       const todayCardio=cardio.filter(x=>x.date===today);
-      dailyDecision=fluidityEngine(todayCheckin,todayWorkout,todayCardio,workouts,cardio,food);
+      dailyDecision=fluidityEngine(todayCheckin,todayWorkout,todayCardio,workouts,cardio,food,checkins);
     }catch(err){
       console.warn('Coach Force daily mode unavailable; using validated progression only',err);
     }

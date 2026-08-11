@@ -181,7 +181,42 @@ function fluidityNutritionContext(food){
   return {rows:rows.length,protein,calories,target,proteinRatio,hour,support};
 }
 
-function fluidityEngine(today,todayWorkout,todayCardio,workouts,cardio,food){
+function fluidityTrajectory(workouts,cardio,checkins){
+  workouts=Array.isArray(workouts)?workouts:[];
+  cardio=Array.isArray(cardio)?cardio:[];
+  checkins=Array.isArray(checkins)?checkins:[];
+  const recentForce=workouts.filter(x=>daysAgo(x.date)>=1&&daysAgo(x.date)<=7);
+  const previousForce=workouts.filter(x=>daysAgo(x.date)>=8&&daysAgo(x.date)<=21);
+  const recentCardio=cardio.filter(x=>daysAgo(x.date)>=1&&daysAgo(x.date)<=7);
+  const recentCheckins=checkins.filter(x=>daysAgo(x.date)>=1&&daysAgo(x.date)<=7);
+
+  const efforts=recentForce.map(x=>Number(x.effort)).filter(Number.isFinite);
+  const avgEffort=efforts.length?efforts.reduce((a,b)=>a+b,0)/efforts.length:null;
+  const lowRecovery=recentCheckins.filter(x=>Number(x.recovery)>0&&Number(x.recovery)<=2).length;
+  const lowEnergy=recentCheckins.filter(x=>Number(x.energy)>0&&Number(x.energy)<=2).length;
+  const shortSleep=recentCheckins.filter(x=>Number(x.sleep)>0&&Number(x.sleep)<6).length;
+  const hardCardio=recentCardio.filter(x=>['high','moderate_high'].includes(fluidityIntensityFromCardio(x))).length;
+  const load7=recentForce.length+recentCardio.length;
+
+  let fatigue='normal';
+  const fatigueSignals=(avgEffort!=null&&avgEffort>=4?1:0)+(lowRecovery>=2?1:0)+(lowEnergy>=2?1:0)+(shortSleep>=2?1:0)+(load7>=7?1:0)+(hardCardio>=3?1:0);
+  if(fatigueSignals>=3) fatigue='high';
+  else if(fatigueSignals>=2) fatigue='watch';
+
+  // Learning-loop trend: use persisted proposed-vs-realized signals rather than inventing performance scores.
+  const learned=recentForce.flatMap(w=>w.coach?.learning?.exercises||[]);
+  const above=learned.filter(x=>x.signal==='above').length;
+  const below=learned.filter(x=>x.signal==='below').length;
+  let progression='insufficient';
+  if(learned.length>=3){
+    if(above>=2&&above>below) progression='progressing';
+    else if(below>=2&&below>above) progression='struggling';
+    else progression='stable';
+  }
+  return {fatigue,fatigueSignals,progression,above,below,learned:learned.length,load7,force7:recentForce.length,cardio7:recentCardio.length,previousForce:previousForce.length};
+}
+
+function fluidityEngine(today,todayWorkout,todayCardio,workouts,cardio,food,checkins){
   todayCardio=Array.isArray(todayCardio)?todayCardio:[];
   workouts=Array.isArray(workouts)?workouts:[];
   cardio=Array.isArray(cardio)?cardio:[];
@@ -190,6 +225,7 @@ function fluidityEngine(today,todayWorkout,todayCardio,workouts,cardio,food){
   if(!today)return {decision:'insufficient_data',allowedActions:['insufficient_data'],confidence:'high',priority:'high',shouldSpeak:true,title:'Comment vas-tu aujourd’hui ?',message:'Donne-moi ton ressenti et je t’aide à construire ta journée.',action:'checkin'};
   const energy=Number(today.energy)||3,stress=Number(today.stress)||3,sleep=Number(today.sleep)||7;
   const nutrition=fluidityNutritionContext(food);
+  const trajectory=fluidityTrajectory(workouts,cardio,checkins);
   const recentActs=[...workouts,...cardio].filter(x=>daysAgo(x.date)>=1&&daysAgo(x.date)<=3);
   const recentHeavy=recentActs.length>=3;
   const cardioLoad=todayCardio.some(x=>fluidityIntensityFromCardio(x)==='high')?'high':todayCardio.some(x=>fluidityIntensityFromCardio(x)==='moderate_high')?'moderate_high':todayCardio.length?'moderate':'none';
@@ -198,6 +234,12 @@ function fluidityEngine(today,todayWorkout,todayCardio,workouts,cardio,food){
   }
   if(cardioLoad==='high'||cardioLoad==='moderate_high'){
     return {decision:'alternative_session',allowedActions:['alternative_session','recovery','day_complete'],confidence:'high',priority:'high',shouldSpeak:true,title:'Ta journée a déjà bien commencé',message:'Ta sortie a déjà bien sollicité les jambes. Si tu veux t’entraîner encore, privilégie plutôt le haut du corps ou garde simplement la récupération.',action:'training'};
+  }
+  if(trajectory.fatigue==='high' && energy<=3){
+    return {decision:'recovery',allowedActions:['adapted_session','recovery'],confidence:'high',priority:'high',shouldSpeak:true,title:'La tendance invite à lever le pied',message:`Je vois plusieurs signaux de fatigue sur les 7 derniers jours. Aujourd’hui, je privilégie récupération ou séance très légère plutôt que de pousser la progression.`,action:'training',nutritionContext:nutrition,trajectory};
+  }
+  if(trajectory.fatigue==='watch' && energy<=3){
+    return {decision:'adapted_session',allowedActions:['planned_session','adapted_session','recovery'],confidence:'medium',priority:'high',shouldSpeak:true,title:'Je garde un œil sur la fatigue',message:'La tendance des derniers jours montre plusieurs signaux à surveiller. Tu peux t’entraîner, mais je garde la progression prudente aujourd’hui.',action:'training',nutritionContext:nutrition,trajectory};
   }
   const lowSignals=(energy<=2?1:0)+(stress>=4?1:0)+(sleep<6?1:0)+(Number(today?.recovery||3)<=2?1:0);
   if(energy<=1){
@@ -231,7 +273,7 @@ async function renderToday(today,todayWorkout,todayCardio,protein,calories,foodC
   foodCount=Number(foodCount)||0;
 
   const [workoutsAll,cardioAll,foodAll,checkinsAll]=await Promise.all(['workouts','cardio','food','checkins'].map(s=>LTDB.all(s)));
-  const decision=fluidityEngine(today,todayWorkout,todayCardio,workoutsAll,cardioAll,foodAll);
+  const decision=fluidityEngine(today,todayWorkout,todayCardio,workoutsAll,cardioAll,foodAll,checkinsAll);
   const nutritionAdvice=fluidityNutritionComment(decision.decision,todayCardio,protein,calories,foodCount);
   const todayFood=foodAll.filter(x=>x.date===todayKey());
   const water=todayFood.reduce((n,x)=>n+(Number(x.water)||0),0), waterTarget=3;
@@ -293,7 +335,7 @@ async function renderTraining(){
     const todayCheckin=checkins.find(x=>x.date===today)||null;
     const todayWorkout=workouts.find(x=>x.date===today)||null;
     const todayCardio=cardio.filter(x=>x.date===today);
-    dailyDecision=fluidityEngine(todayCheckin,todayWorkout,todayCardio,workouts,cardio,food);
+    dailyDecision=fluidityEngine(todayCheckin,todayWorkout,todayCardio,workouts,cardio,food,checkins);
   }catch(err){
     console.warn('V2.1 training context unavailable; keeping local suggestion',err);
   }
@@ -388,7 +430,7 @@ async function smartTrainingContext(){
         const todayCheckin=checkins.find(x=>x.date===today)||null;
         const todayWorkout=workouts.find(x=>x.date===today)||null;
         const todayCardio=cardio.filter(x=>x.date===today);
-        return fluidityEngine(todayCheckin,todayWorkout,todayCardio,workouts,cardio,nutrition);
+        return fluidityEngine(todayCheckin,todayWorkout,todayCardio,workouts,cardio,nutrition,checkins);
       }catch(err){
         console.warn('V2.1 smart context decision unavailable',err);
         return null;
