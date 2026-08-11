@@ -25,37 +25,6 @@
     shoulder:{thumb:'force-shoulder-thumb.webp'}
   };
   const photo=(src,alt,cls='')=>`<img class="freal-photo ${cls}" src="${src}" alt="${esc(alt)}" loading="eager">`;
-  const LIBRARY_ASSETS={
-    bench:{card:'force-bench-start.webp',thumb:'force-bench-thumb.webp'},
-    pullup:{card:'force-pullup-thumb.webp',thumb:'force-pullup-thumb.webp'},
-    row:{card:'force-card-tractions.webp',thumb:'force-thumb-tractions.webp'},
-    shoulder:{card:'force-shoulder-thumb.webp',thumb:'force-shoulder-thumb.webp'},
-    lateral:{card:'force-card-developpe-incline.webp',thumb:'force-thumb-developpe-incline.webp'},
-    facepull:{card:'force-card-developpe-couche.webp',thumb:'force-thumb-developpe-couche.webp'},
-    curl:{card:'force-card-tirage-vertical.webp',thumb:'force-thumb-tirage-vertical.webp'},
-    triceps:{card:'force-card-elevations-laterales.webp',thumb:'force-thumb-elevations-laterales.webp'},
-    squat:{card:'force-card-squat.webp',thumb:'force-thumb-squat.webp'},
-    lunge:{card:'force-card-souleve-terre-roumain.webp',thumb:'force-thumb-souleve-terre-roumain.webp'},
-    rdl:{card:'force-card-leg-extension.webp',thumb:'force-thumb-leg-extension.webp'},
-    calf:{card:'force-card-leg-curl.webp',thumb:'force-thumb-leg-curl.webp'},
-    plank:{card:'force-card-gainage.webp',thumb:'force-thumb-gainage.webp'}
-  };
-  const extraAssetForName=name=>{
-    const s=String(name||'').toLowerCase();
-    if(s.includes('incliné')||s.includes('incline')) return {card:'force-bench-start.webp',thumb:'force-bench-thumb.webp'};
-    if(s.includes('dips')) return {card:'force-card-face-pull.webp',thumb:'force-thumb-face-pull.webp'};
-    if(s.includes('tirage horizontal')) return {card:'force-card-tirage-horizontal.webp',thumb:'force-thumb-tirage-horizontal.webp'};
-    if(s.includes('tirage vertical')) return {card:'force-card-tirage-vertical.webp',thumb:'force-thumb-tirage-vertical.webp'};
-    if(s.includes('presse')) return {card:'force-card-presse-cuisses.webp',thumb:'force-thumb-presse-cuisses.webp'};
-    if(s.includes('hip thrust')) return {card:'force-card-hip-thrust.webp',thumb:'force-thumb-hip-thrust.webp'};
-    if(s.includes('leg extension')) return {card:'force-card-leg-extension.webp',thumb:'force-thumb-leg-extension.webp'};
-    if(s.includes('leg curl')) return {card:'force-card-leg-curl.webp',thumb:'force-thumb-leg-curl.webp'};
-    if(s.includes('crunch')) return {card:'force-card-crunch.webp',thumb:'force-thumb-crunch.webp'};
-    if(s.includes('relev')) return {card:'force-card-releve-jambes.webp',thumb:'force-thumb-releve-jambes.webp'};
-    if(s.includes('mountain')) return {card:'force-card-mountain-climbers.webp',thumb:'force-thumb-mountain-climbers.webp'};
-    return null;
-  };
-  const assetFor=name=>extraAssetForName(name)||LIBRARY_ASSETS[key(name)]||null;
   const DATA={
     bench:{focus:'Pectoraux · Triceps · Deltoïdes antérieurs',primary:'Pectoraux',secondary:'Triceps · Deltoïdes antérieurs',
       steps:['Pieds bien ancrés, omoplates serrées et épaules basses.','Descends la barre sous contrôle vers le bas des pectoraux.','Pousse la barre en gardant les poignets alignés et les épaules stables.'],
@@ -110,20 +79,21 @@
   }
 
   window.forceVisualThumb=name=>{
-    const a=assetFor(name);
-    if(a?.thumb) return `<span class="fstep-thumb fvis-thumb"><img class="flib-thumb" src="${a.thumb}" alt="${esc(name)}" loading="eager"></span>`;
-    return `<span class="fstep-thumb fvis-thumb flib-noasset"><span>Technique</span></span>`;
+    const k=key(name),r=REAL[k];
+    return `<span class="fstep-thumb fvis-thumb">${r?.thumb?photo(r.thumb,name,'freal-thumb'):mannequin(k,'start',true)}</span>`;
   };
 
   window.forceTechniqueStep2=name=>{
     const k=key(name),d=DATA[k]||DATA.generic;
-    const a=assetFor(name);
     const youtube='https://www.youtube.com/results?search_query='+encodeURIComponent(name+' technique musculation');
-    const visual=a?.card
-      ? `<div class="flib-tech-card"><img src="${a.card}" alt="${esc(name)} — Départ, Profil et muscles sollicités" loading="eager"></div>`
-      : `<div class="flib-tech-missing"><strong>Technique</strong><span>Visuel dédié en préparation.</span></div>`;
-    showSheet(`<div class="fvis-tech flib-tech"><div class="fvis-head"><div><div class="fstep-top">TECHNIQUE</div><h2>${esc(name)}</h2><p>${esc(d.focus)}</p></div><span>${esc(d.primary)}</span></div>
-    ${visual}
+    const r=REAL[k];
+    const startVisual=r?.start?photo(r.start,name+' — position de départ','freal-tech'):mannequin(k,'start');
+    const secondVisual=r?.profile?photo(r.profile,name+' — vue de profil','freal-tech'):mannequin(k,'end');
+    const muscleVisual=r?.muscles?photo(r.muscles,'Muscles sollicités — '+d.primary,'freal-muscles'):mannequin(k,'end',true);
+    const secondLabel=r?.profile?'PROFIL':'POSITION 2';
+    showSheet(`<div class="fvis-tech"><div class="fvis-head"><div><div class="fstep-top">TECHNIQUE</div><h2>${esc(name)}</h2><p>${esc(d.focus)}</p></div><span>${esc(d.primary)}</span></div>
+    <div class="fvis-positions freal-positions"><section><strong><b>1</b>DÉPART</strong>${startVisual}</section><section><strong><b>2</b>${secondLabel}</strong>${secondVisual}</section></div>
+    <section class="fvis-muscles"><div class="fvis-muscle-model">${muscleVisual}</div><div><strong>MUSCLES SOLLICITÉS</strong><p><i></i><b>Principal</b><br>${esc(d.primary)}</p><p><i class="secondary"></i><b>Secondaires</b><br>${esc(d.secondary)}</p></div></section>
     <section class="fvis-exec"><strong>COMMENT EXÉCUTER</strong>${d.steps.map((x,i)=>`<div><b>${i+1}</b><span>${esc(x)}</span></div>`).join('')}</section>
     <section class="fvis-tip"><strong>💡 &nbsp; CONSEIL</strong><p>${esc(d.tip)}</p></section>
     <a class="action secondary fvis-video" href="${youtube}" target="_blank" rel="noopener">▶ Voir la vidéo</a>
