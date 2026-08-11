@@ -324,10 +324,16 @@ async function renderEvolution(checkins,workouts,cardio){
 }
 function formatPhotoDate(d){try{return new Intl.DateTimeFormat('fr-CH',{day:'2-digit',month:'short',year:'numeric'}).format(new Date(d+'T12:00:00'))}catch{return d}}
 
+function fluidityWorkoutForDecision(decision,workouts){
+  const base=suggestWorkout(workouts);
+  if(decision?.decision==='alternative_session') return workoutById('upper');
+  return base;
+}
+
 async function renderTraining(){
   const workouts=(await LTDB.all('workouts')).sort((a,b)=>b.date.localeCompare(a.date));
   const cardio=(await LTDB.all('cardio')).sort((a,b)=>b.date.localeCompare(a.date));
-  const baseSuggestion=suggestWorkout(workouts);
+  let baseSuggestion=suggestWorkout(workouts);
 
   // V2.1: read the SAME central day decision used on Aujourd’hui.
   // Guarded so Entraînement can never fail to render if context is unavailable.
@@ -342,6 +348,8 @@ async function renderTraining(){
   }catch(err){
     console.warn('V2.1 training context unavailable; keeping local suggestion',err);
   }
+
+  baseSuggestion=fluidityWorkoutForDecision(dailyDecision,workouts);
 
   const mode=dailyDecision?.decision||'planned_session';
   const adapted=mode==='adapted_session';
@@ -583,7 +591,7 @@ async function renderProfile(){
 function bindPage(){
   document.querySelectorAll('[data-home-view]').forEach(b=>b.addEventListener('click',()=>{state.homeView=b.dataset.homeView;render();}));
   document.querySelectorAll('[data-route-card]').forEach(b=>b.addEventListener('click',()=>navigate(b.dataset.routeCard)));
-  document.querySelectorAll('[data-fluidity-force]').forEach(b=>b.addEventListener('click',async()=>{const ws=(await LTDB.all('workouts')).sort((a,b)=>b.date.localeCompare(a.date));const w=suggestWorkout(ws);if(b.dataset.fluidityForce==='detail')return workoutDetailSheet(w);await workoutDetailSheet(w);chosenWorkoutForm();}));
+  document.querySelectorAll('[data-fluidity-force]').forEach(b=>b.addEventListener('click',async()=>{const [ws,cs,fs,ks]=await Promise.all([LTDB.all('workouts'),LTDB.all('cardio'),LTDB.all('food'),LTDB.all('checkins')]);ws.sort((a,b)=>b.date.localeCompare(a.date));cs.sort((a,b)=>b.date.localeCompare(a.date));const today=todayKey(),check=ks.find(x=>x.date===today)||null,todayWorkout=ws.find(x=>x.date===today)||null,todayCardio=cs.filter(x=>x.date===today),decision=fluidityEngine(check,todayWorkout,todayCardio,ws,cs,fs,ks),w=fluidityWorkoutForDecision(decision,ws);if(b.dataset.fluidityForce==='detail')return workoutDetailSheet(w);await workoutDetailSheet(w);chosenWorkoutForm();}));
   document.querySelectorAll('[data-open]').forEach(b=>b.onclick=e=>{e?.stopPropagation?.();openSheet(b.dataset.open)}); document.querySelectorAll('[data-photo-view]').forEach(b=>b.onclick=()=>viewProgressPhoto(b.dataset.photoView));
   document.querySelectorAll('[data-edit-activity]').forEach(b=>b.addEventListener('click',()=>{const [kind,id]=b.dataset.editActivity.split(':'); editActivitySheet(kind,id);}));
   $('#sendChat')?.addEventListener('click',sendChat); $('#chatInput')?.addEventListener('keydown',e=>{if(e.key==='Enter')sendChat();});
