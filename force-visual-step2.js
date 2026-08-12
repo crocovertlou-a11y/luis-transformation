@@ -87,6 +87,24 @@
     return `<svg class="fvis-svg ${mini?'mini':''}" viewBox="0 0 280 210"><defs><linearGradient id="body" x1="0" x2="1"><stop stop-color="#e7e7e7"/><stop offset=".55" stop-color="#bcbcbc"/><stop offset="1" stop-color="#8d8d8d"/></linearGradient><linearGradient id="muscle" x1="0" x2="1"><stop stop-color="#ff8058"/><stop offset="1" stop-color="#e95232"/></linearGradient></defs>${art}</svg>`;
   }
 
+  const MANNEQUIN_VISUALS={
+    "Pompes":{thumb:"mannequin-pompes-thumb.webp",start:"mannequin-pompes-start.webp",end:"mannequin-pompes-end.webp"},
+    "Tirage horizontal":{thumb:"mannequin-tirage-horizontal-thumb.webp",start:"mannequin-tirage-horizontal-start.webp",end:"mannequin-tirage-horizontal-end.webp"},
+    "Tirage vertical":{thumb:"mannequin-tirage-vertical-thumb.webp",start:"mannequin-tirage-vertical-start.webp",end:"mannequin-tirage-vertical-end.webp"},
+    "Dead bug":{thumb:"mannequin-dead-bug-thumb.webp",start:"mannequin-dead-bug-start.webp",end:"mannequin-dead-bug-end.webp"},
+    "Mountain climbers":{thumb:"mannequin-mountain-climbers-thumb.webp",start:"mannequin-mountain-climbers-start.webp",end:"mannequin-mountain-climbers-end.webp"},
+    "Pallof press":{thumb:"mannequin-pallof-press-thumb.webp",start:"mannequin-pallof-press-start.webp",end:"mannequin-pallof-press-end.webp"},
+    "Respiration 90/90":{thumb:"mannequin-respiration-90-90-thumb.webp",start:"mannequin-respiration-90-90-start.webp",end:"mannequin-respiration-90-90-end.webp"},
+    "Cat-Cow":{thumb:"mannequin-cat-cow-thumb.webp",start:"mannequin-cat-cow-start.webp",end:"mannequin-cat-cow-end.webp"},
+    "Rotation thoracique":{thumb:"mannequin-rotation-thoracique-thumb.webp",start:"mannequin-rotation-thoracique-start.webp",end:"mannequin-rotation-thoracique-end.webp"},
+    "Étirement fléchisseur de hanche":{thumb:"mannequin-etirement-flechisseur-de-hanche-thumb.webp",start:"mannequin-etirement-flechisseur-de-hanche-start.webp",end:"mannequin-etirement-flechisseur-de-hanche-end.webp"},
+    "Rowing élastique":{thumb:"mannequin-rowing-elastique-thumb.webp",start:"mannequin-rowing-elastique-start.webp",end:"mannequin-rowing-elastique-end.webp"},
+    "Squat avec élastique":{thumb:"mannequin-squat-avec-elastique-thumb.webp",start:"mannequin-squat-avec-elastique-start.webp",end:"mannequin-squat-avec-elastique-end.webp"},
+    "Développé poitrine élastique":{thumb:"mannequin-developpe-poitrine-elastique-thumb.webp",start:"mannequin-developpe-poitrine-elastique-start.webp",end:"mannequin-developpe-poitrine-elastique-end.webp"},
+    "Face pull élastique":{thumb:"mannequin-face-pull-elastique-thumb.webp",start:"mannequin-face-pull-elastique-start.webp",end:"mannequin-face-pull-elastique-end.webp"},
+    "Squat au poids du corps":{thumb:"mannequin-squat-au-poids-du-corps-thumb.webp",start:"mannequin-squat-au-poids-du-corps-start.webp",end:"mannequin-squat-au-poids-du-corps-end.webp"},
+    "Fentes marchées":{thumb:"mannequin-fentes-marchees-thumb.webp",start:"mannequin-fentes-marchees-start.webp",end:"mannequin-fentes-marchees-end.webp"}
+  };
   const DECK_VISUALS={
     "Développé couché":{card:"deck-developpe-couche.webp",thumb:"deck-thumb-developpe-couche.webp"},
     "Développé incliné":{card:"deck-developpe-incline.webp",thumb:"deck-thumb-developpe-incline.webp"},
@@ -106,8 +124,9 @@
     "Gainage":{card:"deck-gainage.webp",thumb:"deck-thumb-gainage.webp"}
   };
   window.forceVisualThumb=name=>{
-    const dv=DECK_VISUALS[name];
+    const dv=DECK_VISUALS[name],mv=MANNEQUIN_VISUALS[name];
     if(dv) return `<span class="fstep-thumb fvis-thumb"><img class="deck-real-thumb" src="${dv.thumb}" alt="${esc(name)}" loading="eager"></span>`;
+    if(mv) return `<span class="fstep-thumb fvis-thumb"><img class="deck-real-thumb" src="${mv.thumb}" alt="${esc(name)}" loading="eager"></span>`;
     const k=key(name),r=REAL[k];
     return `<span class="fstep-thumb fvis-thumb">${r?.thumb?photo(r.thumb,name,'freal-thumb'):mannequin(k,'start',true)}</span>`;
   };
@@ -117,12 +136,24 @@
     const youtube='https://www.youtube.com/results?search_query='+encodeURIComponent(name+' technique musculation');
     const r=REAL[k],dv=DECK_VISUALS[name];
     if(dv){
+      const back=window.__forceTechniqueBack || null;
       showSheet(`<div class="fvis-tech deck-tech"><div class="fvis-head"><div><div class="fstep-top">TECHNIQUE</div><h2>${esc(name)}</h2><p>${esc(d.focus)}</p></div><span>${esc(d.primary)}</span></div>
       <div class="deck-tech-visual"><img src="${dv.card}" alt="${esc(name)} — fiche technique validée" loading="eager"></div>
       <section class="fvis-exec"><strong>COMMENT EXÉCUTER</strong>${d.steps.map((x,i)=>`<div><b>${i+1}</b><span>${esc(x)}</span></div>`).join('')}</section>
       <section class="fvis-tip"><strong>💡 &nbsp; CONSEIL</strong><p>${esc(d.tip)}</p></section>
       <a class="action secondary fvis-video" href="${youtube}" target="_blank" rel="noopener">▶ Voir la vidéo</a>
-      <button class="action orange" type="button" data-fvis-back>Retour à la séance</button></div>`);
+      <button class="action orange" type="button" data-fvis-back>Retour</button></div>`,back);
+      return;
+    }
+    const mv=MANNEQUIN_VISUALS[name];
+    if(mv){
+      const back=window.__forceTechniqueBack || null;
+      showSheet(`<div class="fvis-tech"><div class="fvis-head"><div><div class="fstep-top">TECHNIQUE</div><h2>${esc(name)}</h2><p>${esc(d.focus)}</p></div><span>${esc(d.primary)}</span></div>
+      <div class="fvis-positions freal-positions"><section><strong><b>1</b>DÉPART</strong>${photo(mv.start,name+' — position de départ','freal-tech')}</section><section><strong><b>2</b>FIN</strong>${photo(mv.end,name+' — position de fin','freal-tech')}</section></div>
+      <section class="fvis-exec"><strong>COMMENT EXÉCUTER</strong>${d.steps.map((x,i)=>`<div><b>${i+1}</b><span>${esc(x)}</span></div>`).join('')}</section>
+      <section class="fvis-tip"><strong>💡 &nbsp; CONSEIL</strong><p>${esc(d.tip)}</p></section>
+      <a class="action secondary fvis-video" href="${youtube}" target="_blank" rel="noopener">▶ Voir la vidéo</a>
+      <button class="action orange" type="button" data-fvis-back>Retour</button></div>`,back);
       return;
     }
     const startVisual=r?.start?photo(r.start,name+' — position de départ','freal-tech'):mannequin(k,'start');
@@ -138,5 +169,5 @@
     <button class="action orange" type="button" data-fvis-back>Retour à la séance</button></div>`);
   };
 
-  document.addEventListener('click',e=>{const back=e.target.closest('[data-fvis-back]');if(back){e.preventDefault();e.stopPropagation();chosenWorkoutForm();}},true);
+  document.addEventListener('click',e=>{const b=e.target.closest('[data-fvis-back]');if(b){e.preventDefault();e.stopPropagation();const back=window.__forceTechniqueBack;window.__forceTechniqueBack=null;if(typeof back==='function')back();else chosenWorkoutForm();}},true);
 })();

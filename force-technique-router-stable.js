@@ -7,6 +7,15 @@
     if(!name || typeof window.forceTechniqueStep2!=='function') return;
     e.preventDefault();
     e.stopImmediatePropagation();
+    const sheet=document.querySelector('#sheet');
+    const content=document.querySelector('#sheetContent');
+    const previous=(sheet?.open && content)?content.innerHTML:null;
+    window.__forceTechniqueBack=previous?()=>{
+      sheetBackAction=null;
+      content.innerHTML=previous;
+      bindSheet();
+      updateAllRanges();
+    }:null;
     window.forceTechniqueStep2(name);
   }, true);
 })();
