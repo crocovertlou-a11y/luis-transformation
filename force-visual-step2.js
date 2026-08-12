@@ -5,6 +5,7 @@
     const s=String(name||'').toLowerCase();
     if(s.includes('couch')) return 'bench';
     if(s.includes('traction')) return 'pullup';
+        if(s.includes('dead bug')) return 'deadbug';
     if(s.includes('rowing')||s.includes('tirage horizontal')) return 'row';
     if(s.includes('développé épaules')||s.includes('developpe epaules')) return 'shoulder';
     if(s.includes('élévations latérales')||s.includes('elevations laterales')) return 'lateral';
@@ -15,15 +16,14 @@
     if(s.includes('fentes')) return 'lunge';
     if(s.includes('soulevé de terre roumain')||s.includes('souleve de terre roumain')) return 'rdl';
     if(s.includes('mollets')) return 'calf';
-    if(s.includes('gainage')||s.includes('dead bug')||s.includes('pallof')||s.includes('mountain climber')) return 'plank';
+    if(s.includes('gainage')||s.includes('pallof')||s.includes('mountain climber')) return 'plank';
     if(s.includes('pompes')||s.includes('poitrine élastique')) return 'bench';
     if(s.includes('tirage vertical')) return 'pullup';
     if(s.includes('rowing élastique')) return 'row';
     if(s.includes('squat au poids')||s.includes('squat avec')) return 'squat';
     if(s.includes('fentes march')) return 'lunge';
     if(s.includes('face pull élastique')) return 'facepull';
-    if(s.includes('respiration')||s.includes('cat-cow')||s.includes('rotation thoracique')||s.includes('fléchisseur de hanche')) return 'mobility';
-    return 'generic';
+        return 'generic';
   };
   const REAL={
     bench:{thumb:'force-bench-thumb.webp',start:'force-bench-start.webp',profile:'force-bench-profile.webp',muscles:'force-bench-muscles.webp'},
@@ -52,6 +52,7 @@
     rdl:{focus:'Ischio-jambiers · Fessiers',primary:'Ischio-jambiers',secondary:'Fessiers · Érecteurs du rachis',steps:['Garde les genoux légèrement fléchis et le dos neutre.','Recule les hanches en gardant la charge proche des jambes.','Remonte en poussant les hanches vers l’avant sans hyperextension.'],tip:'Le mouvement vient des hanches, pas d’un arrondi du dos.'},
     calf:{focus:'Mollets',primary:'Gastrocnémiens',secondary:'Soléaire',steps:['Place l’avant du pied stable sur le support.','Monte sur la pointe en contrôlant la cheville.','Redescends lentement jusqu’à sentir l’étirement du mollet.'],tip:'Marque une courte pause en haut et évite les rebonds.'},
     plank:{focus:'Sangle abdominale · Stabilisateurs',primary:'Core',secondary:'Fessiers · Épaules',steps:['Place les coudes sous les épaules et allonge le corps.','Contracte abdominaux et fessiers en gardant le bassin neutre.','Respire normalement tout en maintenant la position.'],tip:'Arrête la série lorsque tu ne peux plus conserver un alignement propre.'},
+    deadbug:{focus:'Core · Stabilité lombo-pelvienne',primary:'Abdominaux profonds',secondary:'Fléchisseurs de hanche · Stabilisateurs',steps:['Allonge-toi sur le dos, hanches et genoux à 90°, bras vers le plafond.','Étends lentement une jambe et le bras opposé sans creuser le bas du dos.','Reviens au centre puis alterne de côté en gardant le contrôle.'],tip:'Réduis l’amplitude dès que le bas du dos commence à se décoller.'},
     mobility:{focus:'Mobilité · Respiration · Récupération',primary:'Mobilité',secondary:'Respiration · Core · Hanches · Colonne',steps:['Installe-toi sans douleur dans une position stable.','Effectue le mouvement lentement en respirant régulièrement.','Reste dans une amplitude confortable et relâche progressivement les tensions.'],tip:'Ici, la qualité et la respiration priment sur l’amplitude.'},
     generic:{focus:'Mouvement contrôlé',primary:'Zone principale',secondary:'Muscles stabilisateurs',
       steps:['Adopte une position stable et confortable.','Exécute le mouvement avec une amplitude contrôlée.','Garde la maîtrise de la phase de retour.'],
