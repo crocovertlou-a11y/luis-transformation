@@ -15,7 +15,14 @@
     if(s.includes('fentes')) return 'lunge';
     if(s.includes('soulevé de terre roumain')||s.includes('souleve de terre roumain')) return 'rdl';
     if(s.includes('mollets')) return 'calf';
-    if(s.includes('gainage')) return 'plank';
+    if(s.includes('gainage')||s.includes('dead bug')||s.includes('pallof')||s.includes('mountain climber')) return 'plank';
+    if(s.includes('pompes')||s.includes('poitrine élastique')) return 'bench';
+    if(s.includes('tirage vertical')) return 'pullup';
+    if(s.includes('rowing élastique')) return 'row';
+    if(s.includes('squat au poids')||s.includes('squat avec')) return 'squat';
+    if(s.includes('fentes march')) return 'lunge';
+    if(s.includes('face pull élastique')) return 'facepull';
+    if(s.includes('respiration')||s.includes('cat-cow')||s.includes('rotation thoracique')||s.includes('fléchisseur de hanche')) return 'mobility';
     return 'generic';
   };
   const REAL={
@@ -45,6 +52,7 @@
     rdl:{focus:'Ischio-jambiers · Fessiers',primary:'Ischio-jambiers',secondary:'Fessiers · Érecteurs du rachis',steps:['Garde les genoux légèrement fléchis et le dos neutre.','Recule les hanches en gardant la charge proche des jambes.','Remonte en poussant les hanches vers l’avant sans hyperextension.'],tip:'Le mouvement vient des hanches, pas d’un arrondi du dos.'},
     calf:{focus:'Mollets',primary:'Gastrocnémiens',secondary:'Soléaire',steps:['Place l’avant du pied stable sur le support.','Monte sur la pointe en contrôlant la cheville.','Redescends lentement jusqu’à sentir l’étirement du mollet.'],tip:'Marque une courte pause en haut et évite les rebonds.'},
     plank:{focus:'Sangle abdominale · Stabilisateurs',primary:'Core',secondary:'Fessiers · Épaules',steps:['Place les coudes sous les épaules et allonge le corps.','Contracte abdominaux et fessiers en gardant le bassin neutre.','Respire normalement tout en maintenant la position.'],tip:'Arrête la série lorsque tu ne peux plus conserver un alignement propre.'},
+    mobility:{focus:'Mobilité · Respiration · Récupération',primary:'Mobilité',secondary:'Respiration · Core · Hanches · Colonne',steps:['Installe-toi sans douleur dans une position stable.','Effectue le mouvement lentement en respirant régulièrement.','Reste dans une amplitude confortable et relâche progressivement les tensions.'],tip:'Ici, la qualité et la respiration priment sur l’amplitude.'},
     generic:{focus:'Mouvement contrôlé',primary:'Zone principale',secondary:'Muscles stabilisateurs',
       steps:['Adopte une position stable et confortable.','Exécute le mouvement avec une amplitude contrôlée.','Garde la maîtrise de la phase de retour.'],
       tip:'Privilégie toujours la qualité d’exécution.'}
