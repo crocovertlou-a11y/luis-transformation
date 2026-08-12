@@ -327,6 +327,7 @@ function formatPhotoDate(d){try{return new Intl.DateTimeFormat('fr-CH',{day:'2-d
 function fluidityWorkoutForDecision(decision,workouts){
   const base=suggestWorkout(workouts);
   if(decision?.decision==='alternative_session') return workoutById('upper');
+  if(decision?.decision==='recovery') return workoutById('recovery-active');
   return base;
 }
 
@@ -358,7 +359,6 @@ async function renderTraining(){
   const suggestion={
     ...baseSuggestion,
     title: adapted ? `${baseSuggestion.title} · adapté aujourd’hui`
-      : recovery ? 'Récupération active'
       : baseSuggestion.title,
     subtitle: adapted
       ? baseSuggestion.subtitle.replace(/~\d+\s*min/, '~30–40 min')
@@ -528,7 +528,13 @@ function workoutLibrary(){
       {name:'Tractions',sets:3,reps:8,rest:'90 s'},
       {name:'Squat',sets:3,reps:8,rest:'90 s'},
       {name:'Gainage',sets:3,reps:'45 s',rest:'45 s'}
-    ]}
+    ]},
+    {id:'recovery-active',title:'Récupération active',subtitle:'~20 min · mobilité + récupération',goalLabel:'Récupération',tags:['recovery','bodyweight'],plan:[
+      {name:'Respiration diaphragmatique',sets:2,reps:'60 s',rest:'20 s'},{name:'Chat-vache',sets:2,reps:8,rest:'20 s'},{name:'Rotation thoracique au sol',sets:2,reps:8,rest:'20 s'},{name:'Mobilité 90/90 des hanches',sets:2,reps:8,rest:'20 s'},{name:'Étirement dynamique des fléchisseurs de hanche',sets:2,reps:'40 s',rest:'20 s'},{name:'Mobilité cheville genou au mur',sets:2,reps:10,rest:'20 s'}]},
+    {id:'bodyweight-full',title:'Full body sans matériel',subtitle:'~30 min · poids du corps',goalLabel:'Global',tags:['full','bodyweight'],plan:[
+      {name:'Squat au poids du corps',sets:3,reps:15,rest:'45 s'},{name:'Pompes',sets:3,reps:10,rest:'60 s'},{name:'Fentes arrière',sets:3,reps:10,rest:'45 s'},{name:'Pont fessier',sets:3,reps:15,rest:'45 s'},{name:'Dead bug',sets:3,reps:10,rest:'30 s'}]},
+    {id:'band-full',title:'Full body élastique',subtitle:'~30 min · élastique',goalLabel:'Global',tags:['full','band'],plan:[
+      {name:'Squat avec élastique',sets:3,reps:15,rest:'45 s'},{name:'Rowing avec élastique',sets:3,reps:12,rest:'60 s'},{name:'Développé poitrine avec élastique',sets:3,reps:12,rest:'60 s'},{name:'Face pull avec élastique',sets:3,reps:15,rest:'45 s'},{name:'Pallof press avec élastique',sets:3,reps:10,rest:'30 s'}]}
   ];
 }
 function suggestWorkout(workouts){
@@ -602,6 +608,20 @@ async function quickAdd(){ openSheet('quick'); }
 let sheetBackAction=null;
 function showSheet(html,backAction=null){ stopBarcodeCamera(); stopProgressCamera(); sheetBackAction=typeof backAction==='function'?backAction:null; $('#sheetContent').innerHTML=`<button class="sheet-x" type="button" data-close aria-label="Fermer">×</button>${html}`; $('#sheet').showModal(); bindSheet(); updateAllRanges(); }
 function slider(name,label,min,max,step,value,unit=''){ return `<div class="slider-line"><div class="slider-head"><label>${label}</label><output data-output="${name}">${value}${unit}</output></div><input type="range" name="${name}" min="${min}" max="${max}" step="${step}" value="${value}" data-range-unit="${unit}"></div>`; }
+async function nutritionClassicsSheet(){
+ const foods=(await LTDB.all('food')).filter(x=>x.classic),seen=new Set(),items=[];
+ foods.sort((a,b)=>(b.createdAt||b.dateTime||'').localeCompare(a.createdAt||a.dateTime||'')).forEach(x=>{const k=String(x.description||'').trim().toLowerCase();if(k&&!seen.has(k)){seen.add(k);items.push(x)}});
+ showSheet(`<h2>Mes classiques</h2><p class="subtle">Tes aliments habituels, prêts à être ajoutés rapidement.</p>${items.length?`<div class="suggestion-list">${items.map(x=>`<button class="suggestion-card" data-use-classic="${escapeHtml(x.id)}"><strong>★ ${escapeHtml(x.description||'Aliment')}</strong><span>${x.grams?`${Number(x.grams)} g · `:''}${Math.round(Number(x.calories)||0)} kcal · ${Number(x.protein||0).toFixed(1)} g prot.</span></button>`).join('')}</div>`:'<div class="empty">Aucun classique. Coche « Ajouter à mes classiques » lors d’un ajout.</div>'}`,()=>openSheet('nutritionMealAdd'));
+}
+async function useNutritionClassic(id){
+ const x=await LTDB.get('food',id);if(!x)return;
+ showSheet(`<h2>Ajouter un classique</h2><form id="classicFoodForm"><input type="hidden" name="classicId" value="${escapeHtml(id)}">${dateField('date',todayKey())}<div class="field"><label>Moment</label><select name="mealType">${mealTypeOptions(pendingNutritionMealType||x.mealType||'lunch')}</select></div><div class="field"><label>Aliment</label><input name="description" value="${escapeHtml(x.description||'Aliment')}"></div>${x.grams?`<div class="field"><label>Quantité (g)</label><input name="grams" type="number" min="1" step="1" value="${Number(x.grams)}"></div>`:''}<div class="range-row"><div class="field"><label>Protéines (g)</label><input name="protein" type="number" step="0.1" value="${Number(x.protein)||0}"></div><div class="field"><label>Calories</label><input name="calories" type="number" value="${Math.round(Number(x.calories)||0)}"></div></div><div class="range-row"><div class="field"><label>Glucides (g)</label><input name="carbs" type="number" step="0.1" value="${Number(x.carbs)||0}"></div><div class="field"><label>Lipides (g)</label><input name="fat" type="number" step="0.1" value="${Number(x.fat)||0}"></div></div><button class="action" type="submit">Ajouter au repas</button></form>`,()=>nutritionClassicsSheet());
+}
+async function saveClassicFood(e){
+ e.preventDefault();const f=new FormData(e.currentTarget),src=await LTDB.get('food',f.get('classicId'));if(!src)return;
+ await LTDB.put('food',{...src,id:uid(),date:f.get('date')||todayKey(),dateTime:new Date().toISOString(),mealType:f.get('mealType')||'lunch',description:f.get('description')||src.description,grams:num(f.get('grams'))||src.grams||null,protein:num(f.get('protein')),calories:num(f.get('calories')),carbs:num(f.get('carbs')),fat:num(f.get('fat')),classic:true,source:'classic',createdAt:new Date().toISOString()});
+ toast('Classique ajouté');pendingNutritionMealType=null;await nutritionHubSheet();render();
+}
 function openSheet(kind){
   if(kind==='quick') return showSheet(`<h2>Donner quelque chose</h2><div class="sheet-grid"><button class="sheet-choice" data-sheet="checkin">◌<strong>Ressenti</strong></button><button class="sheet-choice" data-sheet="workout">◎<strong>Force</strong></button><button class="sheet-choice" data-sheet="cardio">⌁<strong>Cardio</strong></button>${state.profile.nutritionEnabled?'<button class="sheet-choice" data-sheet="nutritionHub">◒<strong>Alimentation</strong></button>':''}</div>`);
   if(kind==='checkin') {
@@ -630,7 +650,7 @@ function openSheet(kind){
   if(kind==='cardio') return showSheet(`<h2>Ajouter une activité Cardio</h2><form id="cardioForm">${dateField('date',todayKey())}<div class="field"><label>Type</label><select name="type"><option>Course</option><option>Vélo</option><option>Natation</option><option>Marche</option><option>Autre</option></select></div><div class="field"><label>Distance (km)</label><input name="distance" type="number" step="0.01" inputmode="decimal"></div><div class="duration-picker"><div><label>Heures</label><input name="hours" type="number" min="0" max="23" inputmode="numeric" value="0"></div><span>:</span><div><label>Minutes</label><input name="minutes" type="number" min="0" max="59" inputmode="numeric" value="40"></div><span>:</span><div><label>Secondes</label><input name="seconds" type="number" min="0" max="59" inputmode="numeric" value="0"></div></div><div class="range-row"><div class="field"><label>FC moyenne</label><input name="hr" type="number" inputmode="numeric"></div><div class="field"><label>Cadence moy.</label><input name="cadence" type="number" inputmode="numeric"></div></div><div class="range-row"><div class="field"><label>Dénivelé + (m)</label><input name="elevation" type="number" inputmode="numeric"></div><div class="field"><label>Calories (kcal)</label><input name="calories" type="number" inputmode="numeric"></div></div><button class="action" type="submit">Enregistrer</button></form>`);
   if(kind==='nutritionHub') return nutritionHubSheet();
   if(kind==='recipeIngredientAdd'){
-    return showSheet(`<h2>Ajouter un ingrédient</h2><p class="subtle">Utilise exactement les mêmes outils que pour tes repas.</p><div class="nutrition-actions meal-add-methods"><button class="sheet-choice" data-sheet="foodSearch">⌕<strong>Rechercher un aliment</strong><span>Nom, marque ou produit</span></button><button class="sheet-choice" data-sheet="barcode">▣<strong>Scanner un produit</strong><span>Code-barres</span></button><button class="sheet-choice" data-sheet="photoFood">◉<strong>Photo</strong><span>Le Compagnon analyse puis tu confirmes</span></button><button class="sheet-choice" data-sheet="recipeManualIngredient">＋<strong>Saisie manuelle</strong><span>Quantité + macros</span></button></div>`);
+    return showSheet(`<h2>Ajouter un ingrédient</h2><p class="subtle">Utilise exactement les mêmes outils que pour tes repas.</p><div class="nutrition-actions meal-add-methods"><button class="sheet-choice" data-nutrition-classics>★<strong>Mes classiques</strong><span>Retrouver tes aliments habituels</span></button><button class="sheet-choice" data-sheet="foodSearch">⌕<strong>Rechercher un aliment</strong><span>Nom, marque ou produit</span></button><button class="sheet-choice" data-sheet="barcode">▣<strong>Scanner un produit</strong><span>Code-barres</span></button><button class="sheet-choice" data-sheet="photoFood">◉<strong>Photo</strong><span>Le Compagnon analyse puis tu confirmes</span></button><button class="sheet-choice" data-sheet="recipeManualIngredient">＋<strong>Saisie manuelle</strong><span>Quantité + macros</span></button></div>`);
   }
   if(kind==='recipeManualIngredient'){
     return showSheet(`<h2>Ingrédient manuel</h2><form id="recipeManualIngredientForm"><div class="field"><label>Nom</label><input name="name" required placeholder="Ex. flocons d’avoine"></div><div class="field"><label>Quantité (g)</label><input name="qty" type="number" min="0" step="0.1"></div><div class="range-row"><div class="field"><label>Protéines (g)</label><input name="protein" type="number" min="0" step="0.1"></div><div class="field"><label>Calories</label><input name="calories" type="number" min="0" step="1"></div></div><div class="range-row"><div class="field"><label>Glucides (g)</label><input name="carbs" type="number" min="0" step="0.1"></div><div class="field"><label>Lipides (g)</label><input name="fat" type="number" min="0" step="0.1"></div></div><button class="action" type="submit">Ajouter à la recette</button></form>`);
@@ -951,6 +971,24 @@ function showTechnique(name){
     'Tractions':{focus:'Dos · Biceps',steps:['Pars bras tendus avec les épaules actives.','Amène la poitrine vers la barre sans balancer.','Redescends sous contrôle jusqu’à l’extension.'],errors:['Élan des jambes','Amplitude raccourcie','Nuque projetée'],video:'tractions technique'},
     'Rowing':{focus:'Dos · Biceps',steps:['Garde le tronc stable et le dos neutre.','Tire les coudes vers l’arrière.','Contrôle le retour sans arrondir le dos.'],errors:['Dos arrondi','Élan du buste','Épaules remontées'],video:'rowing musculation technique'}
   };
+  Object.assign(guides,{
+    'Respiration diaphragmatique':{focus:'Respiration · Relâchement',steps:['Installe-toi confortablement, épaules relâchées.','Inspire par le nez en laissant l’abdomen se soulever.','Expire lentement sans forcer.'],errors:['Hausser les épaules','Forcer l’inspiration','Accélérer le rythme'],video:'respiration diaphragmatique exercice'},
+    'Chat-vache':{focus:'Colonne · Mobilité douce',steps:['Mains sous épaules, genoux sous hanches.','Arrondis progressivement le dos en expirant.','Inverse doucement la courbe en inspirant.'],errors:['Mouvement brusque','Amplitude douloureuse','Forcer les lombaires'],video:'cat cow mobilité technique'},
+    'Rotation thoracique au sol':{focus:'Dos · Rotation thoracique',steps:['Allonge-toi sur le côté, genoux fléchis.','Ouvre lentement le bras supérieur.','Reviens sous contrôle sans décoller les genoux.'],errors:['Forcer avec l’épaule','Décoller les genoux','Amplitude douloureuse'],video:'rotation thoracique au sol mobilité'},
+    'Mobilité 90/90 des hanches':{focus:'Hanches · Rotation',steps:['Assieds-toi, deux genoux fléchis à environ 90°.','Passe lentement les genoux d’un côté à l’autre.','Garde le buste haut et une amplitude confortable.'],errors:['Forcer le genou','S’effondrer vers l’arrière','Aller trop vite'],video:'90 90 hip mobility technique'},
+    'Étirement dynamique des fléchisseurs de hanche':{focus:'Hanches · Fléchisseurs',steps:['Place-toi en fente à genou, bassin neutre.','Rentre légèrement le bassin puis avance doucement.','Reviens et répète sans rebond.'],errors:['Cambrer les lombaires','Pousser dans la douleur','Faire des rebonds'],video:'hip flexor dynamic stretch technique'},
+    'Mobilité cheville genou au mur':{focus:'Cheville · Dorsiflexion',steps:['Pied à plat face au mur.','Avance le genou dans l’axe sans décoller le talon.','Reviens puis répète confortablement.'],errors:['Décoller le talon','Genou vers l’intérieur','Forcer une douleur'],video:'knee to wall ankle mobility technique'},
+    'Squat au poids du corps':{focus:'Quadriceps · Fessiers · Tronc',steps:['Pieds stables et tronc gainé.','Descends en gardant les genoux dans l’axe.','Remonte en poussant le sol.'],errors:['Genoux vers l’intérieur','Talons décollés','Dos fortement arrondi'],video:'bodyweight squat technique'},
+    'Pompes':{focus:'Pectoraux · Triceps · Tronc',steps:['Mains stables, corps gainé.','Descends la poitrine en contrôlant les coudes.','Repousse sans casser l’alignement du bassin.'],errors:['Bassin qui tombe','Coudes trop écartés','Amplitude incontrôlée'],video:'pompes technique'},
+    'Fentes arrière':{focus:'Quadriceps · Fessiers · Stabilité',steps:['Recule un pied depuis la position debout.','Descends verticalement, genou avant dans l’axe.','Pousse dans le pied avant pour revenir.'],errors:['Genou qui rentre','Pas trop court','Mouvement précipité'],video:'reverse lunge technique'},
+    'Pont fessier':{focus:'Fessiers · Ischio-jambiers',steps:['Allonge-toi, pieds à plat.','Monte le bassin en contractant les fessiers.','Redescends sous contrôle.'],errors:['Hyperextension lombaire','Pieds trop éloignés','Genoux instables'],video:'glute bridge technique'},
+    'Dead bug':{focus:'Core · Contrôle lombo-pelvien',steps:['Allonge-toi, hanches et genoux à 90°.','Éloigne bras et jambe opposés sans creuser le dos.','Reviens puis alterne lentement.'],errors:['Dos qui se creuse','Amplitude excessive','Mouvement rapide'],video:'dead bug exercise technique'},
+    'Squat avec élastique':{focus:'Jambes · Fessiers',steps:['Place l’élastique de façon stable.','Descends en squat sous tension régulière.','Remonte en gardant genoux et pieds alignés.'],errors:['Élastique mal sécurisé','Genoux vers l’intérieur','Mouvement précipité'],video:'resistance band squat technique'},
+    'Rowing avec élastique':{focus:'Dos · Biceps',steps:['Sécurise l’élastique, tronc stable.','Tire les coudes vers l’arrière.','Reviens lentement sans relâcher brutalement.'],errors:['Ancrage instable','Élan du buste','Retour incontrôlé'],video:'resistance band row technique'},
+    'Développé poitrine avec élastique':{focus:'Pectoraux · Triceps',steps:['Sécurise l’élastique derrière toi.','Pousse vers l’avant, tronc stable.','Reviens lentement sous tension.'],errors:['Ancrage instable','Épaules haussées','Retour brusque'],video:'resistance band chest press technique'},
+    'Face pull avec élastique':{focus:'Arrière d’épaules · Haut du dos',steps:['Sécurise l’élastique à hauteur du visage.','Tire vers le visage en ouvrant les coudes.','Reviens lentement.'],errors:['Ancrage instable','Épaules remontées','Élan du dos'],video:'resistance band face pull technique'},
+    'Pallof press avec élastique':{focus:'Core · Anti-rotation',steps:['Place-toi de côté par rapport à un ancrage sûr.','Tends les bras sans laisser le tronc tourner.','Ramène lentement les mains.'],errors:['Ancrage instable','Rotation du bassin','Tension excessive'],video:'resistance band pallof press technique'}
+  });
   const g=guides[name]||{focus:'Mouvement contrôlé',steps:['Installe-toi dans une position stable.','Garde une amplitude confortable et contrôlée.','Expire pendant l’effort et conserve la maîtrise du retour.'],errors:['Charge trop lourde','Mouvement précipité','Amplitude forcée'],video:name+' technique musculation'};
   const q='https://www.youtube.com/results?search_query='+encodeURIComponent(g.video);
   showSheet(`<div class="force-v1-tech"><div class="force-v1-kicker">TECHNIQUE</div><h2>${escapeHtml(name)}</h2><p class="subtle">${escapeHtml(g.focus)}</p>
@@ -973,6 +1011,9 @@ function bindSheet(){
   document.querySelectorAll('[data-calendar-month]').forEach(b=>b.addEventListener('click',()=>{const [y,m]=b.dataset.calendarMonth.split('-').map(Number);nutritionHistorySheet(y,m)}));
 
 
+  document.querySelectorAll('[data-nutrition-classics]').forEach(b=>b.addEventListener('click',nutritionClassicsSheet));
+  document.querySelectorAll('[data-use-classic]').forEach(b=>b.addEventListener('click',()=>useNutritionClassic(b.dataset.useClassic)));
+  $('#classicFoodForm')?.addEventListener('submit',saveClassicFood);
   document.querySelectorAll('[data-personal-recipes]').forEach(b=>b.addEventListener('click',personalRecipesSheet));
   $('[data-new-recipe]')?.addEventListener('click',()=>recipeEditorSheet());
   document.querySelectorAll('[data-edit-recipe]').forEach(b=>b.addEventListener('click',()=>recipeEditorSheet(b.dataset.editRecipe)));
@@ -1234,7 +1275,7 @@ function updateFoodSearchPortion(){
 }
 async function saveSearchedFood(e){
  e.preventDefault();const f=new FormData(e.currentTarget);
- await LTDB.put('food',{id:uid(),date:f.get('date')||todayKey(),dateTime:new Date().toISOString(),mealType:f.get('mealType')||'lunch',description:f.get('description')||'Aliment',protein:num(f.get('protein')),calories:num(f.get('calories')),carbs:num(f.get('carbs')),fat:num(f.get('fat')),water:null,classic:f.get('classic')==='on',source:f.get('source')||'food-search',sourceId:f.get('sourceId')||'',createdAt:new Date().toISOString()});
+ await LTDB.put('food',{id:uid(),date:f.get('date')||todayKey(),dateTime:new Date().toISOString(),mealType:f.get('mealType')||'lunch',description:f.get('description')||'Aliment',protein:num(f.get('protein')),calories:num(f.get('calories')),carbs:num(f.get('carbs')),fat:num(f.get('fat')),water:null,grams:num(f.get('grams'))||null,classic:f.get('classic')==='on',source:f.get('source')||'food-search',sourceId:f.get('sourceId')||'',createdAt:new Date().toISOString()});
  toast('Aliment enregistré');state.foodSearchMealContext='';pendingNutritionMealType=null;await nutritionHubSheet();render();
 }
 async function lookupBarcodeCode(code,date=todayKey(),mealType='lunch'){
