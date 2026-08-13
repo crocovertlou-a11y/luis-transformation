@@ -630,6 +630,20 @@ function companionBriefV22(c){
   if((Number(n.water)||0)>0 && Number(n.water)<1.5) notes.push(`Hydratation enregistrée : ${Number(n.water).toFixed(1).replace('.',',')} L.`);
   return {title,text,action,actionLabel,note:notes[0]||'',confidence:d.confidence||'medium'};
 }
+
+function cleanCompanionText(text){
+  return String(text||'')
+    .replace(/\*\*(.*?)\*\*/g,'$1')
+    .replace(/__(.*?)__/g,'$1')
+    .replace(/^\s*[-•]\s+/gm,'')
+    .replace(/\s{2,}/g,' ')
+    .trim();
+}
+function companionFingerprint(text){
+  return cleanCompanionText(text).toLowerCase()
+    .replace(/[àâä]/g,'a').replace(/[éèêë]/g,'e').replace(/[îï]/g,'i').replace(/[ôö]/g,'o').replace(/[ùûü]/g,'u')
+    .replace(/[^a-z0-9 ]/g,'').replace(/\s+/g,' ').trim();
+}
 async function renderCompanion(){
   const messages=await LTDB.all('events');
   const chat=messages.filter(x=>x.type==='CHAT').sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||'')).slice(-8);
@@ -650,7 +664,7 @@ async function renderCompanion(){
       <button class="action secondary compact" data-companion-prompt="Que dois-je encore privilégier côté alimentation aujourd’hui ?">Mon alimentation</button>
     </div>
   </div>
-  <div class="card chat" id="chat">${chat.length?chat.map(x=>`<div class="bubble ${x.role==='user'?'user':'companion'}">${escapeHtml(x.text)}${x.role==='companion'&&x.action?`<button class="companion-inline-action" data-companion-chat-action="${escapeHtml(x.action.type||'')}" data-companion-workout="${escapeHtml(x.action.workoutId||'')}">${escapeHtml(x.action.label||'Voir')}</button>`:''}</div>`).join(''):'<div class="bubble companion">Je peux maintenant répondre en tenant compte de ta journée réelle, sans inventer les données qui manquent.</div>'}</div>
+  <div class="card chat" id="chat">${chat.length?chat.map(x=>`<div class="bubble ${x.role==='user'?'user':'companion'}">${escapeHtml(cleanCompanionText(x.text))}${x.role==='companion'&&x.action?`<button class="companion-inline-action" data-companion-chat-action="${escapeHtml(x.action.type||'')}" data-companion-workout="${escapeHtml(x.action.workoutId||'')}">${escapeHtml(x.action.label||'Voir')}</button>`:''}</div>`).join(''):'<div class="bubble companion">Je peux maintenant répondre en tenant compte de ta journée réelle, sans inventer les données qui manquent.</div>'}</div>
   <div class="chatbar"><input id="chatInput" placeholder="Pose une question sur ta journée…"><button id="sendChat">Envoyer</button></div>`;
 }
 
@@ -1625,6 +1639,11 @@ async function sendChat(){
     const r=await fetch('/.netlify/functions/companion-v1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:text,context:snap.context,history})});
     const data=await r.json(); if(!r.ok)throw new Error(data.detail||data.error||'IA indisponible'); answer=data.answer||'Je n’ai pas de réponse utile pour le moment.'; var companionAction=data.action||null;
   }catch(err){console.error(err);answer=await localCompanion(text);var companionAction=null}
+  answer=cleanCompanionText(answer);
+  const recentCompanion=(await LTDB.all('events')).filter(x=>x.type==='CHAT'&&x.role==='companion').sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''))[0];
+  if(recentCompanion&&companionFingerprint(recentCompanion.text)===companionFingerprint(answer)&&!companionAction){
+    answer='Je garde la même recommandation. Dis-moi simplement ce que tu veux ajuster : durée, matériel ou intensité.';
+  }
   await LTDB.put('events',{id:uid(),type:'CHAT',role:'companion',text:answer,action:companionAction,createdAt:new Date().toISOString()});render();
 }
 async function localCompanion(text){

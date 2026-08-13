@@ -353,3 +353,7 @@ button.done-tile:active{transform:scale(.985)}
 /* Fluidité V2.3 — actionable conversation */
 .companion-inline-action{display:block;margin-top:10px;border:0;border-radius:12px;padding:10px 12px;font:inherit;font-weight:700;cursor:pointer;background:rgba(111,78,205,.12);color:inherit}
 .bubble.user .companion-inline-action{display:none}
+
+/* V2.3.1 Companion UX fix */
+.companion-inline-action{width:100%;margin-top:12px;text-align:center}
+#chat .bubble.companion{line-height:1.48}
