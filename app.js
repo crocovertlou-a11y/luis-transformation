@@ -672,9 +672,17 @@ async function renderCompanion(){
     const cleaned=cleanCompanionText(m.text);
     if(cleaned!==m.text)await LTDB.put('events',{...m,text:cleaned});
   }
-  const chat=messages.filter(x=>x.type==='CHAT'&&companionChatDay(x)===todayKey()).sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||''));
+  const allTodayChat=messages.filter(x=>x.type==='CHAT'&&companionChatDay(x)===todayKey()).sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||''));
+  // L’écran principal reste volontairement léger : uniquement le dernier échange complet.
+  let chat=[];
+  const lastCompanionIndex=allTodayChat.map(x=>x.role).lastIndexOf('companion');
+  if(lastCompanionIndex>=0){
+    let userIndex=-1;
+    for(let i=lastCompanionIndex-1;i>=0;i--){if(allTodayChat[i].role==='user'){userIndex=i;break;}}
+    chat=allTodayChat.slice(userIndex>=0?userIndex:lastCompanionIndex,lastCompanionIndex+1);
+  }
   const snap=await companionSnapshot(),b=snap.brief;
-  return `<section class="hero companion-hero-v233"><div class="companion-page-mark">${companionMark("companion-mark-large")}</div><div class="hello">Compagnon</div><button class="companion-history-link" id="openCompanionHistory">Historique</button><div class="subtle">Je relie ton ressenti, tes entraînements, ton cardio et ton alimentation.</div></section>
+  return `<section class="hero companion-hero-v233"><div class="companion-page-mark">${companionMark("companion-mark-large")}</div><div class="hello">Compagnon</div><button class="companion-history-link" id="openCompanionHistory">Historique</button><div class="subtle">Je relie ton ressenti, tes entraînements, ton cardio, ton alimentation et ton évolution.</div></section>
   <div class="card primary-card companion-v22-brief">
     <div class="card-kicker">${companionMark("choice-companion")} Priorité du moment</div>
     <h3>${escapeHtml(b.title)}</h3>
@@ -689,6 +697,7 @@ async function renderCompanion(){
       <button class="action secondary compact" data-companion-prompt="Que penses-tu de mon entraînement aujourd’hui ?">Mon entraînement</button>
       <button class="action secondary compact" data-companion-prompt="Comment trouves-tu mon équilibre cardio et force ces derniers jours ?">Mon cardio</button>
       <button class="action secondary compact" data-companion-prompt="Que dois-je encore privilégier côté alimentation aujourd’hui ?">Mon alimentation</button>
+      <button class="action secondary compact" id="openCompanionEvolution">Mon évolution</button>
     </div>
   </div>
   <div class="card chat" id="chat">${chat.length?chat.map(x=>`<div class="bubble ${x.role==='user'?'user':'companion'}">${escapeHtml(cleanCompanionText(x.text))}${x.role==='companion'&&x.action?`<button class="companion-inline-action" data-companion-chat-action="${escapeHtml(x.action.type||'')}" data-companion-workout="${escapeHtml(x.action.workoutId||'')}">${escapeHtml(x.action.label||'Voir')}</button>`:''}</div>`).join(''):'<div class="bubble companion">Je peux maintenant répondre en tenant compte de ta journée réelle, sans inventer les données qui manquent.</div>'}</div>
@@ -709,6 +718,7 @@ function bindPage(){
   document.querySelectorAll('[data-open]').forEach(b=>b.onclick=e=>{e?.stopPropagation?.();openSheet(b.dataset.open)}); document.querySelectorAll('[data-photo-view]').forEach(b=>b.onclick=()=>viewProgressPhoto(b.dataset.photoView));
   document.querySelectorAll('[data-edit-activity]').forEach(b=>b.addEventListener('click',()=>{const [kind,id]=b.dataset.editActivity.split(':'); editActivitySheet(kind,id);}));
   $('#openCompanionHistory')?.addEventListener('click',openCompanionHistory);
+  $('#openCompanionEvolution')?.addEventListener('click',openCompanionEvolution);
   $('#sendChat')?.addEventListener('click',sendChat); $('#chatInput')?.addEventListener('keydown',e=>{if(e.key==='Enter')sendChat();});
   document.querySelectorAll('[data-companion-prompt]').forEach(b=>b.addEventListener('click',()=>{const input=$('#chatInput');if(input){input.value=b.dataset.companionPrompt;sendChat();}}));
   document.querySelectorAll('[data-companion-action]').forEach(b=>b.addEventListener('click',()=>{const a=b.dataset.companionAction;if(a==='training')navigate('training');else if(a==='checkin')openSheet('checkin');}));
@@ -1748,8 +1758,17 @@ async function viewProgressPhoto(id){
   $('#deleteProgressPhoto')?.addEventListener('click',async()=>{await LTDB.del('photos',id);$('#sheet').close();toast('Photo supprimée');render()});
 }
 
+async function openCompanionEvolution(){
+  const photos=(await LTDB.all('photos')).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const recent=photos.slice(0,6);
+  showSheet(`<div class="companion-history-sheet"><div class="sheet-title-row"><div><div class="card-kicker">COMPAGNON · ÉVOLUTION</div><h2>Mes photos</h2></div></div><p class="subtle">Tes photos restent enregistrées dans Évolution. Ici, le Compagnon te donne un accès direct à la comparaison et à son analyse.</p>${recent.length?`<div class="companion-photo-strip">${recent.map(p=>`<button type="button" data-photo-view="${escapeHtml(p.id)}"><img src="${p.image}" alt="${escapeHtml(p.view||'Photo')}"><span>${escapeHtml(p.view||'Photo')} · ${formatPhotoDate(p.date)}</span></button>`).join('')}</div>`:'<div class="empty">Aucune photo enregistrée pour le moment.</div>'}<div class="card-actions companion-evolution-actions"><button class="action" type="button" id="companionComparePhotos">Comparer et analyser</button><button class="action secondary" type="button" id="companionAddPhoto">Ajouter une photo</button></div></div>`);
+  document.querySelectorAll('[data-photo-view]').forEach(b=>b.addEventListener('click',()=>viewProgressPhoto(b.dataset.photoView)));
+  $('#companionComparePhotos')?.addEventListener('click',()=>openSheet('photoCompare'));
+  $('#companionAddPhoto')?.addEventListener('click',()=>openSheet('progressPhoto'));
+}
+
 async function openCompanionHistory(){
-  const events=(await LTDB.all('events')).filter(x=>x.type==='CHAT'&&companionChatDay(x)&&companionChatDay(x)!==todayKey());
+  const events=(await LTDB.all('events')).filter(x=>x.type==='CHAT'&&companionChatDay(x));
   const groups={};
   events.sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||'')).forEach(x=>{const day=companionChatDay(x);(groups[day]||(groups[day]=[])).push(x)});
   const days=Object.keys(groups).sort().reverse();

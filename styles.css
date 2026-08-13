@@ -396,3 +396,10 @@ button.done-tile:active{transform:scale(.985)}
 .recipe-delete-action{width:100%;margin-top:14px;border:1px solid rgba(180,55,55,.2);background:transparent;color:#a33b3b;border-radius:18px;padding:15px 18px;font:inherit;font-weight:750}
 .recipe-delete-action.solid{margin-top:0;background:#a33b3b;color:#fff;border-color:#a33b3b}
 .recipe-delete-confirm{padding-top:8px}.recipe-delete-confirm-actions{display:grid;gap:10px;margin-top:24px}
+
+/* V2.6.4 — Compagnon épuré + Évolution */
+.companion-photo-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:18px 0}
+.companion-photo-strip button{border:0;background:transparent;padding:0;text-align:left;font:inherit;color:inherit}
+.companion-photo-strip img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:18px;display:block;background:#f4f1ee}
+.companion-photo-strip span{display:block;font-size:11px;color:#777;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.companion-evolution-actions{margin-top:18px}

@@ -49,8 +49,11 @@ ${String(question||'')}`;
     const allowedTypes=new Set(['prepare_workout','recipe','training','nutrition','checkin']);
     if(action&&!allowedTypes.has(action.type))action=null;
     const normQuestion=String(question||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    const cardioBalanceIntent=/(equilibre.*(cardio|force)|(cardio|force).*(equilibre)|(cardio.*force|force.*cardio)|mon cardio|cote cardio)/.test(normQuestion);
     const recipeIntent=/(recette|repas|manger|mange|dejeuner|diner|collation|alimentation|alimentaire|quoi.*(manger|privilegier)|idee.*(repas|manger))/.test(normQuestion);
-    if(recipeIntent && action?.type!=='prepare_workout') action={type:'recipe',label:'Voir une recette adaptée'};
+    // Cardio/Force balance is an observation-only intent: never attach a workout or other action.
+    if(cardioBalanceIntent) action=null;
+    else if(recipeIntent && action?.type!=='prepare_workout') action={type:'recipe',label:'Voir une recette adaptée'};
     if(action?.type==='prepare_workout'){
       const ids=new Set((context?.availableWorkouts||[]).map(w=>String(w.id)));
       if(!ids.has(String(action.workoutId||'')))action=null;
@@ -65,6 +68,6 @@ ${String(question||'')}`;
       if(match)action={type:'prepare_workout',label:`Préparer ${match.title}`,workoutId:String(match.id)};
     }
     if(action)action={type:action.type,label:String(action.label||'Ouvrir').slice(0,60),workoutId:action.workoutId?String(action.workoutId):''};
-    return{statusCode:200,headers:{'Content-Type':'application/json','Cache-Control':'no-store'},body:JSON.stringify({answer:String(out.answer),action,model,version:'2.6.3'})};
+    return{statusCode:200,headers:{'Content-Type':'application/json','Cache-Control':'no-store'},body:JSON.stringify({answer:String(out.answer),action,model,version:'2.6.3.1'})};
   }catch(e){console.error(e);return{statusCode:500,body:JSON.stringify({error:'COMPANION_FAILED',detail:e.message||''})}}
 };

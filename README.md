@@ -267,3 +267,11 @@ Moteur déterministe Aujourd'hui, états validés, respiration du logo, commenta
 - Aucun bouton d’action Cardio : conseil volontairement léger, sans popup ni nouvelle mécanique.
 - Contexte Cardio enrichi avec FC moyenne, cadence et calories lorsqu’elles existent.
 - Cache PWA incrémenté pour forcer la mise à jour sur iPhone.
+
+
+## V2.6.4 — UX Compagnon + Évolution
+- L’écran principal du chat n’affiche plus que le dernier échange complet (question + réponse + action éventuelle).
+- Tout l’historique, y compris les échanges du jour, reste accessible via « Historique ».
+- Ajout de « Mon évolution » dans les accès rapides du Compagnon.
+- Les photos restent stockées dans Évolution mais sont accessibles depuis le Compagnon, avec accès direct à la comparaison/analyse IA et à l’ajout d’une photo.
+- Cache PWA incrémenté.
