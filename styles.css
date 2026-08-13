@@ -343,3 +343,9 @@ button.done-tile:active{transform:scale(.985)}
 
 /* V2.1 Complete patch — favorites + complete exercise library */
 .exercise-library-groups{display:grid;gap:14px}.exercise-library-group{padding:16px;border:1px solid var(--line,#ece4dc);border-radius:22px;background:#fff}.exercise-library-group h3{margin:0 0 12px}.exercise-library-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.exercise-library-item{border:0;background:#faf8f5;border-radius:16px;padding:12px;text-align:left;font:inherit}.exercise-library-item strong{display:block;font-size:14px}.exercise-library-item span{display:block;color:#7c7680;font-size:12px;margin-top:4px}.food-favorites-shortcut{margin:10px 0 4px}.nutrition-favorite-choice{border-color:#e3d7ff!important;background:#fbf8ff!important}
+
+/* Fluidité V2.2 Companion — scoped */
+.companion-v22-brief h3{margin:8px 0 8px}
+.companion-v22-brief p{margin:0;line-height:1.5}
+.companion-quick-grid{display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px}
+.companion-v22-questions .action{justify-content:flex-start;text-align:left}

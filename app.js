@@ -427,7 +427,7 @@ async function renderTraining(){
 }
 
 async function smartTrainingContext(){
-  const [workouts,cardio,checkins,nutrition]=await Promise.all([LTDB.all('workouts'),LTDB.all('cardio'),LTDB.all('checkins'),LTDB.all('nutrition')]);
+  const [workouts,cardio,checkins,nutrition]=await Promise.all([LTDB.all('workouts'),LTDB.all('cardio'),LTDB.all('checkins'),LTDB.all('food')]);
   const recent=(rows,days)=>rows.filter(x=>daysAgo(x.date)<=days).sort((a,b)=>b.date.localeCompare(a.date));
   return {
     date:todayKey(),
@@ -436,6 +436,8 @@ async function smartTrainingContext(){
     recovery:recent(checkins,7).slice(0,7).map(c=>({date:c.date,sleep:c.sleep??null,stress:c.stress??null,energy:c.energy??null,hunger:c.hunger??null,weight:c.weight??null,waist:c.waist??null})),
     nutrition:recent(nutrition,3).slice(0,20).map(n=>({date:n.date,meal:n.meal||n.type||null,protein:n.protein??null,calories:n.calories??null})),
     constraints:{preferredDurationMin:40,primaryFocus:'force et recomposition corporelle',freedom:'L’utilisateur peut toujours changer la séance'},
+    allowedExercises:[...new Set(workoutLibrary().flatMap(w=>w.plan.map(e=>e.name)))],
+    availableWorkouts:workoutLibrary().map(w=>({id:w.id,title:w.title,subtitle:w.subtitle,tags:w.tags||[],plan:w.plan})),
     dailyDecision:(()=>{
       try{
         const today=todayKey();
@@ -581,27 +583,73 @@ function exerciseJournal(workouts){
 }
 async function companionSnapshot(){
   const [checkins,workouts,cardio,food]=await Promise.all(['checkins','workouts','cardio','food'].map(s=>LTDB.all(s)));
-  const today=todayKey(), recent=checkins.filter(x=>daysAgo(x.date)<=7).sort((a,b)=>b.date.localeCompare(a.date));
-  const latest=recent[0]; const todayFood=food.filter(x=>x.date===today);
-  const protein=todayFood.reduce((s,x)=>s+(Number(x.protein)||0),0), calories=todayFood.reduce((s,x)=>s+(Number(x.calories)||0),0);
-  const acts=[...workouts,...cardio].filter(x=>daysAgo(x.date)<=7).length;
-  let headline='Je construis encore ton contexte.';
-  if(latest){
-    const bits=[];
-    if(latest.energy<=2)bits.push('énergie basse');
-    if(latest.stress>=4)bits.push('stress élevé');
-    if(latest.sleep&&latest.sleep<6.5)bits.push('sommeil court');
-    if(protein)bits.push(`${Math.round(protein)} g de protéines aujourd’hui`);
-    if(acts)bits.push(`${acts} entraînement${acts>1?'s':''} sur 7 jours`);
-    headline=bits.length?`Je vois ${bits.join(', ')}.`:'Tes signaux du moment sont plutôt stables.';
+  const today=todayKey();
+  const recentCheckins=checkins.filter(x=>daysAgo(x.date)<=7).sort((a,b)=>b.date.localeCompare(a.date));
+  const recentWorkouts=workouts.filter(x=>daysAgo(x.date)<=14).sort((a,b)=>b.date.localeCompare(a.date));
+  const recentCardio=cardio.filter(x=>daysAgo(x.date)<=14).sort((a,b)=>b.date.localeCompare(a.date));
+  const latest=checkins.find(x=>x.date===today)||recentCheckins[0]||null;
+  const todayFood=food.filter(x=>x.date===today);
+  const todayCardio=cardio.filter(x=>x.date===today);
+  const todayWorkout=workouts.find(x=>x.date===today)||null;
+  const protein=todayFood.reduce((s,x)=>s+(Number(x.protein)||0),0);
+  const calories=todayFood.reduce((s,x)=>s+(Number(x.calories)||0),0);
+  const water=todayFood.reduce((s,x)=>s+(Number(x.water)||0),0);
+  const decision=fluidityEngine(latest,todayWorkout,todayCardio,workouts,cardio,food,checkins);
+  const proteinTarget=Number(state.profile.proteinTarget)||170;
+  const context={
+    today,
+    goal:state.profile.goal||null,
+    proteinTarget,
+    latestCheckin:latest,
+    nutritionToday:{protein:Math.round(protein*10)/10,calories:Math.round(calories),water:Math.round(water*10)/10,entries:todayFood.length},
+    todayWorkout:todayWorkout?{name:todayWorkout.name||null,duration:todayWorkout.durationLabel||null,effort:todayWorkout.effort??null}:null,
+    todayCardio:todayCardio.map(c=>({type:c.type||null,name:c.name||null,distance:c.distance??null,duration:c.durationLabel||null,heartRateAvg:c.heartRateAvg??null})),
+    recentForce:recentWorkouts.slice(0,8).map(w=>({date:w.date,name:w.name||null,duration:w.durationLabel||null,effort:w.effort??null})),
+    recentCardio:recentCardio.slice(0,8).map(c=>({date:c.date,type:c.type||null,name:c.name||null,distance:c.distance??null,duration:c.durationLabel||null})),
+    recentCheckins:recentCheckins.slice(0,7).map(c=>({date:c.date,sleep:c.sleep??null,stress:c.stress??null,energy:c.energy??null,recovery:c.recovery??null,hunger:c.hunger??null,weight:c.weight??null,waist:c.waist??null})),
+    dailyDecision:decision
+  };
+  const brief=companionBriefV22(context);
+  return {headline:brief.title,brief,context};
+}
+function companionBriefV22(c){
+  const d=c.dailyDecision||{};
+  const n=c.nutritionToday||{};
+  let title=d.title||'Je construis ton contexte.';
+  let text=d.message||'Plus tu enregistres tes journées, plus je peux être précis.';
+  let action=d.action||null;
+  let actionLabel=action==='training'?'Voir l’entraînement':action==='checkin'?'Renseigner mon ressenti':null;
+  const notes=[];
+  if(n.entries>0 && c.proteinTarget){
+    const remaining=Math.max(0,Math.round(c.proteinTarget-(Number(n.protein)||0)));
+    if(remaining>0) notes.push(`Il te reste environ ${remaining} g de protéines pour atteindre ton repère du jour.`);
+    else notes.push('Ton repère protéines est atteint pour aujourd’hui.');
   }
-  return {headline,context:{today,goal:state.profile.goal,proteinTarget:state.profile.proteinTarget||170,latestCheckin:latest||null,proteinToday:protein,caloriesToday:calories,activities7d:acts,recentCheckins:recent.slice(0,7)}};
+  if((Number(n.water)||0)>0 && Number(n.water)<1.5) notes.push(`Hydratation enregistrée : ${Number(n.water).toFixed(1).replace('.',',')} L.`);
+  return {title,text,action,actionLabel,note:notes[0]||'',confidence:d.confidence||'medium'};
 }
 async function renderCompanion(){
-  const messages=await LTDB.all('events'),chat=messages.filter(x=>x.type==='CHAT').slice(-8),snap=await companionSnapshot();
-  return `<section class="hero"><div class="companion-page-mark">${companionMark("companion-mark-large")}</div><div class="hello">Compagnon</div><div class="subtle">Je lis tes données utiles avant de te répondre.</div></section>
-  <div class="card primary-card"><div class="attention">${companionMark("companion-mark-large")}<div><h3>${escapeHtml(snap.headline)}</h3><p>Je m’appuie sur ce que tu as réellement enregistré. Pas sur une supposition.</p></div></div></div>
-  <div class="card chat" id="chat">${chat.length?chat.map(x=>`<div class="bubble ${x.role==='user'?'user':'companion'}">${escapeHtml(x.text)}</div>`).join(''):'<div class="bubble companion">Demande-moi par exemple ce que je pense de ta journée ou ce que tu devrais privilégier demain.</div>'}</div><div class="chatbar"><input id="chatInput" placeholder="Écris une question…"><button id="sendChat">Envoyer</button></div>`;
+  const messages=await LTDB.all('events');
+  const chat=messages.filter(x=>x.type==='CHAT').sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||'')).slice(-8);
+  const snap=await companionSnapshot(),b=snap.brief;
+  return `<section class="hero"><div class="companion-page-mark">${companionMark("companion-mark-large")}</div><div class="hello">Compagnon</div><div class="subtle">Je relie ton ressenti, tes entraînements, ton cardio et ton alimentation.</div></section>
+  <div class="card primary-card companion-v22-brief">
+    <div class="card-kicker">${companionMark("choice-companion")} Priorité du moment</div>
+    <h3>${escapeHtml(b.title)}</h3>
+    <p>${escapeHtml(b.text)}</p>
+    ${b.note?`<div class="smart-context-note">${escapeHtml(b.note)}</div>`:''}
+    ${b.actionLabel?`<div class="card-actions"><button class="action" data-companion-action="${escapeHtml(b.action)}">${escapeHtml(b.actionLabel)}</button></div>`:''}
+  </div>
+  <div class="card companion-v22-questions">
+    <div class="card-kicker">Questions rapides</div>
+    <div class="companion-quick-grid">
+      <button class="action secondary compact" data-companion-prompt="Que dois-je privilégier aujourd’hui ?">Ma priorité aujourd’hui</button>
+      <button class="action secondary compact" data-companion-prompt="Que penses-tu de mon entraînement aujourd’hui ?">Mon entraînement</button>
+      <button class="action secondary compact" data-companion-prompt="Que dois-je encore privilégier côté alimentation aujourd’hui ?">Mon alimentation</button>
+    </div>
+  </div>
+  <div class="card chat" id="chat">${chat.length?chat.map(x=>`<div class="bubble ${x.role==='user'?'user':'companion'}">${escapeHtml(x.text)}</div>`).join(''):'<div class="bubble companion">Je peux maintenant répondre en tenant compte de ta journée réelle, sans inventer les données qui manquent.</div>'}</div>
+  <div class="chatbar"><input id="chatInput" placeholder="Pose une question sur ta journée…"><button id="sendChat">Envoyer</button></div>`;
 }
 
 async function renderProfile(){
@@ -617,6 +665,8 @@ function bindPage(){
   document.querySelectorAll('[data-open]').forEach(b=>b.onclick=e=>{e?.stopPropagation?.();openSheet(b.dataset.open)}); document.querySelectorAll('[data-photo-view]').forEach(b=>b.onclick=()=>viewProgressPhoto(b.dataset.photoView));
   document.querySelectorAll('[data-edit-activity]').forEach(b=>b.addEventListener('click',()=>{const [kind,id]=b.dataset.editActivity.split(':'); editActivitySheet(kind,id);}));
   $('#sendChat')?.addEventListener('click',sendChat); $('#chatInput')?.addEventListener('keydown',e=>{if(e.key==='Enter')sendChat();});
+  document.querySelectorAll('[data-companion-prompt]').forEach(b=>b.addEventListener('click',()=>{const input=$('#chatInput');if(input){input.value=b.dataset.companionPrompt;sendChat();}}));
+  document.querySelectorAll('[data-companion-action]').forEach(b=>b.addEventListener('click',()=>{const a=b.dataset.companionAction;if(a==='training')navigate('training');else if(a==='checkin')openSheet('checkin');}));
   $('#nutritionToggle')?.addEventListener('change',async e=>{state.profile.nutritionEnabled=e.target.checked; await LTDB.put('profile',state.profile); toast(e.target.checked?'Alimentation activée':'Alimentation masquée'); render();});
   $('#exportBtn')?.addEventListener('click',exportData); $('#importInput')?.addEventListener('change',importData);
 }
@@ -1562,15 +1612,15 @@ async function sendChat(){
   await LTDB.put('events',{id:uid(),type:'CHAT',role:'user',text,createdAt:new Date().toISOString()});
   const snap=await companionSnapshot(); let answer='';
   try{
-    const r=await fetch('/.netlify/functions/companion-v1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:text,context:snap.context})});
+    const history=(await LTDB.all('events')).filter(x=>x.type==='CHAT').sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||'')).slice(-6).map(x=>({role:x.role,text:x.text}));
+    const r=await fetch('/.netlify/functions/companion-v1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:text,context:snap.context,history})});
     const data=await r.json(); if(!r.ok)throw new Error(data.detail||data.error||'IA indisponible'); answer=data.answer||'Je n’ai pas de réponse utile pour le moment.';
   }catch(err){console.error(err);answer=await localCompanion(text)}
   await LTDB.put('events',{id:uid(),type:'CHAT',role:'companion',text:answer,createdAt:new Date().toISOString()});render();
 }
 async function localCompanion(text){
-  const snap=await companionSnapshot(),c=snap.context;
-  if(c.latestCheckin)return `${snap.headline} Pour l’instant je te conseille de rester simple : adapte l’intensité à ton énergie et garde ton repère protéines en vue.`;
-  return 'Je n’ai pas encore assez de données pour te conseiller proprement. Donne-moi ton ressenti du jour et je commencerai à construire le contexte.';
+  const snap=await companionSnapshot(),b=snap.brief;
+  return `${b.title} ${b.text}${b.note?' '+b.note:''}`;
 }
 
 async function exportData(){const dump=await LTDB.dump(); const blob=new Blob([JSON.stringify(dump,null,2)],{type:'application/json'}); const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`luis-transformation-${todayKey()}.json`;a.click();URL.revokeObjectURL(a.href);toast('Export préparé');}

@@ -26,3 +26,7 @@
 /* V2.1 Force mannequin patch — scoped to Force visuals only */
 .fvis-positions .freal-tech{width:100%;height:auto;aspect-ratio:5/4;object-fit:contain;background:#f7f6f4;border-radius:13px}
 .flc-item .deck-real-thumb,.fstep-row .deck-real-thumb{width:100%;height:100%;object-fit:cover;border-radius:inherit;background:#f7f6f4}
+
+/* V2.2 — no approximative pictograms: blank thumbnail until a validated visual exists */
+.fvis-no-visual{background:transparent!important;border:0!important;box-shadow:none!important}
+.fvis-visual-unavailable{padding:16px;border-radius:14px;background:#f6f5f3;color:#777;font-size:13px;line-height:1.45;margin:10px 0 14px}
