@@ -584,10 +584,28 @@ function exerciseJournal(workouts){
   }
   return rows.join('');
 }
+function trendAverage(rows,key){
+  const vals=rows.map(x=>Number(x?.[key])).filter(Number.isFinite);
+  return vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:null;
+}
+function trendWindowSummary(days,checkins,workouts,cardio,food,proteinTarget){
+  const ci=checkins.filter(x=>daysAgo(x.date)>=0&&daysAgo(x.date)<days);
+  const wo=workouts.filter(x=>daysAgo(x.date)>=0&&daysAgo(x.date)<days);
+  const ca=cardio.filter(x=>daysAgo(x.date)>=0&&daysAgo(x.date)<days);
+  const fo=food.filter(x=>daysAgo(x.date)>=0&&daysAgo(x.date)<days);
+  const dailyFood={};
+  for(const x of fo){ if(!dailyFood[x.date])dailyFood[x.date]={protein:0,calories:0,entries:0}; dailyFood[x.date].protein+=Number(x.protein)||0; dailyFood[x.date].calories+=Number(x.calories)||0; dailyFood[x.date].entries++; }
+  const foodDays=Object.values(dailyFood).filter(x=>x.entries>0);
+  const half=Math.max(2,Math.floor(days/2));
+  const recent=ci.filter(x=>daysAgo(x.date)<half), previous=ci.filter(x=>daysAgo(x.date)>=half&&daysAgo(x.date)<days);
+  const delta=(key)=>{const a=trendAverage(recent,key),b=trendAverage(previous,key);return a!=null&&b!=null&&recent.length>=2&&previous.length>=2?Math.round((a-b)*10)/10:null};
+  return {days,coverage:{checkins:ci.length,nutritionDays:foodDays.length,forceSessions:wo.length,cardioSessions:ca.length},body:{weightAvg:trendAverage(ci,'weight'),waistAvg:trendAverage(ci,'waist'),weightRecentVsPrevious:delta('weight'),waistRecentVsPrevious:delta('waist')},wellbeing:{sleepAvg:trendAverage(ci,'sleep'),energyAvg:trendAverage(ci,'energy'),stressAvg:trendAverage(ci,'stress'),hungerAvg:trendAverage(ci,'hunger'),sleepRecentVsPrevious:delta('sleep'),energyRecentVsPrevious:delta('energy'),stressRecentVsPrevious:delta('stress')},training:{forceSessions:wo.length,cardioSessions:ca.length,cardioDistance:Math.round(ca.reduce((sum,x)=>sum+(Number(x.distance)||0),0)*10)/10,activeDays:new Set([...wo,...ca].map(x=>x.date)).size},nutrition:{daysLogged:foodDays.length,proteinAvg:foodDays.length?Math.round(foodDays.reduce((a,b)=>a+b.protein,0)/foodDays.length):null,proteinTargetDays:proteinTarget?foodDays.filter(x=>x.protein>=proteinTarget).length:null}};
+}
+function buildCompanionTrends(checkins,workouts,cardio,food,proteinTarget){ return {windows:[7,14,30].map(d=>trendWindowSummary(d,checkins,workouts,cardio,food,proteinTarget)),minimums:{checkinsForTrend:4,nutritionDaysForTrend:4}}; }
 async function companionSnapshot(){
   const [checkins,workouts,cardio,food]=await Promise.all(['checkins','workouts','cardio','food'].map(s=>LTDB.all(s)));
   const today=todayKey();
-  const recentCheckins=checkins.filter(x=>daysAgo(x.date)<=30).sort((a,b)=>b.date.localeCompare(a.date));
+  const recentCheckins=checkins.filter(x=>daysAgo(x.date)<=7).sort((a,b)=>b.date.localeCompare(a.date));
   const recentWorkouts=workouts.filter(x=>daysAgo(x.date)<=14).sort((a,b)=>b.date.localeCompare(a.date));
   const recentCardio=cardio.filter(x=>daysAgo(x.date)<=14).sort((a,b)=>b.date.localeCompare(a.date));
   const latest=checkins.find(x=>x.date===today)||recentCheckins[0]||null;
@@ -599,18 +617,6 @@ async function companionSnapshot(){
   const water=todayFood.reduce((s,x)=>s+(Number(x.water)||0),0);
   const decision=fluidityEngine(latest,todayWorkout,todayCardio,workouts,cardio,food,checkins);
   const proteinTarget=Number(state.profile.proteinTarget)||170;
-  const trendWindow=(days)=>{
-    const cs=checkins.filter(x=>daysAgo(x.date)<=days).sort((a,b)=>a.date.localeCompare(b.date));
-    const ws=workouts.filter(x=>daysAgo(x.date)<=days);
-    const rs=cardio.filter(x=>daysAgo(x.date)<=days);
-    const fs=food.filter(x=>daysAgo(x.date)<=days);
-    const vals=k=>cs.filter(x=>Number.isFinite(Number(x[k]))).map(x=>({date:x.date,value:Number(x[k])}));
-    const change=k=>{const v=vals(k);return v.length>=2?Math.round((v[v.length-1].value-v[0].value)*10)/10:null};
-    const avg=k=>{const v=vals(k);return v.length?Math.round(v.reduce((a,x)=>a+x.value,0)/v.length*10)/10:null};
-    const foodDays=[...new Set(fs.map(x=>x.date))];
-    const proteinDays=foodDays.map(d=>fs.filter(x=>x.date===d).reduce((a,x)=>a+(Number(x.protein)||0),0));
-    return {days,checkins:cs.length,forceSessions:ws.length,cardioSessions:rs.length,foodDays:foodDays.length,weightChange:change('weight'),waistChange:change('waist'),sleepAvg:avg('sleep'),energyAvg:avg('energy'),stressAvg:avg('stress'),hungerAvg:avg('hunger'),proteinAvg:proteinDays.length?Math.round(proteinDays.reduce((a,x)=>a+x,0)/proteinDays.length):null,proteinTargetDays:proteinDays.filter(x=>x>=proteinTarget).length};
-  };
   const context={
     today,
     goal:state.profile.goal||null,
@@ -621,9 +627,9 @@ async function companionSnapshot(){
     todayCardio:todayCardio.map(c=>({type:c.type||null,name:c.name||null,distance:c.distance??null,duration:c.durationLabel||null,heartRateAvg:c.heartRateAvg??null,cadenceAvg:c.cadenceAvg??c.cadence??null,calories:c.calories??null})),
     recentForce:recentWorkouts.slice(0,8).map(w=>({date:w.date,name:w.name||null,duration:w.durationLabel||null,effort:w.effort??null})),
     recentCardio:recentCardio.slice(0,8).map(c=>({date:c.date,type:c.type||null,name:c.name||null,distance:c.distance??null,duration:c.durationLabel||null,heartRateAvg:c.heartRateAvg??null,cadenceAvg:c.cadenceAvg??c.cadence??null})),
-    trends:{d7:trendWindow(7),d14:trendWindow(14),d30:trendWindow(30)},
-    recentCheckins:recentCheckins.slice(0,14).map(c=>({date:c.date,sleep:c.sleep??null,stress:c.stress??null,energy:c.energy??null,recovery:c.recovery??null,hunger:c.hunger??null,weight:c.weight??null,waist:c.waist??null})),
+    recentCheckins:recentCheckins.slice(0,7).map(c=>({date:c.date,sleep:c.sleep??null,stress:c.stress??null,energy:c.energy??null,recovery:c.recovery??null,hunger:c.hunger??null,weight:c.weight??null,waist:c.waist??null})),
     dailyDecision:decision,
+    trends:buildCompanionTrends(checkins,workouts,cardio,food,proteinTarget),
     continuity:{
       forceLast7:recentWorkouts.filter(w=>daysAgo(w.date)<=7).length,
       cardioLast7:recentCardio.filter(c=>daysAgo(c.date)<=7).length,
@@ -711,7 +717,7 @@ async function renderCompanion(){
       <button class="action secondary compact" data-companion-prompt="Comment trouves-tu mon équilibre cardio et force ces derniers jours ?">Mon cardio</button>
       <button class="action secondary compact" data-companion-prompt="Que dois-je encore privilégier côté alimentation aujourd’hui ?">Mon alimentation</button>
       <button class="action secondary compact" id="openCompanionEvolution">Mon évolution</button>
-      <button class="action secondary compact" data-companion-prompt="Quelles tendances utiles vois-tu dans mes données sur 7, 14 et 30 jours ?">Mes tendances</button>
+      <button class="action secondary compact" data-companion-prompt="Quelles tendances utiles vois-tu sur mes 7, 14 et 30 derniers jours ?">Mes tendances</button>
     </div>
   </div>
   <div class="card chat" id="chat">${chat.length?chat.map(x=>`<div class="bubble ${x.role==='user'?'user':'companion'}">${escapeHtml(cleanCompanionText(x.text))}${x.role==='companion'&&x.action?`<button class="companion-inline-action" data-companion-chat-action="${escapeHtml(x.action.type||'')}" data-companion-workout="${escapeHtml(x.action.workoutId||'')}">${escapeHtml(x.action.label||'Voir')}</button>`:''}</div>`).join(''):'<div class="bubble companion">Je peux maintenant répondre en tenant compte de ta journée réelle, sans inventer les données qui manquent.</div>'}</div>
@@ -1819,36 +1825,20 @@ async function prepareCompanionAction(action){
 async function sendChat(){
   const input=$('#chatInput'),text=input?.value.trim();if(!text)return;
   input.disabled=true;$('#sendChat').disabled=true;
-  const prior=(await LTDB.all('events')).filter(x=>x.type==='CHAT'&&companionChatDay(x)===todayKey()).sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||''));
-  const previousPair=prior.slice(-4).map(x=>({role:x.role,text:x.text,action:x.action||null}));
+  // Le contexte conversationnel envoyé à l'IA exclut volontairement la question courante :
+  // elle est transmise séparément pour éviter de la confondre avec une relance précédente.
+  const priorHistory=(await LTDB.all('events')).filter(x=>x.type==='CHAT'&&companionChatDay(x)===todayKey()).sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||'')).slice(-8).map(x=>({role:x.role,text:x.text}));
   await LTDB.put('events',{id:uid(),type:'CHAT',role:'user',text,createdAt:new Date().toISOString()});
   const snap=await companionSnapshot(); let answer=''; let companionAction=null;
   try{
-    const history=prior.slice(-8).map(x=>({role:x.role,text:x.text,action:x.action||null}));
-    const r=await fetch('/.netlify/functions/companion-v1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:text,context:snap.context,history})});
+    const r=await fetch('/.netlify/functions/companion-v1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:text,context:snap.context,history:priorHistory})});
     const data=await r.json(); if(!r.ok)throw new Error(data.detail||data.error||'IA indisponible'); answer=data.answer||'Je n’ai pas de réponse utile pour le moment.'; companionAction=data.action||null;
   }catch(err){console.error(err);answer=await localCompanion(text);companionAction=null}
   answer=cleanCompanionText(answer);
-  const norm=v=>String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
-  const qnorm=norm(text);
-  const explicitTopicIntent=/(abdo|gainage|cardio|force|muscu|seance|entrain|aliment|repas|recette|manger|poids|tour de taille|sommeil|stress|energie|faim|objectif|progress|evolu|tendance|transformation|trajectoire|recomposition|photo)/.test(qnorm);
-  const shortFollowupIntent=/^(t es sur|tu es sur|vraiment|pourquoi|comment ca|et pourquoi|et donc|tu penses|certain|sure|sur)$/.test(qnorm)||/^(et|mais) (ca|donc|pourquoi)$/.test(qnorm);
-  const followupIntent=shortFollowupIntent&&!explicitTopicIntent;
-  const trendIntent=/(tendance|progress|evolu|objectif|bonne voie|atteindre|transformation|trajectoire|sur la voie|resultat|recomposition)/.test(qnorm);
-  const cardioBalanceIntent=/(equilibre.*(cardio|force)|(cardio|force).*(equilibre)|(cardio.*force|force.*cardio)|mon cardio|cote cardio)/.test(qnorm);
-  const recipeIntent=/(recette|repas|manger|mange|dejeuner|diner|collation|alimentation|alimentaire|quoi.*(manger|privilegier)|idee.*(repas|manger))/.test(qnorm);
-  // Les intentions d'observation/conversation ne déclenchent jamais une action parasite.
-  if(trendIntent||cardioBalanceIntent||followupIntent) companionAction=null;
-  if(!companionAction&&recipeIntent&&!trendIntent&&!followupIntent) companionAction={type:'recipe',label:'Voir une recette adaptée'};
-  // Pas d'inférence d'action depuis le texte de la réponse : seul le cerveau IA peut proposer une action explicite.
-  const recentCompanion=prior.filter(x=>x.role==='companion').slice(-1)[0];
-  // Une réponse identique n'est jamais transformée en pseudo-follow-up lorsqu'une nouvelle question autonome a été posée.
-  // On conserve la réponse IA telle quelle; le contexte conversationnel est géré par le cerveau, pas par un texte de remplacement côté UI.
-  if(recentCompanion&&companionFingerprint(recentCompanion.text)===companionFingerprint(answer)&&followupIntent&&!companionAction){
-    answer='Je précise ma réponse précédente : '+answer;
-  }
+  // Les actions sont décidées par le Compagnon à partir de l'intention, jamais déduites d'un mot présent dans sa réponse.
   await LTDB.put('events',{id:uid(),type:'CHAT',role:'companion',text:answer,action:companionAction,createdAt:new Date().toISOString()});render();
 }
+
 async function localCompanion(text){
   const snap=await companionSnapshot(),b=snap.brief;
   return `${b.title} ${b.text}${b.note?' '+b.note:''}`;

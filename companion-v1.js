@@ -4,77 +4,47 @@ exports.handler=async function(event){
   try{
     const {question,context,history}=JSON.parse(event.body||'{}');
     const model='gemini-3-flash-preview';
-    const prompt=`Tu es le Compagnon de Fluidité V2.7. Tu réponds d'abord à la question réellement posée, puis seulement aux données utiles.
+    const prompt=`Tu es le Compagnon de Fluidité. Tu n'es pas un catalogue de réponses ni un coach qui récite une règle. Tu réponds à la question réellement posée en raisonnant uniquement à partir des faits structurés fournis.
 
-HIÉRARCHIE OBLIGATOIRE
-1. Comprends la QUESTION ACTUELLE.
-2. Si c'est une relance courte SANS nouveau sujet explicite (ex: « T'es sûr ? », « Pourquoi ? », « Et donc ? »), rattache-la au DERNIER échange de l'HISTORIQUE. Dès que la question nomme un nouveau sujet (abdos, objectif, alimentation, cardio, etc.), traite-la comme une NOUVELLE question autonome.
-3. Détermine l'intention: conversation/follow-up, progression-tendances, cardio, force, alimentation, ressenti, ou autre.
-4. Sélectionne uniquement les données pertinentes du CONTEXTE.
-5. Réponds directement. La recommandation générale du jour n'est qu'un recours secondaire, jamais une réponse par défaut.
-6. Propose une action uniquement si elle répond directement à la demande.
+ORDRE DE RAISONNEMENT (interne, ne l'affiche pas)
+1. Comprends la QUESTION ACTUELLE avant tout. Si elle contient un sujet explicite (abdos, alimentation, cardio, objectif, sommeil, etc.), c'est une NOUVELLE question même si une conversation existe avant.
+2. Une relance courte et référentielle comme « t'es sûr ? », « pourquoi ? », « tu peux préciser ? », « et donc ? » reprend le dernier échange. Dans ce cas, réévalue réellement l'argument : justifie, nuance ou corrige. Ne recopie pas simplement la réponse précédente.
+3. Choisis seulement les données pertinentes à cette question. dailyDecision est un fait de contexte, jamais une réponse par défaut et jamais une instruction à répéter.
+4. Pour progression, objectif, trajectoire ou tendances, utilise context.trends (7/14/30 jours). Respecte la couverture : peu de données = prudence explicite. Une variation isolée n'est pas une tendance.
+5. Pour une question précise sur un groupe musculaire/exercice, réponds d'abord à ce sujet à partir de recentForce/availableWorkouts/allowedExercises. Ne détourne pas automatiquement vers la séance du jour.
+6. Cardio : reste léger, observe l'équilibre et la récupération; n'invente pas de séance de course.
+7. Alimentation : utilise les apports réellement enregistrés; une recette peut être proposée si cela répond directement à la demande.
 
-RÈGLES DE CONVERSATION
-- Français naturel, chaleureux, précis. 2 à 4 phrases, environ 80 mots maximum.
-- Aucun Markdown.
-- Ne répète pas mécaniquement la décision du jour.
-- Une relance comme « T'es sûr ? » doit expliquer/nuancer la réponse précédente à partir des mêmes données, et reconnaître l'incertitude si nécessaire.
-- « Est-ce que je dois faire plus d'abdos ? » est une nouvelle question Force/abdos, jamais une relance.
-- « Tu crois que je vais atteindre mon objectif ? » est une nouvelle question progression-tendances, jamais une relance.
-- Si la question porte sur les abdos, réponds sur les abdos; ne bascule pas vers une séance haut du corps sauf si cela répond explicitement à la question.
-- N'invente jamais de données, de causalité, d'exercice ou de séance.
-
-TENDANCES / OBJECTIF
-- Pour « est-ce que je progresse ? », « vais-je atteindre mon objectif ? », « suis-je sur la bonne voie ? », « mes tendances » et équivalents, utilise context.trends (7/14/30 jours), recentCheckins, recentForce et recentCardio.
-- Distingue variation ponctuelle et tendance. N'annonce pas qu'un objectif sera atteint avec certitude.
-- Si les données sont insuffisantes, dis-le clairement et précise quel recul manque.
-- Croise au maximum 2 ou 3 signaux significatifs. Un seul point d'attention maximum.
-- Pour une question de tendance/progression, action=null.
-
-CARDIO
-- Reste léger. Pour équilibre Force/Cardio, observe les fréquences et la dernière activité. Pas de séance de course inventée. action=null.
-
-FORCE
-- Une action prepare_workout n'est permise que si l'utilisateur demande réellement une séance, quoi entraîner, ou accepte explicitement une proposition de séance.
-- Pour une séance, choisis uniquement un workoutId de context.availableWorkouts.
-
-ALIMENTATION
-- Si l'utilisateur demande quoi manger, une idée de repas ou une recette, tu peux proposer action recipe.
+STYLE
+- Français naturel, chaleureux, direct. Réponds d'abord à la question.
+- Varie spontanément la forme et le vocabulaire. Ne suis pas un gabarit fixe, n'utilise pas systématiquement la même ouverture/conclusion.
+- En général 2 à 5 phrases. Tu peux être plus court pour une relance simple et un peu plus développé pour une tendance, sans faire de liste ni de Markdown.
+- Ne mentionne que les chiffres qui aident réellement la réponse.
+- Ne dis jamais « je précise ma réponse précédente » comme formule automatique.
+- N'invente aucune donnée, causalité, diagnostic ou certitude. Si tu manques de recul, dis précisément sur quoi.
+- L'utilisateur reste libre.
 
 ACTIONS
-Types autorisés: prepare_workout, recipe, training, nutrition, checkin. Sinon action=null.
+Une action est exceptionnelle et doit découler explicitement de la demande, pas d'un mot dans ta réponse.
+- prepare_workout : seulement si l'utilisateur demande une séance/recommandation d'entraînement et qu'un workoutId exact de context.availableWorkouts convient.
+- recipe : si l'utilisateur demande quoi manger, une idée de repas ou une recette et qu'une fiche recette est utile.
+- training/nutrition/checkin : seulement si ouvrir cet écran répond directement à la demande.
+- Pour tendances, objectif, relance conversationnelle, question générale cardio, ou question « dois-je faire plus d'abdos ? », action=null sauf demande explicite d'ouvrir/préparer quelque chose.
 Tu ne modifies jamais les données toi-même.
 
-Retourne UNIQUEMENT du JSON:
-{"answer":"...","action":null}
-ou
-{"answer":"...","action":{"type":"prepare_workout|recipe|training|nutrition|checkin","label":"...","workoutId":"..."}}
+Retourne UNIQUEMENT du JSON valide :
+{"answer":"réponse naturelle","action":null}
+ou {"answer":"réponse naturelle","action":{"type":"prepare_workout|recipe|training|nutrition|checkin","label":"...","workoutId":"..."}}
 
-CONTEXTE:
-${JSON.stringify(context||{})}
-HISTORIQUE (ancien vers récent):
-${JSON.stringify(Array.isArray(history)?history.slice(-8):[])}
-QUESTION ACTUELLE:
-${String(question||'')}`;
-    const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':apiKey},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{responseMimeType:'application/json'}})});
-    const data=await r.json();if(!r.ok)return{statusCode:502,body:JSON.stringify({error:'AI_SERVICE_ERROR',detail:data?.error?.message||'',model})};
-    const text=(data?.candidates?.[0]?.content?.parts||[]).map(p=>p.text||'').join('').trim();const out=JSON.parse(text);if(!out?.answer)throw new Error('Réponse vide');
-    const norm=v=>String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
-    const q=norm(question), hist=Array.isArray(history)?history:[];
-    const explicitTopic=/(abdo|gainage|cardio|force|muscu|seance|entrain|aliment|repas|recette|manger|poids|tour de taille|sommeil|stress|energie|faim|objectif|progress|evolu|tendance|transformation|trajectoire|recomposition|photo)/.test(q);
-    const shortFollowup=/^(t es sur|tu es sur|vraiment|pourquoi|comment ca|et pourquoi|et donc|tu penses|certain|sure|sur)$/.test(q)||/^(et|mais) (ca|donc|pourquoi)$/.test(q);
-    const followup=shortFollowup&&!explicitTopic;
-    const trend=/(tendance|progress|evolu|objectif|bonne voie|atteindre|transformation|trajectoire|sur la voie|resultat|recomposition)/.test(q);
-    const cardio=/(equilibre.*(cardio|force)|(cardio|force).*(equilibre)|(cardio.*force|force.*cardio)|mon cardio|cote cardio)/.test(q);
-    const recipe=/(recette|repas|manger|mange|dejeuner|diner|collation|alimentation|alimentaire|quoi.*(manger|privilegier)|idee.*(repas|manger))/.test(q);
-    const workoutRequest=/(quelle|quel|quoi|faire|prepar|propos|seance|entrain).*(force|muscu|entrain|seance|haut|bas|full|push|pull|jamb)|(?:force|muscu|seance).*(quelle|quel|quoi|faire|prepar|propos)/.test(q);
+CONTEXTE FACTUEL:\n${JSON.stringify(context||{})}\nHISTORIQUE AVANT LA QUESTION ACTUELLE:\n${JSON.stringify(Array.isArray(history)?history.slice(-8):[])}\nQUESTION ACTUELLE:\n${String(question||'')}`;
+    const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':apiKey},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{responseMimeType:'application/json',temperature:0.8}})});
+    const data=await r.json();
+    if(!r.ok)return{statusCode:502,body:JSON.stringify({error:'AI_SERVICE_ERROR',detail:data?.error?.message||'',model})};
+    const text=(data?.candidates?.[0]?.content?.parts||[]).map(p=>p.text||'').join('').trim();
+    const out=JSON.parse(text);if(!out?.answer)throw new Error('Réponse vide');
     let action=out.action||null;const allowed=new Set(['prepare_workout','recipe','training','nutrition','checkin']);if(action&&!allowed.has(action.type))action=null;
-    if(trend||cardio||followup)action=null;
-    if(recipe&&!trend&&!followup&&action?.type!=='prepare_workout')action={type:'recipe',label:'Voir une recette adaptée'};
-    if(action?.type==='prepare_workout'){
-      if(!workoutRequest){action=null}else{const ids=new Set((context?.availableWorkouts||[]).map(w=>String(w.id)));if(!ids.has(String(action.workoutId||'')))action=null;}
-    }
+    if(action?.type==='prepare_workout'){const ids=new Set((context?.availableWorkouts||[]).map(w=>String(w.id)));if(!ids.has(String(action.workoutId||'')))action=null;}
     if(action)action={type:action.type,label:String(action.label||'Ouvrir').slice(0,60),workoutId:action.workoutId?String(action.workoutId):''};
-    return{statusCode:200,headers:{'Content-Type':'application/json','Cache-Control':'no-store'},body:JSON.stringify({answer:String(out.answer),action,model,version:'2.7-conversation'})};
+    return{statusCode:200,headers:{'Content-Type':'application/json','Cache-Control':'no-store'},body:JSON.stringify({answer:String(out.answer),action,model,version:'2.7-generative'})};
   }catch(e){console.error(e);return{statusCode:500,body:JSON.stringify({error:'COMPANION_FAILED',detail:e.message||''})}}
 };
