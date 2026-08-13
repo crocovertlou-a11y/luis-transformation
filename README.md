@@ -249,3 +249,11 @@ Moteur déterministe Aujourd'hui, états validés, respiration du logo, commenta
 - Le Compagnon propose désormais une action recette pour les demandes liées à l’alimentation/repas.
 - La fonction `nutrition-recipes-v1` est bien incluse lors du build Netlify.
 - Cache PWA incrémenté pour forcer la prise en compte du correctif.
+
+
+## V2.6.2 — Correctif Mes recettes
+- Confirmation visuelle immédiate après ajout d’une recette du Compagnon.
+- Protection anti-multi-clic et anti-doublon pour une même suggestion.
+- Bouton « Supprimer la recette » dans l’éditeur avec confirmation explicite.
+- La suppression d’une recette ne supprime pas les repas déjà enregistrés dans le suivi.
+- Cache PWA incrémenté pour forcer la mise à jour sur iPhone.

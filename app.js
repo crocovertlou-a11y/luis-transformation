@@ -867,7 +867,7 @@ function renderRecipeEditor(){
   const ingredientList=(r.ingredients||[]).length
     ? `<div class="recipe-added-list">${r.ingredients.map((x,i)=>`<div class="recipe-added-item"><div><strong>${escapeHtml(x.name||'Ingrédient')}</strong><small>${x.qty?`${x.qty} g · `:''}${Math.round(Number(x.calories)||0)} kcal · ${(Number(x.protein)||0).toFixed(1)} g prot.</small></div><button type="button" class="recipe-remove" data-remove-recipe-row="${i}">×</button></div>`).join('')}</div>`
     : `<div class="empty recipe-empty">Aucun ingrédient. Appuie sur « Ajouter un ingrédient ».</div>`;
-  showSheet(`<h2>${r.id?'Modifier':'Nouvelle'} recette</h2><form id="recipeForm"><div class="field"><label>Nom de la recette</label><input name="recipeName" required value="${escapeHtml(r.name||'')}" placeholder="Ex. Bowl cake"></div><div class="field"><label>Nombre de portions préparées</label><input name="recipePortions" type="number" min="0.25" step="0.25" required value="${r.portions||1}"><small>Ex. 4 si la recette complète donne quatre portions.</small></div><div class="recipe-section-title"><strong>Ingrédients</strong><button type="button" class="text-action" data-add-recipe-ingredient>＋ Ajouter</button></div>${ingredientList}<section class="recipe-preview"><strong>Par portion</strong><div><span>${Math.round(t.calories/p)} kcal</span><span>${(t.protein/p).toFixed(1)} g prot.</span><span>${(t.carbs/p).toFixed(1)} g gluc.</span><span>${(t.fat/p).toFixed(1)} g lip.</span></div></section><button class="action" type="submit">Enregistrer la recette</button></form>`);
+  showSheet(`<h2>${r.id?'Modifier':'Nouvelle'} recette</h2><form id="recipeForm"><div class="field"><label>Nom de la recette</label><input name="recipeName" required value="${escapeHtml(r.name||'')}" placeholder="Ex. Bowl cake"></div><div class="field"><label>Nombre de portions préparées</label><input name="recipePortions" type="number" min="0.25" step="0.25" required value="${r.portions||1}"><small>Ex. 4 si la recette complète donne quatre portions.</small></div><div class="recipe-section-title"><strong>Ingrédients</strong><button type="button" class="text-action" data-add-recipe-ingredient>＋ Ajouter</button></div>${ingredientList}<section class="recipe-preview"><strong>Par portion</strong><div><span>${Math.round(t.calories/p)} kcal</span><span>${(t.protein/p).toFixed(1)} g prot.</span><span>${(t.carbs/p).toFixed(1)} g gluc.</span><span>${(t.fat/p).toFixed(1)} g lip.</span></div></section><button class="action" type="submit">Enregistrer la recette</button>${r.id?`<button class="recipe-delete-action" type="button" data-delete-recipe="${r.id}">Supprimer la recette</button>`:''}</form>`);
 }
 function syncRecipeEditorFromForm(){
   const f=$('#recipeForm');if(!f||!state.recipeEditing)return;
@@ -882,6 +882,18 @@ async function savePersonalRecipe(e){
   const now=new Date().toISOString();
   await LTDB.put('memory',{...r,id:r.id||uid(),type:'personal-recipe',createdAt:r.createdAt||now,updatedAt:now});
   toast('Recette enregistrée');await personalRecipesSheet();
+}
+function confirmDeletePersonalRecipe(id){
+  const r=state.recipeEditing;if(!r?.id||r.id!==id)return;
+  syncRecipeEditorFromForm();
+  showSheet(`<div class="recipe-delete-confirm"><h2>Supprimer cette recette ?</h2><p class="subtle">« ${escapeHtml(r.name||'Cette recette')} » sera retirée de Mes recettes. Les repas déjà enregistrés dans ton suivi resteront inchangés.</p><div class="recipe-delete-confirm-actions"><button class="recipe-delete-action solid" type="button" data-confirm-delete-recipe="${r.id}">Supprimer définitivement</button><button class="action secondary" type="button" data-cancel-delete-recipe>Annuler</button></div></div>`,()=>renderRecipeEditor());
+}
+async function deletePersonalRecipe(id){
+  const r=state.recipeEditing;if(!r?.id||r.id!==id)return;
+  await LTDB.del('memory',id);
+  state.recipeEditing=null;
+  toast('Recette supprimée');
+  await personalRecipesSheet();
 }
 async function usePersonalRecipe(id){
   const recipes=await getPersonalRecipes(),r=recipes.find(x=>x.id===id);if(!r)return;
@@ -931,14 +943,20 @@ function renderNutritionProposals(){
   showSheet(`<h2>Propositions de repas</h2><p class="subtle">Estimations à confirmer avant enregistrement.</p><div class="nutrition-ai-list">${rows.map((x,i)=>`<button class="nutrition-ai-card nutrition-ai-card-button" data-open-ai-recipe="${i}"><div><strong>${escapeHtml(x.name)}</strong><small>${Math.round(x.calories)} kcal · ${Math.round(x.protein)} g prot. · ${Math.round(x.carbs)} g gluc. · ${Math.round(x.fat)} g lip.</small></div><p>${escapeHtml(x.reason||'Voir la recette')}</p></button>`).join('')}</div>`);
   document.querySelectorAll('[data-open-ai-recipe]').forEach(b=>b.onclick=()=>showNutritionRecipeDetail(Number(b.dataset.openAiRecipe),renderNutritionProposals));
 }
-function showNutritionRecipeDetail(i,backAction=null){
+function normalizeRecipeName(v=''){return String(v).trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim();}
+function nutritionSuggestionRecipeKey(x={}){return [normalizeRecipeName(x.name),Math.round(Number(x.calories)||0),Math.round(Number(x.protein)||0),Math.round(Number(x.carbs)||0),Math.round(Number(x.fat)||0)].join('|');}
+function storedRecipeSuggestionKey(r={}){const m=r.estimatedMacros||recipeTotals(r.ingredients||[]);return nutritionSuggestionRecipeKey({name:r.name,calories:m.calories,protein:m.protein,carbs:m.carbs,fat:m.fat});}
+async function showNutritionRecipeDetail(i,backAction=null){
   const rows=state.nutritionSuggestions||[],x=rows[i];if(!x)return;
   state.nutritionSuggestionIndex=i;
+  const savedKey=nutritionSuggestionRecipeKey(x);
+  const savedRecipes=await getPersonalRecipes();
+  const alreadySaved=savedRecipes.some(r=>r.source==='companion-suggestion'&&storedRecipeSuggestionKey(r)===savedKey);
   const ingredients=(x.ingredients||[]).map(v=>`<li>${escapeHtml(v)}</li>`).join('');
   const prep=(x.preparation||[]).map((v,j)=>`<li><span>${j+1}</span><p>${escapeHtml(v)}</p></li>`).join('');
-  showSheet(`<div class="companion-recipe-detail"><div class="card-kicker">RECETTE DU COMPAGNON</div><h2>${escapeHtml(x.name)}</h2>${x.reason?`<p class="subtle">${escapeHtml(x.reason)}</p>`:''}<div class="recipe-macro-grid"><div><strong>${Math.round(x.calories)}</strong><small>kcal</small></div><div><strong>${Math.round(x.protein)} g</strong><small>Protéines</small></div><div><strong>${Math.round(x.carbs)} g</strong><small>Glucides</small></div><div><strong>${Math.round(x.fat)} g</strong><small>Lipides</small></div></div><section class="recipe-detail-section"><h3>Ingrédients</h3><ul class="recipe-detail-ingredients">${ingredients}</ul></section>${prep?`<section class="recipe-detail-section"><h3>Préparation</h3><ol class="recipe-detail-steps">${prep}</ol></section>`:''}<div class="recipe-detail-actions"><button class="action" data-add-ai-meal-detail="${i}">Ajouter au repas du jour</button><button class="action secondary" data-save-ai-recipe-detail="${i}">Ajouter à Mes recettes</button>${rows.length>1?`<button class="text-action recipe-another" data-next-ai-recipe>Une autre idée</button>`:''}</div></div>`,backAction||(()=>{$('#sheet').close()}));
+  showSheet(`<div class="companion-recipe-detail"><div class="card-kicker">RECETTE DU COMPAGNON</div><h2>${escapeHtml(x.name)}</h2>${x.reason?`<p class="subtle">${escapeHtml(x.reason)}</p>`:''}<div class="recipe-macro-grid"><div><strong>${Math.round(x.calories)}</strong><small>kcal</small></div><div><strong>${Math.round(x.protein)} g</strong><small>Protéines</small></div><div><strong>${Math.round(x.carbs)} g</strong><small>Glucides</small></div><div><strong>${Math.round(x.fat)} g</strong><small>Lipides</small></div></div><section class="recipe-detail-section"><h3>Ingrédients</h3><ul class="recipe-detail-ingredients">${ingredients}</ul></section>${prep?`<section class="recipe-detail-section"><h3>Préparation</h3><ol class="recipe-detail-steps">${prep}</ol></section>`:''}<div class="recipe-detail-actions"><button class="action" data-add-ai-meal-detail="${i}">Ajouter au repas du jour</button><button class="action secondary${alreadySaved?' recipe-saved':''}" data-save-ai-recipe-detail="${i}" ${alreadySaved?'disabled aria-disabled="true"':''}>${alreadySaved?'✓ Ajoutée à Mes recettes':'Ajouter à Mes recettes'}</button>${rows.length>1?`<button class="text-action recipe-another" data-next-ai-recipe>Une autre idée</button>`:''}</div></div>`,backAction||(()=>{$('#sheet').close()}));
   $('[data-add-ai-meal-detail]')?.addEventListener('click',()=>confirmNutritionSuggestionSheet(i));
-  $('[data-save-ai-recipe-detail]')?.addEventListener('click',()=>saveNutritionSuggestionRecipe(i));
+  $('[data-save-ai-recipe-detail]')?.addEventListener('click',()=>saveNutritionSuggestionRecipe(i,backAction));
   $('[data-next-ai-recipe]')?.addEventListener('click',()=>showNutritionRecipeDetail((i+1)%rows.length,backAction));
 }
 function confirmNutritionSuggestionSheet(i){
@@ -951,11 +969,17 @@ async function confirmNutritionSuggestion(i,mealType=null){
   await LTDB.put('food',{id:uid(),date:todayKey(),mealType:mealType||x.mealType||'dinner',description:x.name,protein:Number(x.protein)||0,calories:Number(x.calories)||0,carbs:Number(x.carbs)||0,fat:Number(x.fat)||0,water:0,classic:false,source:'companion-suggestion',createdAt:new Date().toISOString()});
   toast('Repas ajouté au suivi du jour');document.querySelector('#sheet')?.close();render();
 }
-async function saveNutritionSuggestionRecipe(i){
+async function saveNutritionSuggestionRecipe(i,backAction=null){
   const x=(state.nutritionSuggestions||[])[i];if(!x)return;
+  const btn=$('[data-save-ai-recipe-detail]');
+  if(btn?.disabled)return;
+  if(btn){btn.disabled=true;btn.textContent='Ajout en cours…';}
+  const key=nutritionSuggestionRecipeKey(x),recipes=await getPersonalRecipes();
+  const existing=recipes.find(r=>r.source==='companion-suggestion'&&storedRecipeSuggestionKey(r)===key);
+  if(existing){toast('Cette recette est déjà dans Mes recettes');await showNutritionRecipeDetail(i,backAction);return;}
   const ingredients=(x.ingredients||[]).map((name,j)=>({name,qty:0,protein:j?0:Number(x.protein)||0,calories:j?0:Number(x.calories)||0,carbs:j?0:Number(x.carbs)||0,fat:j?0:Number(x.fat)||0,source:'ai-suggestion'}));
   await LTDB.put('memory',{id:uid(),type:'personal-recipe',name:x.name,portions:1,ingredients,preparation:x.preparation||[],estimatedMacros:{protein:x.protein,calories:x.calories,carbs:x.carbs,fat:x.fat},createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),source:'companion-suggestion'});
-  toast('Recette ajoutée à Mes recettes');showNutritionRecipeDetail(i);
+  toast('Recette ajoutée à Mes recettes');await showNutritionRecipeDetail(i,backAction);
 }
 
 async function nutritionHistorySheet(year=null,month=null){
@@ -1186,6 +1210,9 @@ function bindSheet(){
   $('#recipeAIConfirmForm')?.addEventListener('submit',e=>{e.preventDefault();const f=new FormData(e.currentTarget);addIngredientToCurrentRecipe({name:f.get('name'),qty:f.get('qty'),protein:f.get('protein'),calories:f.get('calories'),carbs:f.get('carbs'),fat:f.get('fat'),source:'ai-photo'});pendingFoodImageData=null});
 
   $('#recipeForm')?.addEventListener('submit',savePersonalRecipe);
+  $('[data-delete-recipe]')?.addEventListener('click',b=>confirmDeletePersonalRecipe(b.currentTarget.dataset.deleteRecipe));
+  $('[data-confirm-delete-recipe]')?.addEventListener('click',b=>deletePersonalRecipe(b.currentTarget.dataset.confirmDeleteRecipe));
+  $('[data-cancel-delete-recipe]')?.addEventListener('click',()=>renderRecipeEditor());
   $('#useRecipeForm')?.addEventListener('submit',addRecipeToMeal);
 
   document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>{stopBarcodeCamera();stopProgressCamera();if(sheetBackAction){const back=sheetBackAction;sheetBackAction=null;back();return;}$('#sheet').close()}));
