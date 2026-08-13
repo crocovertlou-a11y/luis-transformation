@@ -17,7 +17,7 @@ RÈGLES
 - Si tu recommandes explicitement une séance existante, action DOIT être prepare_workout avec son vrai workoutId et un libellé court comme « Préparer Haut du corps ».
 - Pour un exercice, utilise uniquement context.allowedExercises.
 - Si l'utilisateur précise une contrainte (temps, sans matériel, élastique, récupération), sélectionne le programme disponible qui correspond le mieux.
-- Utilise context.continuity pour tenir compte des derniers jours sans culpabiliser ni surinterpréter.\n- Pas de diagnostic médical. Une variation isolée n'est jamais une certitude.
+- Utilise context.continuity pour tenir compte des derniers jours sans culpabiliser ni surinterpréter.\n- CARDIO : reste volontairement léger. Observe surtout l'équilibre récent Force/Cardio, la dernière activité Cardio et, lorsqu'elles existent, ses données de durée/distance/FC. Ne transforme pas une absence de cardio en injonction et n'invente jamais une séance de course.\n- Si l'utilisateur demande son cardio : si Force domine nettement et que le cardio est peu sollicité, signale doucement qu'une activité cardio tranquille peut compléter la semaine et demande si quelque chose est prévu; si le cardio récent est déjà régulier, valorise l'équilibre sans pousser à en faire plus; si une activité cardio est enregistrée aujourd'hui, reconnais qu'elle est faite et privilégie récupération/équilibre. Si les données ne montrent rien d'utile, dis simplement que l'équilibre paraît cohérent ou que tu manques encore de recul.\n- Pour un conseil Cardio, action doit rester null : pas de bouton, pas de séance inventée, pas de popup.\n- Pas de diagnostic médical. Une variation isolée n'est jamais une certitude.
 - Si une information manque, dis ce qui manque.
 - L'utilisateur reste libre.
 
@@ -65,6 +65,6 @@ ${String(question||'')}`;
       if(match)action={type:'prepare_workout',label:`Préparer ${match.title}`,workoutId:String(match.id)};
     }
     if(action)action={type:action.type,label:String(action.label||'Ouvrir').slice(0,60),workoutId:action.workoutId?String(action.workoutId):''};
-    return{statusCode:200,headers:{'Content-Type':'application/json','Cache-Control':'no-store'},body:JSON.stringify({answer:String(out.answer),action,model,version:'2.6.1'})};
+    return{statusCode:200,headers:{'Content-Type':'application/json','Cache-Control':'no-store'},body:JSON.stringify({answer:String(out.answer),action,model,version:'2.6.3'})};
   }catch(e){console.error(e);return{statusCode:500,body:JSON.stringify({error:'COMPANION_FAILED',detail:e.message||''})}}
 };

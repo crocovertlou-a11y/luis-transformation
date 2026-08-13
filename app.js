@@ -606,9 +606,9 @@ async function companionSnapshot(){
     latestCheckin:latest,
     nutritionToday:{protein:Math.round(protein*10)/10,calories:Math.round(calories),water:Math.round(water*10)/10,entries:todayFood.length},
     todayWorkout:todayWorkout?{name:todayWorkout.name||null,duration:todayWorkout.durationLabel||null,effort:todayWorkout.effort??null}:null,
-    todayCardio:todayCardio.map(c=>({type:c.type||null,name:c.name||null,distance:c.distance??null,duration:c.durationLabel||null,heartRateAvg:c.heartRateAvg??null})),
+    todayCardio:todayCardio.map(c=>({type:c.type||null,name:c.name||null,distance:c.distance??null,duration:c.durationLabel||null,heartRateAvg:c.heartRateAvg??null,cadenceAvg:c.cadenceAvg??c.cadence??null,calories:c.calories??null})),
     recentForce:recentWorkouts.slice(0,8).map(w=>({date:w.date,name:w.name||null,duration:w.durationLabel||null,effort:w.effort??null})),
-    recentCardio:recentCardio.slice(0,8).map(c=>({date:c.date,type:c.type||null,name:c.name||null,distance:c.distance??null,duration:c.durationLabel||null})),
+    recentCardio:recentCardio.slice(0,8).map(c=>({date:c.date,type:c.type||null,name:c.name||null,distance:c.distance??null,duration:c.durationLabel||null,heartRateAvg:c.heartRateAvg??null,cadenceAvg:c.cadenceAvg??c.cadence??null})),
     recentCheckins:recentCheckins.slice(0,7).map(c=>({date:c.date,sleep:c.sleep??null,stress:c.stress??null,energy:c.energy??null,recovery:c.recovery??null,hunger:c.hunger??null,weight:c.weight??null,waist:c.waist??null})),
     dailyDecision:decision,
     continuity:{
@@ -687,6 +687,7 @@ async function renderCompanion(){
     <div class="companion-quick-grid">
       <button class="action secondary compact" data-companion-prompt="Que dois-je privilégier aujourd’hui ?">Ma priorité aujourd’hui</button>
       <button class="action secondary compact" data-companion-prompt="Que penses-tu de mon entraînement aujourd’hui ?">Mon entraînement</button>
+      <button class="action secondary compact" data-companion-prompt="Comment trouves-tu mon équilibre cardio et force ces derniers jours ?">Mon cardio</button>
       <button class="action secondary compact" data-companion-prompt="Que dois-je encore privilégier côté alimentation aujourd’hui ?">Mon alimentation</button>
     </div>
   </div>

@@ -257,3 +257,13 @@ Moteur déterministe Aujourd'hui, états validés, respiration du logo, commenta
 - Bouton « Supprimer la recette » dans l’éditeur avec confirmation explicite.
 - La suppression d’une recette ne supprime pas les repas déjà enregistrés dans le suivi.
 - Cache PWA incrémenté pour forcer la mise à jour sur iPhone.
+
+
+## V2.6.3 — Compagnon Cardio soft
+- Ajout de « Mon cardio » dans les questions rapides du Compagnon.
+- Le Compagnon observe l’équilibre Force/Cardio récent et la dernière activité Cardio sans inventer de séance.
+- Si le cardio est peu sollicité face à la Force, il formule un rappel doux et contextualisé.
+- Si le cardio est déjà régulier ou réalisé aujourd’hui, il valorise l’équilibre/récupération sans pousser à en faire davantage.
+- Aucun bouton d’action Cardio : conseil volontairement léger, sans popup ni nouvelle mécanique.
+- Contexte Cardio enrichi avec FC moyenne, cadence et calories lorsqu’elles existent.
+- Cache PWA incrémenté pour forcer la mise à jour sur iPhone.
