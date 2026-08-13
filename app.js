@@ -1794,12 +1794,15 @@ async function sendChat(){
     const data=await r.json(); if(!r.ok)throw new Error(data.detail||data.error||'IA indisponible'); answer=data.answer||'Je n’ai pas de réponse utile pour le moment.'; var companionAction=data.action||null;
   }catch(err){console.error(err);answer=await localCompanion(text);var companionAction=null}
   answer=cleanCompanionText(answer);
-  if(!companionAction){
-    const qnorm=String(text||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const qnorm=String(text||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const cardioBalanceIntent=/(equilibre.*(cardio|force)|(cardio|force).*(equilibre)|(cardio.*force|force.*cardio)|mon cardio|cote cardio)/.test(qnorm);
+  // Cardio balance stays deliberately soft: advice only, never an action button.
+  if(cardioBalanceIntent) companionAction=null;
+  if(!companionAction&&!cardioBalanceIntent){
     const recipeIntent=/(recette|repas|manger|mange|dejeuner|diner|collation|alimentation|alimentaire|quoi.*(manger|privilegier)|idee.*(repas|manger))/.test(qnorm);
     if(recipeIntent) companionAction={type:'recipe',label:'Voir une recette adaptée'};
   }
-  if(!companionAction){
+  if(!companionAction&&!cardioBalanceIntent){
     const norm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
     const a=norm(answer);
     const match=workoutLibrary().find(w=>{
