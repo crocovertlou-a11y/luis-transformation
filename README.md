@@ -276,9 +276,10 @@ Moteur déterministe Aujourd'hui, états validés, respiration du logo, commenta
 - Les photos restent stockées dans Évolution mais sont accessibles depuis le Compagnon, avec accès direct à la comparaison/analyse IA et à l’ajout d’une photo.
 - Cache PWA incrémenté.
 
-## V2.7 — Tendances
-- Le Compagnon reçoit des synthèses locales sur 7, 14 et 30 jours.
-- Signaux croisés : poids/tour de taille, ressenti, Force, Cardio et alimentation/protéines.
-- Seuils de couverture pour éviter de transformer une donnée isolée en tendance.
-- Une analyse de tendance reste observationnelle : aucune action automatique et aucun diagnostic.
-- Ajout du raccourci « Mes tendances » dans le Compagnon, sans nouvel écran.
+
+## V2.7.1 — Routage intelligent Tendances
+- Les questions libres sur l'objectif, la progression, la trajectoire et le fait d'être « sur la bonne voie » déclenchent désormais automatiquement l'analyse Tendances 7/14/30 jours.
+- Le Compagnon répond d'abord à la question de progression avec les signaux disponibles et reconnaît explicitement le manque de recul si nécessaire.
+- Les intentions Tendances sont protégées contre les boutons Force/recette ajoutés par inférence de texte.
+- Aucun changement UX sur Force, Cardio, Alimentation, Évolution ou l'historique du Compagnon.
+- Cache PWA incrémenté.

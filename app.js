@@ -1850,14 +1850,15 @@ async function sendChat(){
   }catch(err){console.error(err);answer=await localCompanion(text);var companionAction=null}
   answer=cleanCompanionText(answer);
   const qnorm=String(text||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const trendIntent=/(tendance|7.*14.*30|derniers jours|dernieres semaines|evolution.*(semaine|mois)|progression.*(semaine|mois)|atteindr.*objectif|atteindre.*objectif|mon objectif|objectif.*(atteind|progress|bonne voie)|bonne voie|est.?ce que je progresse|je progresse|ma progression|comment.*(evolu|progress)|transformation.*(evolu|progress)|resultats.*(evolu|progress))/.test(qnorm);
   const cardioBalanceIntent=/(equilibre.*(cardio|force)|(cardio|force).*(equilibre)|(cardio.*force|force.*cardio)|mon cardio|cote cardio)/.test(qnorm);
-  // Cardio balance stays deliberately soft: advice only, never an action button.
-  if(cardioBalanceIntent) companionAction=null;
-  if(!companionAction&&!cardioBalanceIntent){
+  // Trend/trajectory and Cardio balance are observation-only: never attach a workout or recipe button.
+  if(trendIntent||cardioBalanceIntent) companionAction=null;
+  if(!companionAction&&!cardioBalanceIntent&&!trendIntent){
     const recipeIntent=/(recette|repas|manger|mange|dejeuner|diner|collation|alimentation|alimentaire|quoi.*(manger|privilegier)|idee.*(repas|manger))/.test(qnorm);
     if(recipeIntent) companionAction={type:'recipe',label:'Voir une recette adaptée'};
   }
-  if(!companionAction&&!cardioBalanceIntent){
+  if(!companionAction&&!cardioBalanceIntent&&!trendIntent){
     const norm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
     const a=norm(answer);
     const match=workoutLibrary().find(w=>{
