@@ -644,15 +644,27 @@ function companionFingerprint(text){
     .replace(/[àâä]/g,'a').replace(/[éèêë]/g,'e').replace(/[îï]/g,'i').replace(/[ôö]/g,'o').replace(/[ùûü]/g,'u')
     .replace(/[^a-z0-9 ]/g,'').replace(/\s+/g,' ').trim();
 }
+
+function companionChatDay(x){
+  const raw=x?.createdAt||'';
+  const d=raw?new Date(raw):null;
+  if(!d||Number.isNaN(d.getTime()))return '';
+  const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function companionHistoryLabel(day){
+  const d=new Date(day+'T12:00:00');
+  return d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+}
 async function renderCompanion(){
   const messages=await LTDB.all('events');
   for(const m of messages.filter(x=>x.type==='CHAT'&&x.role==='companion'&&/\*\*|__/.test(String(x.text||'')))){
     const cleaned=cleanCompanionText(m.text);
     if(cleaned!==m.text)await LTDB.put('events',{...m,text:cleaned});
   }
-  const chat=messages.filter(x=>x.type==='CHAT').sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||'')).slice(-8);
+  const chat=messages.filter(x=>x.type==='CHAT'&&companionChatDay(x)===todayKey()).sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||''));
   const snap=await companionSnapshot(),b=snap.brief;
-  return `<section class="hero"><div class="companion-page-mark">${companionMark("companion-mark-large")}</div><div class="hello">Compagnon</div><div class="subtle">Je relie ton ressenti, tes entraînements, ton cardio et ton alimentation.</div></section>
+  return `<section class="hero companion-hero-v233"><div class="companion-page-mark">${companionMark("companion-mark-large")}</div><div class="hello">Compagnon</div><button class="companion-history-link" id="openCompanionHistory">Historique</button><div class="subtle">Je relie ton ressenti, tes entraînements, ton cardio et ton alimentation.</div></section>
   <div class="card primary-card companion-v22-brief">
     <div class="card-kicker">${companionMark("choice-companion")} Priorité du moment</div>
     <h3>${escapeHtml(b.title)}</h3>
@@ -684,6 +696,7 @@ function bindPage(){
   document.querySelectorAll('[data-fluidity-force]').forEach(b=>b.addEventListener('click',async()=>{const [ws,cs,fs,ks]=await Promise.all([LTDB.all('workouts'),LTDB.all('cardio'),LTDB.all('food'),LTDB.all('checkins')]);ws.sort((a,b)=>b.date.localeCompare(a.date));cs.sort((a,b)=>b.date.localeCompare(a.date));const today=todayKey(),check=ks.find(x=>x.date===today)||null,todayWorkout=ws.find(x=>x.date===today)||null,todayCardio=cs.filter(x=>x.date===today),decision=fluidityEngine(check,todayWorkout,todayCardio,ws,cs,fs,ks),w=fluidityWorkoutForDecision(decision,ws);if(b.dataset.fluidityForce==='detail')return workoutDetailSheet(w);await workoutDetailSheet(w);chosenWorkoutForm();}));
   document.querySelectorAll('[data-open]').forEach(b=>b.onclick=e=>{e?.stopPropagation?.();openSheet(b.dataset.open)}); document.querySelectorAll('[data-photo-view]').forEach(b=>b.onclick=()=>viewProgressPhoto(b.dataset.photoView));
   document.querySelectorAll('[data-edit-activity]').forEach(b=>b.addEventListener('click',()=>{const [kind,id]=b.dataset.editActivity.split(':'); editActivitySheet(kind,id);}));
+  $('#openCompanionHistory')?.addEventListener('click',openCompanionHistory);
   $('#sendChat')?.addEventListener('click',sendChat); $('#chatInput')?.addEventListener('keydown',e=>{if(e.key==='Enter')sendChat();});
   document.querySelectorAll('[data-companion-prompt]').forEach(b=>b.addEventListener('click',()=>{const input=$('#chatInput');if(input){input.value=b.dataset.companionPrompt;sendChat();}}));
   document.querySelectorAll('[data-companion-action]').forEach(b=>b.addEventListener('click',()=>{const a=b.dataset.companionAction;if(a==='training')navigate('training');else if(a==='checkin')openSheet('checkin');}));
@@ -1633,13 +1646,35 @@ async function viewProgressPhoto(id){
   showSheet(`<h2>${escapeHtml(p.view||'Photo')} · ${formatPhotoDate(p.date)}</h2><img class="progress-photo-large" src="${p.image}" alt="Photo évolution"><div class="edit-actions"><button class="action danger" type="button" id="deleteProgressPhoto">Supprimer</button></div>`);
   $('#deleteProgressPhoto')?.addEventListener('click',async()=>{await LTDB.del('photos',id);$('#sheet').close();toast('Photo supprimée');render()});
 }
+
+async function openCompanionHistory(){
+  const events=(await LTDB.all('events')).filter(x=>x.type==='CHAT'&&companionChatDay(x)&&companionChatDay(x)!==todayKey());
+  const groups={};
+  events.sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||'')).forEach(x=>{const day=companionChatDay(x);(groups[day]||(groups[day]=[])).push(x)});
+  const days=Object.keys(groups).sort().reverse();
+  showSheet(`<div class="companion-history-sheet"><div class="sheet-title-row"><div><div class="card-kicker">COMPAGNON</div><h2>Historique</h2></div><button class="sheet-x" data-close-sheet aria-label="Fermer">×</button></div>
+    ${days.length?days.map(day=>{
+      const ordered=groups[day].slice().sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||''));
+      const last=ordered[ordered.length-1];
+      return `<button class="companion-history-day" data-history-day="${day}"><strong>${escapeHtml(companionHistoryLabel(day))}</strong><span>${escapeHtml(cleanCompanionText(last?.text||''))}</span></button>`;
+    }).join(''):'<div class="empty">Aucune conversation précédente pour le moment.</div>'}
+  </div>`);
+  document.querySelectorAll('[data-history-day]').forEach(b=>b.addEventListener('click',()=>openCompanionHistoryDay(b.dataset.historyDay)));
+}
+async function openCompanionHistoryDay(day){
+  const chat=(await LTDB.all('events')).filter(x=>x.type==='CHAT'&&companionChatDay(x)===day).sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||''));
+  showSheet(`<div class="companion-history-sheet"><div class="sheet-title-row"><button class="history-back" id="historyBack">‹ Historique</button><button class="sheet-x" data-close-sheet aria-label="Fermer">×</button></div><h2>${escapeHtml(companionHistoryLabel(day))}</h2>
+    <div class="history-chat">${chat.map(x=>`<div class="bubble ${x.role==='user'?'user':'companion'}">${escapeHtml(cleanCompanionText(x.text))}</div>`).join('')}</div>
+  </div>`);
+  document.querySelector('#historyBack')?.addEventListener('click',openCompanionHistory);
+}
 async function sendChat(){
   const input=$('#chatInput'),text=input?.value.trim();if(!text)return;
   input.disabled=true;$('#sendChat').disabled=true;
   await LTDB.put('events',{id:uid(),type:'CHAT',role:'user',text,createdAt:new Date().toISOString()});
   const snap=await companionSnapshot(); let answer='';
   try{
-    const history=(await LTDB.all('events')).filter(x=>x.type==='CHAT').sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||'')).slice(-6).map(x=>({role:x.role,text:x.text}));
+    const history=(await LTDB.all('events')).filter(x=>x.type==='CHAT'&&companionChatDay(x)===todayKey()).sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||'')).slice(-6).map(x=>({role:x.role,text:x.text}));
     const r=await fetch('/.netlify/functions/companion-v1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:text,context:snap.context,history})});
     const data=await r.json(); if(!r.ok)throw new Error(data.detail||data.error||'IA indisponible'); answer=data.answer||'Je n’ai pas de réponse utile pour le moment.'; var companionAction=data.action||null;
   }catch(err){console.error(err);answer=await localCompanion(text);var companionAction=null}

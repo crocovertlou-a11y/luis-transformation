@@ -357,3 +357,14 @@ button.done-tile:active{transform:scale(.985)}
 /* V2.3.1 Companion UX fix */
 .companion-inline-action{width:100%;margin-top:12px;text-align:center}
 #chat .bubble.companion{line-height:1.48}
+
+/* Fluidité V2.3.3 — Companion daily chat + history */
+.companion-hero-v233{position:relative}
+.companion-history-link{position:absolute;right:0;top:4px;border:0;background:transparent;text-decoration:underline;color:#777;font:inherit;font-size:14px;padding:8px}
+.companion-history-sheet h2{margin:4px 0 18px}
+.sheet-title-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.companion-history-day{width:100%;display:flex;flex-direction:column;gap:6px;text-align:left;border:0;border-bottom:1px solid rgba(0,0,0,.07);background:transparent;padding:16px 2px;font:inherit}
+.companion-history-day strong{text-transform:capitalize}
+.companion-history-day span{color:#777;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.history-back{border:0;background:transparent;padding:8px 0;font:inherit;font-weight:700}
+.history-chat{display:flex;flex-direction:column;gap:10px;padding-bottom:20px}
