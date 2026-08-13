@@ -377,3 +377,16 @@ button.done-tile:active{transform:scale(.985)}
 .nutrition-ai-card strong{display:block;font-size:16px}.nutrition-ai-card small{display:block;color:#777;margin-top:4px}
 .nutrition-ai-card p{font-size:14px;line-height:1.45}.nutrition-ai-actions{display:flex;gap:8px;flex-wrap:wrap}
 .nutrition-ai-loading{padding:24px 4px;color:#777}
+
+/* V2.6 · fiche recette Compagnon — volontairement sans visuel */
+.companion-recipe-detail h2{margin:5px 0 8px;font-size:25px;line-height:1.12}
+.recipe-macro-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:18px 0}
+.recipe-macro-grid>div{background:#f7f6f4;border-radius:14px;padding:11px 6px;text-align:center}
+.recipe-macro-grid strong,.recipe-macro-grid small{display:block}.recipe-macro-grid strong{font-size:15px}.recipe-macro-grid small{font-size:10px;color:#777;margin-top:3px}
+.recipe-detail-section{margin:20px 0}.recipe-detail-section h3{font-size:16px;margin-bottom:10px}
+.recipe-detail-ingredients{padding-left:20px;margin:0;display:grid;gap:8px;font-size:14px;line-height:1.35}
+.recipe-detail-steps{list-style:none;padding:0;margin:0;display:grid;gap:10px;counter-reset:steps}
+.recipe-detail-steps li{display:flex;gap:10px;align-items:flex-start}.recipe-detail-steps li span{width:24px;height:24px;flex:0 0 24px;border-radius:50%;background:#efede9;display:grid;place-items:center;font-size:12px;font-weight:700}.recipe-detail-steps p{margin:2px 0 0;font-size:14px;line-height:1.4}
+.recipe-detail-actions{display:grid;gap:9px;margin-top:22px}.recipe-another{justify-self:center;margin-top:4px}
+.nutrition-ai-card-button{border:0;width:100%;text-align:left;font:inherit;cursor:pointer}
+@media(max-width:390px){.recipe-macro-grid{grid-template-columns:repeat(2,1fr)}}

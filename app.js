@@ -715,6 +715,7 @@ function bindPage(){
     const a=b.dataset.companionChatAction,id=b.dataset.companionWorkout;
     if((a==='open_workout'||a==='prepare_workout')&&id){prepareCompanionAction({type:'prepare_workout',workoutId:id});}
     else if(a==='training')navigate('training');
+    else if(a==='recipe')openCompanionRecipe();
     else if(a==='nutrition')navigate('nutrition');
     else if(a==='checkin')openSheet('checkin');
   }));
@@ -908,34 +909,53 @@ async function nutritionProposalContext(){
     personalRecipes:recipes.slice(0,12).map(r=>{const t=recipeTotals(r.ingredients),p=Math.max(.01,Number(r.portions)||1);return {id:r.id,name:r.name,protein:Number((t.protein/p).toFixed(1)),calories:Math.round(t.calories/p),carbs:Number((t.carbs/p).toFixed(1)),fat:Number((t.fat/p).toFixed(1))}})
   };
 }
+async function fetchNutritionSuggestions(){
+  const context=await nutritionProposalContext();
+  const r=await fetch('/.netlify/functions/nutrition-recipes-v1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({context})});
+  const data=await r.json();if(!r.ok)throw new Error(data.detail||data.error||'Propositions indisponibles');
+  state.nutritionSuggestions=data.suggestions||[];
+  return state.nutritionSuggestions;
+}
+async function openCompanionRecipe(){
+  showSheet(`<h2>Ta recette</h2><div class="nutrition-ai-loading">Je regarde ta journée et je prépare une recette adaptée…</div>`,()=>{$('#sheet').close()});
+  try{const rows=await fetchNutritionSuggestions();if(!rows.length)throw new Error('Aucune recette');state.nutritionSuggestionIndex=0;showNutritionRecipeDetail(0);}
+  catch(e){console.error(e);showSheet(`<h2>Ta recette</h2><p class="subtle">Je n’arrive pas à préparer une recette fiable pour le moment.</p><button class="action secondary" data-close>Retour au Compagnon</button>`,()=>{$('#sheet').close()});}
+}
 async function openNutritionProposals(){
   showSheet(`<h2>Propositions de repas</h2><div class="nutrition-ai-loading">Je regarde ta journée et je prépare 3 idées réalistes…</div>`);
-  try{
-    const context=await nutritionProposalContext();
-    const r=await fetch('/.netlify/functions/nutrition-recipes-v1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({context})});
-    const data=await r.json();if(!r.ok)throw new Error(data.detail||data.error||'Propositions indisponibles');
-    state.nutritionSuggestions=data.suggestions||[];
-    renderNutritionProposals();
-  }catch(e){console.error(e);showSheet(`<h2>Propositions de repas</h2><p class="subtle">Je n’arrive pas à générer des propositions fiables pour le moment.</p><button class="action secondary" data-close>Fermer</button>`);}
+  try{await fetchNutritionSuggestions();renderNutritionProposals();}
+  catch(e){console.error(e);showSheet(`<h2>Propositions de repas</h2><p class="subtle">Je n’arrive pas à générer des propositions fiables pour le moment.</p><button class="action secondary" data-close>Fermer</button>`);}
 }
 function renderNutritionProposals(){
   const rows=state.nutritionSuggestions||[];
-  showSheet(`<h2>Propositions de repas</h2><p class="subtle">Estimations à confirmer avant enregistrement. Choisis uniquement ce qui correspond à ta faim.</p><div class="nutrition-ai-list">${rows.map((x,i)=>`<section class="nutrition-ai-card"><div><strong>${escapeHtml(x.name)}</strong><small>${Math.round(x.calories)} kcal · ${Math.round(x.protein)} g prot. · ${Math.round(x.carbs)} g gluc. · ${Math.round(x.fat)} g lip.</small></div><p>${escapeHtml(x.ingredients.join(' · '))}</p><div class="nutrition-ai-actions"><button class="action compact" data-add-ai-meal="${i}">Ajouter ce repas</button><button class="action secondary compact" data-save-ai-recipe="${i}">Enregistrer comme recette</button></div></section>`).join('')}</div>`);
-  document.querySelectorAll('[data-add-ai-meal]').forEach(b=>b.onclick=()=>confirmNutritionSuggestion(Number(b.dataset.addAiMeal)));
-  document.querySelectorAll('[data-save-ai-recipe]').forEach(b=>b.onclick=()=>saveNutritionSuggestionRecipe(Number(b.dataset.saveAiRecipe)));
+  showSheet(`<h2>Propositions de repas</h2><p class="subtle">Estimations à confirmer avant enregistrement.</p><div class="nutrition-ai-list">${rows.map((x,i)=>`<button class="nutrition-ai-card nutrition-ai-card-button" data-open-ai-recipe="${i}"><div><strong>${escapeHtml(x.name)}</strong><small>${Math.round(x.calories)} kcal · ${Math.round(x.protein)} g prot. · ${Math.round(x.carbs)} g gluc. · ${Math.round(x.fat)} g lip.</small></div><p>${escapeHtml(x.reason||'Voir la recette')}</p></button>`).join('')}</div>`);
+  document.querySelectorAll('[data-open-ai-recipe]').forEach(b=>b.onclick=()=>showNutritionRecipeDetail(Number(b.dataset.openAiRecipe),renderNutritionProposals));
 }
-async function confirmNutritionSuggestion(i){
+function showNutritionRecipeDetail(i,backAction=null){
+  const rows=state.nutritionSuggestions||[],x=rows[i];if(!x)return;
+  state.nutritionSuggestionIndex=i;
+  const ingredients=(x.ingredients||[]).map(v=>`<li>${escapeHtml(v)}</li>`).join('');
+  const prep=(x.preparation||[]).map((v,j)=>`<li><span>${j+1}</span><p>${escapeHtml(v)}</p></li>`).join('');
+  showSheet(`<div class="companion-recipe-detail"><div class="card-kicker">RECETTE DU COMPAGNON</div><h2>${escapeHtml(x.name)}</h2>${x.reason?`<p class="subtle">${escapeHtml(x.reason)}</p>`:''}<div class="recipe-macro-grid"><div><strong>${Math.round(x.calories)}</strong><small>kcal</small></div><div><strong>${Math.round(x.protein)} g</strong><small>Protéines</small></div><div><strong>${Math.round(x.carbs)} g</strong><small>Glucides</small></div><div><strong>${Math.round(x.fat)} g</strong><small>Lipides</small></div></div><section class="recipe-detail-section"><h3>Ingrédients</h3><ul class="recipe-detail-ingredients">${ingredients}</ul></section>${prep?`<section class="recipe-detail-section"><h3>Préparation</h3><ol class="recipe-detail-steps">${prep}</ol></section>`:''}<div class="recipe-detail-actions"><button class="action" data-add-ai-meal-detail="${i}">Ajouter au repas du jour</button><button class="action secondary" data-save-ai-recipe-detail="${i}">Ajouter à Mes recettes</button>${rows.length>1?`<button class="text-action recipe-another" data-next-ai-recipe>Une autre idée</button>`:''}</div></div>`,backAction||(()=>{$('#sheet').close()}));
+  $('[data-add-ai-meal-detail]')?.addEventListener('click',()=>confirmNutritionSuggestionSheet(i));
+  $('[data-save-ai-recipe-detail]')?.addEventListener('click',()=>saveNutritionSuggestionRecipe(i));
+  $('[data-next-ai-recipe]')?.addEventListener('click',()=>showNutritionRecipeDetail((i+1)%rows.length,backAction));
+}
+function confirmNutritionSuggestionSheet(i){
   const x=(state.nutritionSuggestions||[])[i];if(!x)return;
-  const ok=confirm(`Ajouter « ${x.name} » à aujourd’hui ?\n\n${Math.round(x.calories)} kcal · ${Math.round(x.protein)} g protéines\n\nLes valeurs sont des estimations générées : tu restes libre de les modifier ensuite.`);
-  if(!ok)return;
-  await LTDB.put('food',{id:uid(),date:todayKey(),mealType:x.mealType||'dinner',description:x.name,protein:Number(x.protein)||0,calories:Number(x.calories)||0,carbs:Number(x.carbs)||0,fat:Number(x.fat)||0,water:0,classic:false,source:'companion-suggestion',createdAt:new Date().toISOString()});
-  toast('Repas ajouté après validation');document.querySelector('#sheet')?.close();render();
+  showSheet(`<h2>Ajouter au suivi du jour</h2><p class="subtle">${escapeHtml(x.name)} · ${Math.round(x.calories)} kcal · ${Math.round(x.protein)} g prot.</p><form id="confirmAIRecipeMeal"><div class="field"><label>Repas</label><select name="mealType">${mealTypeOptions(x.mealType||'dinner')}</select></div><button class="action" type="submit">Confirmer l’ajout</button></form>`,()=>showNutritionRecipeDetail(i));
+  $('#confirmAIRecipeMeal')?.addEventListener('submit',e=>{e.preventDefault();confirmNutritionSuggestion(i,new FormData(e.currentTarget).get('mealType'));});
+}
+async function confirmNutritionSuggestion(i,mealType=null){
+  const x=(state.nutritionSuggestions||[])[i];if(!x)return;
+  await LTDB.put('food',{id:uid(),date:todayKey(),mealType:mealType||x.mealType||'dinner',description:x.name,protein:Number(x.protein)||0,calories:Number(x.calories)||0,carbs:Number(x.carbs)||0,fat:Number(x.fat)||0,water:0,classic:false,source:'companion-suggestion',createdAt:new Date().toISOString()});
+  toast('Repas ajouté au suivi du jour');document.querySelector('#sheet')?.close();render();
 }
 async function saveNutritionSuggestionRecipe(i){
   const x=(state.nutritionSuggestions||[])[i];if(!x)return;
-  const ingredients=(x.ingredients||[]).map(name=>({name,qty:0,protein:0,calories:0,carbs:0,fat:0,source:'ai-suggestion'}));
-  await LTDB.put('memory',{id:uid(),type:'personal-recipe',name:x.name,portions:1,ingredients,estimatedMacros:{protein:x.protein,calories:x.calories,carbs:x.carbs,fat:x.fat},createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),source:'companion-suggestion'});
-  toast('Recette enregistrée · ingrédients à préciser si besoin');await personalRecipesSheet();
+  const ingredients=(x.ingredients||[]).map((name,j)=>({name,qty:0,protein:j?0:Number(x.protein)||0,calories:j?0:Number(x.calories)||0,carbs:j?0:Number(x.carbs)||0,fat:j?0:Number(x.fat)||0,source:'ai-suggestion'}));
+  await LTDB.put('memory',{id:uid(),type:'personal-recipe',name:x.name,portions:1,ingredients,preparation:x.preparation||[],estimatedMacros:{protein:x.protein,calories:x.calories,carbs:x.carbs,fat:x.fat},createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),source:'companion-suggestion'});
+  toast('Recette ajoutée à Mes recettes');showNutritionRecipeDetail(i);
 }
 
 async function nutritionHistorySheet(year=null,month=null){
