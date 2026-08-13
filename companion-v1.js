@@ -8,7 +8,7 @@ exports.handler=async function(event){
 
 HIÉRARCHIE OBLIGATOIRE
 1. Comprends la QUESTION ACTUELLE.
-2. Si c'est une relance courte (ex: « T'es sûr ? », « Pourquoi ? », « Et donc ? »), rattache-la au DERNIER échange de l'HISTORIQUE. Ne change pas de sujet.
+2. Si c'est une relance courte SANS nouveau sujet explicite (ex: « T'es sûr ? », « Pourquoi ? », « Et donc ? »), rattache-la au DERNIER échange de l'HISTORIQUE. Dès que la question nomme un nouveau sujet (abdos, objectif, alimentation, cardio, etc.), traite-la comme une NOUVELLE question autonome.
 3. Détermine l'intention: conversation/follow-up, progression-tendances, cardio, force, alimentation, ressenti, ou autre.
 4. Sélectionne uniquement les données pertinentes du CONTEXTE.
 5. Réponds directement. La recommandation générale du jour n'est qu'un recours secondaire, jamais une réponse par défaut.
@@ -19,6 +19,8 @@ RÈGLES DE CONVERSATION
 - Aucun Markdown.
 - Ne répète pas mécaniquement la décision du jour.
 - Une relance comme « T'es sûr ? » doit expliquer/nuancer la réponse précédente à partir des mêmes données, et reconnaître l'incertitude si nécessaire.
+- « Est-ce que je dois faire plus d'abdos ? » est une nouvelle question Force/abdos, jamais une relance.
+- « Tu crois que je vais atteindre mon objectif ? » est une nouvelle question progression-tendances, jamais une relance.
 - Si la question porte sur les abdos, réponds sur les abdos; ne bascule pas vers une séance haut du corps sauf si cela répond explicitement à la question.
 - N'invente jamais de données, de causalité, d'exercice ou de séance.
 
@@ -59,7 +61,9 @@ ${String(question||'')}`;
     const text=(data?.candidates?.[0]?.content?.parts||[]).map(p=>p.text||'').join('').trim();const out=JSON.parse(text);if(!out?.answer)throw new Error('Réponse vide');
     const norm=v=>String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
     const q=norm(question), hist=Array.isArray(history)?history:[];
-    const followup=/^(t es sur|tu es sur|vraiment|pourquoi|comment ca|et pourquoi|et donc|tu penses|certain|sure|sur)$/.test(q)||/^(et|mais) (ca|donc|pourquoi)/.test(q);
+    const explicitTopic=/(abdo|gainage|cardio|force|muscu|seance|entrain|aliment|repas|recette|manger|poids|tour de taille|sommeil|stress|energie|faim|objectif|progress|evolu|tendance|transformation|trajectoire|recomposition|photo)/.test(q);
+    const shortFollowup=/^(t es sur|tu es sur|vraiment|pourquoi|comment ca|et pourquoi|et donc|tu penses|certain|sure|sur)$/.test(q)||/^(et|mais) (ca|donc|pourquoi)$/.test(q);
+    const followup=shortFollowup&&!explicitTopic;
     const trend=/(tendance|progress|evolu|objectif|bonne voie|atteindre|transformation|trajectoire|sur la voie|resultat|recomposition)/.test(q);
     const cardio=/(equilibre.*(cardio|force)|(cardio|force).*(equilibre)|(cardio.*force|force.*cardio)|mon cardio|cote cardio)/.test(q);
     const recipe=/(recette|repas|manger|mange|dejeuner|diner|collation|alimentation|alimentaire|quoi.*(manger|privilegier)|idee.*(repas|manger))/.test(q);

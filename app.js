@@ -1831,7 +1831,9 @@ async function sendChat(){
   answer=cleanCompanionText(answer);
   const norm=v=>String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
   const qnorm=norm(text);
-  const followupIntent=/^(t es sur|tu es sur|vraiment|pourquoi|comment ca|et pourquoi|et donc|tu penses|certain|sure|sur)$/.test(qnorm)||/^(et|mais) (ca|donc|pourquoi)/.test(qnorm);
+  const explicitTopicIntent=/(abdo|gainage|cardio|force|muscu|seance|entrain|aliment|repas|recette|manger|poids|tour de taille|sommeil|stress|energie|faim|objectif|progress|evolu|tendance|transformation|trajectoire|recomposition|photo)/.test(qnorm);
+  const shortFollowupIntent=/^(t es sur|tu es sur|vraiment|pourquoi|comment ca|et pourquoi|et donc|tu penses|certain|sure|sur)$/.test(qnorm)||/^(et|mais) (ca|donc|pourquoi)$/.test(qnorm);
+  const followupIntent=shortFollowupIntent&&!explicitTopicIntent;
   const trendIntent=/(tendance|progress|evolu|objectif|bonne voie|atteindre|transformation|trajectoire|sur la voie|resultat|recomposition)/.test(qnorm);
   const cardioBalanceIntent=/(equilibre.*(cardio|force)|(cardio|force).*(equilibre)|(cardio.*force|force.*cardio)|mon cardio|cote cardio)/.test(qnorm);
   const recipeIntent=/(recette|repas|manger|mange|dejeuner|diner|collation|alimentation|alimentaire|quoi.*(manger|privilegier)|idee.*(repas|manger))/.test(qnorm);
@@ -1840,8 +1842,10 @@ async function sendChat(){
   if(!companionAction&&recipeIntent&&!trendIntent&&!followupIntent) companionAction={type:'recipe',label:'Voir une recette adaptée'};
   // Pas d'inférence d'action depuis le texte de la réponse : seul le cerveau IA peut proposer une action explicite.
   const recentCompanion=prior.filter(x=>x.role==='companion').slice(-1)[0];
-  if(recentCompanion&&companionFingerprint(recentCompanion.text)===companionFingerprint(answer)&&!companionAction){
-    answer=followupIntent?'Je reformule : '+answer:'Je n’ai pas assez d’éléments nouveaux pour modifier ma réponse précédente.';
+  // Une réponse identique n'est jamais transformée en pseudo-follow-up lorsqu'une nouvelle question autonome a été posée.
+  // On conserve la réponse IA telle quelle; le contexte conversationnel est géré par le cerveau, pas par un texte de remplacement côté UI.
+  if(recentCompanion&&companionFingerprint(recentCompanion.text)===companionFingerprint(answer)&&followupIntent&&!companionAction){
+    answer='Je précise ma réponse précédente : '+answer;
   }
   await LTDB.put('events',{id:uid(),type:'CHAT',role:'companion',text:answer,action:companionAction,createdAt:new Date().toISOString()});render();
 }

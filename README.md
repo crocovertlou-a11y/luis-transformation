@@ -276,9 +276,8 @@ Moteur déterministe Aujourd'hui, états validés, respiration du logo, commenta
 - Les photos restent stockées dans Évolution mais sont accessibles depuis le Compagnon, avec accès direct à la comparaison/analyse IA et à l’ajout d’une photo.
 - Cache PWA incrémenté.
 
-V2.7 Conversationnelle
-- Reconstruite depuis V2.6.4 stable.
-- Routage question -> contexte du dernier échange -> intention -> données pertinentes -> réponse -> action.
-- Tendances 7/14/30 jours.
-- Follow-ups conversationnels.
-- Suppression de l inference automatique de bouton Force depuis le texte.
+
+## V2.7.1 — Nouvelle question vs relance
+- Les relances courtes sans nouveau sujet (ex. « T'es sûr ? ») reprennent le dernier échange.
+- Toute question qui nomme un sujet explicite (abdos, objectif, alimentation, cardio, etc.) est traitée comme une nouvelle intention.
+- Suppression du garde-fou UI qui remplaçait à tort une réponse autonome par « pas assez d'éléments nouveaux ».
