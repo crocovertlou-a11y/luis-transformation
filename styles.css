@@ -368,3 +368,12 @@ button.done-tile:active{transform:scale(.985)}
 .companion-history-day span{color:#777;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .history-back{border:0;background:transparent;padding:8px 0;font:inherit;font-weight:700}
 .history-chat{display:flex;flex-direction:column;gap:10px;padding-bottom:20px}
+
+/* Fluidité V2.5 — Nutrition Action */
+.fluidity-nutrition-advice{display:flex;flex-direction:column;gap:10px}
+.nutrition-proposal-btn{align-self:flex-start;border:0;border-radius:12px;padding:10px 13px;font:inherit;font-weight:750;background:rgba(111,78,205,.12);color:inherit}
+.nutrition-ai-list{display:flex;flex-direction:column;gap:12px}
+.nutrition-ai-card{padding:14px;border-radius:16px;background:#f7f6f4}
+.nutrition-ai-card strong{display:block;font-size:16px}.nutrition-ai-card small{display:block;color:#777;margin-top:4px}
+.nutrition-ai-card p{font-size:14px;line-height:1.45}.nutrition-ai-actions{display:flex;gap:8px;flex-wrap:wrap}
+.nutrition-ai-loading{padding:24px 4px;color:#777}

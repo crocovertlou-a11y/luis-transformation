@@ -259,11 +259,14 @@ function fluidityEngine(today,todayWorkout,todayCardio,workouts,cardio,food,chec
 }
 function fluidityNutritionComment(decision,todayCardio,protein,calories,foodCount){
   if(!foodCount)return null;
-  const hour=new Date().getHours(),target=state.profile.proteinTarget||170;
+  const hour=new Date().getHours(),target=Number(state.profile.proteinTarget)||170,remaining=Math.max(0,Math.round(target-protein));
   const hard=todayCardio.some(x=>['high','moderate_high'].includes(fluidityIntensityFromCardio(x)));
-  if(hard&&hour>=16&&(protein<target*.75||calories<1500))return 'Ta journée a été active. Ton prochain repas peut être plus complet, avec protéines et glucides pour accompagner la récupération.';
-  if(decision==='day_complete'&&protein<target*.65&&hour>=18)return 'Après ta séance, garde simplement un dîner complet selon ta faim.';
-  return null;
+  if(remaining<=10)return null;
+  if(hour<14)return {text:`Tu es à ${Math.round(protein)} g sur ${target} g de protéines. Tu as encore plusieurs repas pour avancer naturellement vers ton repère.`,suggest:false};
+  if(hard&&hour>=16&&(protein<target*.75||calories<1500))return {text:`Ta journée a été active. Il te reste environ ${remaining} g de protéines : je peux te proposer un repas complet pour accompagner la récupération.`,suggest:true};
+  if(hour>=18&&protein<target*.8)return {text:`Il te reste environ ${remaining} g de protéines aujourd’hui. Je peux te proposer un repas réaliste selon ce qu’il reste à couvrir.`,suggest:true};
+  if(decision==='day_complete'&&hour>=17)return {text:'Après ta séance, garde simplement un repas complet selon ta faim. Je peux te proposer quelques idées si tu veux.',suggest:true};
+  return {text:`Tu es à ${Math.round(protein)} g sur ${target} g de protéines. Pas besoin de forcer : répartis simplement le reste sur les prochains repas.`,suggest:false};
 }
 
 async function renderToday(today,todayWorkout,todayCardio,protein,calories,foodCount){
@@ -281,7 +284,7 @@ async function renderToday(today,todayWorkout,todayCardio,protein,calories,foodC
   const metric=(icon,label,val,n,kind='purple')=>`<div class="today-vital ${kind}"><div class="vital-label"><span>${icon}</span>${label}</div><strong>${val}</strong><div class="vital-track"><i style="width:${Math.max(8,Math.min(100,n))}%"></i></div></div>`;
   const vitals=today?`${metric('⚡','Énergie',`${today.energy??'—'}/5`,Number(today.energy||0)*20,'orange')}${metric('◉','Stress',`${today.stress??'—'}/5`,Number(today.stress||0)*20,'purple')}${metric('☾','Sommeil',today.sleep!=null?`${today.sleep}h`:'—',Math.min(100,Number(today.sleep||0)/8*100),'blue')}${metric('♡','Récupération',recovery!=null?`${recovery}/5`:'—',recovery!=null?recovery*20:50,'green')}${metric('◔','Faim',`${today.hunger??'—'}/5`,Number(today.hunger||0)*20,'orange')}`:'';
   const checkin=`<section class="today-wellbeing clickable" data-open="checkin"><div class="today-card-head"><h2>♡ &nbsp;Comment vas-tu aujourd’hui ?</h2><span>${today?'Modifier ›':'Renseigner ›'}</span></div>${today?`<div class="today-vitals">${vitals}</div>`:`<div class="today-empty-feel">Quelques secondes suffisent pour adapter ta journée.</div>`}<div class="hydration-line" data-open="hydrationQuick"><div><span class="water-icon">💧</span><strong>Hydratation</strong> <b>${water.toFixed(1).replace('.',',')} L / ${waterTarget} L</b></div><div class="water-drops">${Array.from({length:6},(_,i)=>`<i class="${i<Math.round(water/waterTarget*6)?'on':''}">●</i>`).join('')} <span>›</span></div></div></section>`;
-  const recommendation=today?`<section class="today-companion-card"><div class="companion-left"><div class="today-kicker">✦ &nbsp;Fluidité te recommande</div><h2>${escapeHtml(decision.title)}</h2><p>${escapeHtml(decision.message)}</p><div class="session-mini"><div class="session-icon">⌁</div><div class="session-copy"><strong>${decision.decision==='alternative_session'?'Séance Force – Haut du corps':decision.decision==='recovery'?'Récupération active':decision.decision==='day_complete'?'Journée accomplie':'Séance Force – adaptée à toi'}</strong><small>${decision.decision==='day_complete'?'La récupération fait partie de la progression.':'Une proposition cohérente avec ta disponibilité du jour.'}</small></div><span class="adapt-pill">Adaptée pour toi</span><div class="session-stats"><span>◷ <b>${decision.decision==='recovery'?'20':decision.decision==='adapted_session'?'30–40':'40'} min</b></span><span>◎ <b>${decision.decision==='recovery'?'Mobilité':decision.decision==='adapted_session'?'Force contrôlée':'Force & volume'}</b></span><span>▥ <b>${decision.decision==='recovery'?'Légère':decision.decision==='adapted_session'?'Modérée −':'Modérée'}</b></span><span>♡ <b>${decision.confidence==='high'?'Bonne':'À écouter'}</b></span></div></div><div class="companion-actions">${decision.action==='training'?'<button class="action secondary outline" data-fluidity-force="detail">Voir le détail</button><button class="action orange" data-fluidity-force="start">Démarrer la séance</button>':'<button class="action secondary outline" data-open="checkin">Réévaluer</button>'}</div>${nutritionAdvice?`<div class="fluidity-nutrition-advice">${escapeHtml(nutritionAdvice)}</div>`:''}</div><div class="companion-right"><div class="fluidity-breath today-big-breath">${companionMark('companion-mark-large')}</div><h3>Respire.<br><em>Recentre-toi.</em><br><b>Avance.</b></h3><i></i><p>Un pas après l’autre,<br>avec régularité<br>et bienveillance.</p></div></section>`:`<section class="today-companion-card empty-companion"><div class="companion-left"><div class="today-kicker">✦ &nbsp;Ton compagnon Fluidité</div><h2>Je m’adapte à toi.</h2><p>Renseigne ton ressenti pour que je puisse te proposer la meilleure prochaine action.</p><button class="action orange" data-open="checkin">Comment vas-tu ?</button></div><div class="companion-right"><div class="fluidity-breath today-big-breath">${companionMark('companion-mark-large')}</div><h3>Respire.<br><em>Recentre-toi.</em><br><b>Avance.</b></h3></div></section>`;
+  const recommendation=today?`<section class="today-companion-card"><div class="companion-left"><div class="today-kicker">✦ &nbsp;Fluidité te recommande</div><h2>${escapeHtml(decision.title)}</h2><p>${escapeHtml(decision.message)}</p><div class="session-mini"><div class="session-icon">⌁</div><div class="session-copy"><strong>${decision.decision==='alternative_session'?'Séance Force – Haut du corps':decision.decision==='recovery'?'Récupération active':decision.decision==='day_complete'?'Journée accomplie':'Séance Force – adaptée à toi'}</strong><small>${decision.decision==='day_complete'?'La récupération fait partie de la progression.':'Une proposition cohérente avec ta disponibilité du jour.'}</small></div><span class="adapt-pill">Adaptée pour toi</span><div class="session-stats"><span>◷ <b>${decision.decision==='recovery'?'20':decision.decision==='adapted_session'?'30–40':'40'} min</b></span><span>◎ <b>${decision.decision==='recovery'?'Mobilité':decision.decision==='adapted_session'?'Force contrôlée':'Force & volume'}</b></span><span>▥ <b>${decision.decision==='recovery'?'Légère':decision.decision==='adapted_session'?'Modérée −':'Modérée'}</b></span><span>♡ <b>${decision.confidence==='high'?'Bonne':'À écouter'}</b></span></div></div><div class="companion-actions">${decision.action==='training'?'<button class="action secondary outline" data-fluidity-force="detail">Voir le détail</button><button class="action orange" data-fluidity-force="start">Démarrer la séance</button>':'<button class="action secondary outline" data-open="checkin">Réévaluer</button>'}</div>${nutritionAdvice?`<div class="fluidity-nutrition-advice"><span>${escapeHtml(nutritionAdvice.text)}</span>${nutritionAdvice.suggest?'<button class="nutrition-proposal-btn" data-nutrition-proposals>Me proposer un repas</button>':''}</div>`:''}</div><div class="companion-right"><div class="fluidity-breath today-big-breath">${companionMark('companion-mark-large')}</div><h3>Respire.<br><em>Recentre-toi.</em><br><b>Avance.</b></h3><i></i><p>Un pas après l’autre,<br>avec régularité<br>et bienveillance.</p></div></section>`:`<section class="today-companion-card empty-companion"><div class="companion-left"><div class="today-kicker">✦ &nbsp;Ton compagnon Fluidité</div><h2>Je m’adapte à toi.</h2><p>Renseigne ton ressenti pour que je puisse te proposer la meilleure prochaine action.</p><button class="action orange" data-open="checkin">Comment vas-tu ?</button></div><div class="companion-right"><div class="fluidity-breath today-big-breath">${companionMark('companion-mark-large')}</div><h3>Respire.<br><em>Recentre-toi.</em><br><b>Avance.</b></h3></div></section>`;
   const run=todayCardio[0];
   const done=[`<button type="button" class="done-tile green" data-route-card="training"><span>🏃</span><div><strong>Course à pied</strong><small>${run?(run.distance?`${run.distance} km aujourd’hui`:'Activité enregistrée'):'Aucune activité enregistrée'}</small></div></button>`,`<button type="button" class="done-tile orange" data-route-card="training"><span>◉</span><div><strong>Force</strong><small>${todayWorkout?'Séance enregistrée':'Aucune activité enregistrée'}</small></div></button>`,`<button type="button" class="done-tile purple" data-open="nutritionHub"><span>♨</span><div><strong>Alimentation</strong><small>${foodCount?`${Math.round(protein)} g de protéines`:'Aucun repas enregistré'}</small></div></button>`,`<button type="button" class="done-tile blue" data-open="hydrationQuick"><span>▣</span><div><strong>Eau</strong><small>${water?`${water.toFixed(1).replace('.',',')} L enregistrés`:'Aucune donnée enregistrée'}</small></div></button>`].join('');
   const validCheckins=checkinsAll.filter(x=>x.weight!=null||x.waist!=null).sort((a,b)=>a.date.localeCompare(b.date));
@@ -700,6 +703,7 @@ async function renderProfile(){
 function bindPage(){
   document.querySelectorAll('[data-home-view]').forEach(b=>b.addEventListener('click',()=>{state.homeView=b.dataset.homeView;render();}));
   document.querySelectorAll('[data-route-card]').forEach(b=>b.addEventListener('click',()=>navigate(b.dataset.routeCard)));
+  document.querySelectorAll('[data-nutrition-proposals]').forEach(b=>b.addEventListener('click',openNutritionProposals));
   document.querySelectorAll('[data-fluidity-force]').forEach(b=>b.addEventListener('click',async()=>{const [ws,cs,fs,ks]=await Promise.all([LTDB.all('workouts'),LTDB.all('cardio'),LTDB.all('food'),LTDB.all('checkins')]);ws.sort((a,b)=>b.date.localeCompare(a.date));cs.sort((a,b)=>b.date.localeCompare(a.date));const today=todayKey(),check=ks.find(x=>x.date===today)||null,todayWorkout=ws.find(x=>x.date===today)||null,todayCardio=cs.filter(x=>x.date===today),decision=fluidityEngine(check,todayWorkout,todayCardio,ws,cs,fs,ks),w=fluidityWorkoutForDecision(decision,ws);if(b.dataset.fluidityForce==='detail')return workoutDetailSheet(w);await workoutDetailSheet(w);chosenWorkoutForm();}));
   document.querySelectorAll('[data-open]').forEach(b=>b.onclick=e=>{e?.stopPropagation?.();openSheet(b.dataset.open)}); document.querySelectorAll('[data-photo-view]').forEach(b=>b.onclick=()=>viewProgressPhoto(b.dataset.photoView));
   document.querySelectorAll('[data-edit-activity]').forEach(b=>b.addEventListener('click',()=>{const [kind,id]=b.dataset.editActivity.split(':'); editActivitySheet(kind,id);}));
@@ -891,6 +895,48 @@ async function addRecipeToMeal(e){
   toast(`${r.name} ajouté · ${used} portion${used>1?'s':''}`);pendingNutritionMealType=null;await nutritionHubSheet();render();
 }
 
+
+
+async function nutritionProposalContext(){
+  const [food,cardio,recipes]=await Promise.all([LTDB.all('food'),LTDB.all('cardio'),getPersonalRecipes()]);
+  const today=todayKey(),todayFood=food.filter(x=>x.date===today),target=Number(state.profile.proteinTarget)||170;
+  const sum=k=>todayFood.reduce((s,x)=>s+(Number(x[k])||0),0);
+  return {
+    date:today,hour:new Date().getHours(),goal:state.profile.goal||null,proteinTarget:target,
+    today:{protein:Number(sum('protein').toFixed(1)),calories:Math.round(sum('calories')),carbs:Number(sum('carbs').toFixed(1)),fat:Number(sum('fat').toFixed(1)),entries:todayFood.length},
+    cardioToday:cardio.filter(x=>x.date===today).map(x=>({type:x.type||null,distance:x.distance??null,duration:x.durationLabel||null})),
+    personalRecipes:recipes.slice(0,12).map(r=>{const t=recipeTotals(r.ingredients),p=Math.max(.01,Number(r.portions)||1);return {id:r.id,name:r.name,protein:Number((t.protein/p).toFixed(1)),calories:Math.round(t.calories/p),carbs:Number((t.carbs/p).toFixed(1)),fat:Number((t.fat/p).toFixed(1))}})
+  };
+}
+async function openNutritionProposals(){
+  showSheet(`<h2>Propositions de repas</h2><div class="nutrition-ai-loading">Je regarde ta journée et je prépare 3 idées réalistes…</div>`);
+  try{
+    const context=await nutritionProposalContext();
+    const r=await fetch('/.netlify/functions/nutrition-recipes-v1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({context})});
+    const data=await r.json();if(!r.ok)throw new Error(data.detail||data.error||'Propositions indisponibles');
+    state.nutritionSuggestions=data.suggestions||[];
+    renderNutritionProposals();
+  }catch(e){console.error(e);showSheet(`<h2>Propositions de repas</h2><p class="subtle">Je n’arrive pas à générer des propositions fiables pour le moment.</p><button class="action secondary" data-close>Fermer</button>`);}
+}
+function renderNutritionProposals(){
+  const rows=state.nutritionSuggestions||[];
+  showSheet(`<h2>Propositions de repas</h2><p class="subtle">Estimations à confirmer avant enregistrement. Choisis uniquement ce qui correspond à ta faim.</p><div class="nutrition-ai-list">${rows.map((x,i)=>`<section class="nutrition-ai-card"><div><strong>${escapeHtml(x.name)}</strong><small>${Math.round(x.calories)} kcal · ${Math.round(x.protein)} g prot. · ${Math.round(x.carbs)} g gluc. · ${Math.round(x.fat)} g lip.</small></div><p>${escapeHtml(x.ingredients.join(' · '))}</p><div class="nutrition-ai-actions"><button class="action compact" data-add-ai-meal="${i}">Ajouter ce repas</button><button class="action secondary compact" data-save-ai-recipe="${i}">Enregistrer comme recette</button></div></section>`).join('')}</div>`);
+  document.querySelectorAll('[data-add-ai-meal]').forEach(b=>b.onclick=()=>confirmNutritionSuggestion(Number(b.dataset.addAiMeal)));
+  document.querySelectorAll('[data-save-ai-recipe]').forEach(b=>b.onclick=()=>saveNutritionSuggestionRecipe(Number(b.dataset.saveAiRecipe)));
+}
+async function confirmNutritionSuggestion(i){
+  const x=(state.nutritionSuggestions||[])[i];if(!x)return;
+  const ok=confirm(`Ajouter « ${x.name} » à aujourd’hui ?\n\n${Math.round(x.calories)} kcal · ${Math.round(x.protein)} g protéines\n\nLes valeurs sont des estimations générées : tu restes libre de les modifier ensuite.`);
+  if(!ok)return;
+  await LTDB.put('food',{id:uid(),date:todayKey(),mealType:x.mealType||'dinner',description:x.name,protein:Number(x.protein)||0,calories:Number(x.calories)||0,carbs:Number(x.carbs)||0,fat:Number(x.fat)||0,water:0,classic:false,source:'companion-suggestion',createdAt:new Date().toISOString()});
+  toast('Repas ajouté après validation');document.querySelector('#sheet')?.close();render();
+}
+async function saveNutritionSuggestionRecipe(i){
+  const x=(state.nutritionSuggestions||[])[i];if(!x)return;
+  const ingredients=(x.ingredients||[]).map(name=>({name,qty:0,protein:0,calories:0,carbs:0,fat:0,source:'ai-suggestion'}));
+  await LTDB.put('memory',{id:uid(),type:'personal-recipe',name:x.name,portions:1,ingredients,estimatedMacros:{protein:x.protein,calories:x.calories,carbs:x.carbs,fat:x.fat},createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),source:'companion-suggestion'});
+  toast('Recette enregistrée · ingrédients à préciser si besoin');await personalRecipesSheet();
+}
 
 async function nutritionHistorySheet(year=null,month=null){
   const now=new Date(), y=year??state.nutritionCalendarYear??now.getFullYear(), m=month??state.nutritionCalendarMonth??now.getMonth();
