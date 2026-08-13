@@ -1767,6 +1767,11 @@ async function sendChat(){
   }catch(err){console.error(err);answer=await localCompanion(text);var companionAction=null}
   answer=cleanCompanionText(answer);
   if(!companionAction){
+    const qnorm=String(text||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    const recipeIntent=/(recette|repas|manger|mange|dejeuner|diner|collation|alimentation|alimentaire|quoi.*(manger|privilegier)|idee.*(repas|manger))/.test(qnorm);
+    if(recipeIntent) companionAction={type:'recipe',label:'Voir une recette adaptée'};
+  }
+  if(!companionAction){
     const norm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
     const a=norm(answer);
     const match=workoutLibrary().find(w=>{

@@ -243,3 +243,9 @@ Basé exclusivement sur Historique + Calendrier R1 validé.
 
 ## Fluidité IA V1 R1
 Moteur déterministe Aujourd'hui, états validés, respiration du logo, commentaires nutritionnels contextuels et garde-fous de cohérence.
+
+
+## V2.6.1 — Correctif Compagnon → Recette
+- Le Compagnon propose désormais une action recette pour les demandes liées à l’alimentation/repas.
+- La fonction `nutrition-recipes-v1` est bien incluse lors du build Netlify.
+- Cache PWA incrémenté pour forcer la prise en compte du correctif.
