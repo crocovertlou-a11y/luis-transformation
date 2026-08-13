@@ -607,7 +607,9 @@ async function companionSnapshot(){
     recentForce:recentWorkouts.slice(0,8).map(w=>({date:w.date,name:w.name||null,duration:w.durationLabel||null,effort:w.effort??null})),
     recentCardio:recentCardio.slice(0,8).map(c=>({date:c.date,type:c.type||null,name:c.name||null,distance:c.distance??null,duration:c.durationLabel||null})),
     recentCheckins:recentCheckins.slice(0,7).map(c=>({date:c.date,sleep:c.sleep??null,stress:c.stress??null,energy:c.energy??null,recovery:c.recovery??null,hunger:c.hunger??null,weight:c.weight??null,waist:c.waist??null})),
-    dailyDecision:decision
+    dailyDecision:decision,
+    availableWorkouts:workoutLibrary().map(w=>({id:w.id,title:w.title,subtitle:w.subtitle,tags:w.tags||[],plan:w.plan})),
+    allowedExercises:[...new Set(workoutLibrary().flatMap(w=>w.plan.map(e=>e.name)))]
   };
   const brief=companionBriefV22(context);
   return {headline:brief.title,brief,context};
@@ -648,7 +650,7 @@ async function renderCompanion(){
       <button class="action secondary compact" data-companion-prompt="Que dois-je encore privilégier côté alimentation aujourd’hui ?">Mon alimentation</button>
     </div>
   </div>
-  <div class="card chat" id="chat">${chat.length?chat.map(x=>`<div class="bubble ${x.role==='user'?'user':'companion'}">${escapeHtml(x.text)}</div>`).join(''):'<div class="bubble companion">Je peux maintenant répondre en tenant compte de ta journée réelle, sans inventer les données qui manquent.</div>'}</div>
+  <div class="card chat" id="chat">${chat.length?chat.map(x=>`<div class="bubble ${x.role==='user'?'user':'companion'}">${escapeHtml(x.text)}${x.role==='companion'&&x.action?`<button class="companion-inline-action" data-companion-chat-action="${escapeHtml(x.action.type||'')}" data-companion-workout="${escapeHtml(x.action.workoutId||'')}">${escapeHtml(x.action.label||'Voir')}</button>`:''}</div>`).join(''):'<div class="bubble companion">Je peux maintenant répondre en tenant compte de ta journée réelle, sans inventer les données qui manquent.</div>'}</div>
   <div class="chatbar"><input id="chatInput" placeholder="Pose une question sur ta journée…"><button id="sendChat">Envoyer</button></div>`;
 }
 
@@ -656,7 +658,7 @@ async function renderProfile(){
   return `<section class="hero"><div class="profile-head"><svg class="big-logo" viewBox="0 0 64 64"><path d="M15 43.5A22 22 0 0 1 44.5 14" class="fluidity-arc"/><path d="M49.2 20.2A22 22 0 0 1 19.8 50" class="fluidity-arc"/></svg><div><div class="hello" style="font-size:28px;margin:0">${escapeHtml(state.profile.firstName)}</div><div class="subtle">${escapeHtml(state.profile.goal||'Ton évolution')}</div></div></div></section>
   <div class="card"><div class="card-kicker">Ce que tu sais de moi</div><div class="list"><button class="list-row history-button" data-open="goalEdit"><div><strong>Objectif principal</strong><div class="status">${escapeHtml(state.profile.goal||'À définir')}</div></div><span class="pill">Modifier</span></button><div class="list-row"><div><strong>Alimentation</strong><div class="status">${state.profile.nutritionEnabled?'Accompagnement actif':'Masquée'}</div></div><span class="pill">Choix</span></div></div><p class="subtle">Fluidité peut te proposer d’ajuster le cap, mais ne change jamais ton objectif principal sans ton accord.</p></div>
   <div class="card"><div class="switch-row"><div><strong>Accompagnement alimentation</strong><div class="status">Masqué lorsqu’il est désactivé.</div></div><input id="nutritionToggle" class="toggle" type="checkbox" ${state.profile.nutritionEnabled?'checked':''}></div></div>
-  <div class="card"><div class="card-kicker">Tes données</div><h3>Export / Import</h3><p class="subtle">Tes données restent récupérables.</p><div class="card-actions"><button class="action" id="exportBtn">Exporter JSON</button><label class="action secondary">Importer JSON<input id="importInput" type="file" accept="application/json" hidden></label></div></div><div class="version">Luis Transformation · Build 0.9.1.2</div>`;
+  <div class="card"><div class="card-kicker">Tes données</div><h3>Export / Import</h3><p class="subtle">Tes données restent récupérables.</p><div class="card-actions"><button class="action" id="exportBtn">Exporter JSON</button><label class="action secondary">Importer JSON<input id="importInput" type="file" accept="application/json" hidden></label></div></div><div class="version">Luis Transformation · V2.3</div>`;
 }
 function bindPage(){
   document.querySelectorAll('[data-home-view]').forEach(b=>b.addEventListener('click',()=>{state.homeView=b.dataset.homeView;render();}));
@@ -667,6 +669,13 @@ function bindPage(){
   $('#sendChat')?.addEventListener('click',sendChat); $('#chatInput')?.addEventListener('keydown',e=>{if(e.key==='Enter')sendChat();});
   document.querySelectorAll('[data-companion-prompt]').forEach(b=>b.addEventListener('click',()=>{const input=$('#chatInput');if(input){input.value=b.dataset.companionPrompt;sendChat();}}));
   document.querySelectorAll('[data-companion-action]').forEach(b=>b.addEventListener('click',()=>{const a=b.dataset.companionAction;if(a==='training')navigate('training');else if(a==='checkin')openSheet('checkin');}));
+  document.querySelectorAll('[data-companion-chat-action]').forEach(b=>b.addEventListener('click',()=>{
+    const a=b.dataset.companionChatAction,id=b.dataset.companionWorkout;
+    if(a==='open_workout'&&id){const w=workoutById(id);if(w)workoutDetailSheet(w);}
+    else if(a==='training')navigate('training');
+    else if(a==='nutrition')navigate('nutrition');
+    else if(a==='checkin')openSheet('checkin');
+  }));
   $('#nutritionToggle')?.addEventListener('change',async e=>{state.profile.nutritionEnabled=e.target.checked; await LTDB.put('profile',state.profile); toast(e.target.checked?'Alimentation activée':'Alimentation masquée'); render();});
   $('#exportBtn')?.addEventListener('click',exportData); $('#importInput')?.addEventListener('change',importData);
 }
@@ -1614,9 +1623,9 @@ async function sendChat(){
   try{
     const history=(await LTDB.all('events')).filter(x=>x.type==='CHAT').sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||'')).slice(-6).map(x=>({role:x.role,text:x.text}));
     const r=await fetch('/.netlify/functions/companion-v1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:text,context:snap.context,history})});
-    const data=await r.json(); if(!r.ok)throw new Error(data.detail||data.error||'IA indisponible'); answer=data.answer||'Je n’ai pas de réponse utile pour le moment.';
-  }catch(err){console.error(err);answer=await localCompanion(text)}
-  await LTDB.put('events',{id:uid(),type:'CHAT',role:'companion',text:answer,createdAt:new Date().toISOString()});render();
+    const data=await r.json(); if(!r.ok)throw new Error(data.detail||data.error||'IA indisponible'); answer=data.answer||'Je n’ai pas de réponse utile pour le moment.'; var companionAction=data.action||null;
+  }catch(err){console.error(err);answer=await localCompanion(text);var companionAction=null}
+  await LTDB.put('events',{id:uid(),type:'CHAT',role:'companion',text:answer,action:companionAction,createdAt:new Date().toISOString()});render();
 }
 async function localCompanion(text){
   const snap=await companionSnapshot(),b=snap.brief;

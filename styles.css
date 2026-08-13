@@ -349,3 +349,7 @@ button.done-tile:active{transform:scale(.985)}
 .companion-v22-brief p{margin:0;line-height:1.5}
 .companion-quick-grid{display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px}
 .companion-v22-questions .action{justify-content:flex-start;text-align:left}
+
+/* Fluidité V2.3 — actionable conversation */
+.companion-inline-action{display:block;margin-top:10px;border:0;border-radius:12px;padding:10px 12px;font:inherit;font-weight:700;cursor:pointer;background:rgba(111,78,205,.12);color:inherit}
+.bubble.user .companion-inline-action{display:none}
