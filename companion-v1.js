@@ -1,50 +1,95 @@
+function jsonResponse(statusCode,payload){
+  return {statusCode,headers:{'Content-Type':'application/json','Cache-Control':'no-store'},body:JSON.stringify(payload)};
+}
+function extractText(data){
+  return (data?.candidates?.[0]?.content?.parts||[]).map(p=>p?.text||'').join('').trim();
+}
+function parseStructured(text){
+  const raw=String(text||'').trim();
+  if(!raw) throw new Error('Réponse IA vide');
+  const cleaned=raw.replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'').trim();
+  try{return JSON.parse(cleaned)}catch(_){
+    const a=cleaned.indexOf('{'),b=cleaned.lastIndexOf('}');
+    if(a>=0&&b>a) return JSON.parse(cleaned.slice(a,b+1));
+    throw new Error('JSON IA invalide');
+  }
+}
+async function callGemini(apiKey,model,prompt,structured=true){
+  const generationConfig=structured?{responseMimeType:'application/json'}:{};
+  const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,{
+    method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':apiKey},
+    body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig})
+  });
+  const data=await r.json().catch(()=>({}));
+  if(!r.ok){
+    const e=new Error(data?.error?.message||`Gemini HTTP ${r.status}`);e.httpStatus=r.status;throw e;
+  }
+  const text=extractText(data);
+  if(!text){
+    const reason=data?.candidates?.[0]?.finishReason||data?.promptFeedback?.blockReason||'EMPTY';
+    throw new Error(`Réponse Gemini vide (${reason})`);
+  }
+  return text;
+}
 exports.handler=async function(event){
-  if(event.httpMethod!=='POST')return{statusCode:405,body:JSON.stringify({error:'METHOD_NOT_ALLOWED'})};
-  const apiKey=process.env.GEMINI_API_KEY;if(!apiKey)return{statusCode:503,body:JSON.stringify({error:'AI_NOT_CONFIGURED'})};
+  if(event.httpMethod!=='POST')return jsonResponse(405,{error:'METHOD_NOT_ALLOWED'});
+  const apiKey=process.env.GEMINI_API_KEY;if(!apiKey)return jsonResponse(503,{error:'AI_NOT_CONFIGURED'});
   try{
     const {question,context,history}=JSON.parse(event.body||'{}');
+    const q=String(question||'').trim();
+    if(!q)return jsonResponse(400,{error:'QUESTION_REQUIRED'});
     const model='gemini-3-flash-preview';
-    const prompt=`Tu es le Compagnon de Fluidité. Tu n'es pas un catalogue de réponses ni un coach qui récite une règle. Tu réponds à la question réellement posée en raisonnant uniquement à partir des faits structurés fournis.
+    const prompt=`Tu es le Compagnon de Fluidité. Réponds à la question actuelle, pas à une recommandation générique de la journée.
 
-ORDRE DE RAISONNEMENT (interne, ne l'affiche pas)
-1. Comprends la QUESTION ACTUELLE avant tout. Si elle contient un sujet explicite (abdos, alimentation, cardio, objectif, sommeil, etc.), c'est une NOUVELLE question même si une conversation existe avant.
-2. Une relance courte et référentielle comme « t'es sûr ? », « pourquoi ? », « tu peux préciser ? », « et donc ? » reprend le dernier échange. Dans ce cas, réévalue réellement l'argument : justifie, nuance ou corrige. Ne recopie pas simplement la réponse précédente.
-3. Choisis seulement les données pertinentes à cette question. dailyDecision est un fait de contexte, jamais une réponse par défaut et jamais une instruction à répéter.
-4. Pour progression, objectif, trajectoire ou tendances, utilise context.trends (7/14/30 jours). Respecte la couverture : peu de données = prudence explicite. Une variation isolée n'est pas une tendance.
-5. Pour une question précise sur un groupe musculaire/exercice, réponds d'abord à ce sujet à partir de recentForce/availableWorkouts/allowedExercises. Ne détourne pas automatiquement vers la séance du jour.
-6. Cardio : reste léger, observe l'équilibre et la récupération; n'invente pas de séance de course.
-7. Alimentation : utilise les apports réellement enregistrés; une recette peut être proposée si cela répond directement à la demande.
+PRIORITÉS
+1. La QUESTION ACTUELLE est toujours prioritaire. Si elle nomme un sujet (abdos, alimentation, cardio, objectif, sommeil, poids, etc.), réponds à CE sujet.
+2. Une relance très courte comme « t'es sûr ? », « pourquoi ? », « et donc ? » reprend le dernier échange de l'historique et doit réellement le réévaluer, pas le recopier.
+3. Utilise uniquement les faits utiles du contexte. context.dailyDecision est seulement un fait parmi d'autres : ne le récite jamais par défaut.
+4. Pour objectif/progression/tendances, utilise context.trends 7/14/30 jours et indique clairement si la couverture est insuffisante.
+5. Pour un groupe musculaire précis, utilise recentForce, availableWorkouts et allowedExercises; réponds d'abord à la question musculaire.
+6. Pour l'alimentation, utilise nutritionToday et proteinTarget. Si la demande porte sur quoi manger/une recette, une action recipe peut être utile.
+7. Pour le cardio, reste léger et observe l'équilibre/récupération; n'invente pas de séance de course.
 
 STYLE
-- Français naturel, chaleureux, direct. Réponds d'abord à la question.
-- Varie spontanément la forme et le vocabulaire. Ne suis pas un gabarit fixe, n'utilise pas systématiquement la même ouverture/conclusion.
-- En général 2 à 5 phrases. Tu peux être plus court pour une relance simple et un peu plus développé pour une tendance, sans faire de liste ni de Markdown.
-- Ne mentionne que les chiffres qui aident réellement la réponse.
-- Ne dis jamais « je précise ma réponse précédente » comme formule automatique.
-- N'invente aucune donnée, causalité, diagnostic ou certitude. Si tu manques de recul, dis précisément sur quoi.
-- L'utilisateur reste libre.
+Français naturel, chaleureux, direct, 2 à 5 phrases en général. Varie le vocabulaire et la structure. Pas de Markdown, pas de réponse formatée en gabarit. Ne cite un chiffre que s'il aide réellement. N'invente rien. Pas de diagnostic ni de certitude excessive.
 
 ACTIONS
-Une action est exceptionnelle et doit découler explicitement de la demande, pas d'un mot dans ta réponse.
-- prepare_workout : seulement si l'utilisateur demande une séance/recommandation d'entraînement et qu'un workoutId exact de context.availableWorkouts convient.
-- recipe : si l'utilisateur demande quoi manger, une idée de repas ou une recette et qu'une fiche recette est utile.
-- training/nutrition/checkin : seulement si ouvrir cet écran répond directement à la demande.
-- Pour tendances, objectif, relance conversationnelle, question générale cardio, ou question « dois-je faire plus d'abdos ? », action=null sauf demande explicite d'ouvrir/préparer quelque chose.
-Tu ne modifies jamais les données toi-même.
+Une action est exceptionnelle et doit être demandée ou directement utile.
+prepare_workout seulement si l'utilisateur demande une séance et avec un workoutId exact de context.availableWorkouts.
+recipe si l'utilisateur demande quoi manger, une idée de repas ou une recette.
+training/nutrition/checkin uniquement si ouvrir cet écran répond directement à la demande.
+Pour objectif/tendances, relance conversationnelle ou « dois-je faire plus d'abdos ? », action=null sauf demande explicite.
 
-Retourne UNIQUEMENT du JSON valide :
+Retourne UNIQUEMENT un objet JSON valide :
 {"answer":"réponse naturelle","action":null}
-ou {"answer":"réponse naturelle","action":{"type":"prepare_workout|recipe|training|nutrition|checkin","label":"...","workoutId":"..."}}
+ou
+{"answer":"réponse naturelle","action":{"type":"prepare_workout|recipe|training|nutrition|checkin","label":"...","workoutId":"..."}}
 
-CONTEXTE FACTUEL:\n${JSON.stringify(context||{})}\nHISTORIQUE AVANT LA QUESTION ACTUELLE:\n${JSON.stringify(Array.isArray(history)?history.slice(-8):[])}\nQUESTION ACTUELLE:\n${String(question||'')}`;
-    const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':apiKey},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{responseMimeType:'application/json',temperature:0.8}})});
-    const data=await r.json();
-    if(!r.ok)return{statusCode:502,body:JSON.stringify({error:'AI_SERVICE_ERROR',detail:data?.error?.message||'',model})};
-    const text=(data?.candidates?.[0]?.content?.parts||[]).map(p=>p.text||'').join('').trim();
-    const out=JSON.parse(text);if(!out?.answer)throw new Error('Réponse vide');
-    let action=out.action||null;const allowed=new Set(['prepare_workout','recipe','training','nutrition','checkin']);if(action&&!allowed.has(action.type))action=null;
-    if(action?.type==='prepare_workout'){const ids=new Set((context?.availableWorkouts||[]).map(w=>String(w.id)));if(!ids.has(String(action.workoutId||'')))action=null;}
+CONTEXTE FACTUEL:\n${JSON.stringify(context||{})}\nHISTORIQUE AVANT LA QUESTION ACTUELLE:\n${JSON.stringify(Array.isArray(history)?history.slice(-8):[])}\nQUESTION ACTUELLE:\n${q}`;
+
+    let out;
+    try{
+      out=parseStructured(await callGemini(apiKey,model,prompt,true));
+    }catch(firstErr){
+      // Deuxième tentative plus tolérante : même question/contexte, sans mode JSON forcé.
+      const retryPrompt=`${prompt}\n\nIMPORTANT: réponds maintenant avec UNIQUEMENT le JSON demandé, sans balises ni commentaire.`;
+      try{ out=parseStructured(await callGemini(apiKey,model,retryPrompt,false)); }
+      catch(secondErr){
+        return jsonResponse(502,{error:'AI_SERVICE_ERROR',detail:secondErr.message||firstErr.message||'Erreur Gemini',firstAttempt:firstErr.message||'',version:'2.7.2-autopsy'});
+      }
+    }
+    if(!out?.answer)throw new Error('Réponse sans answer');
+    let action=out.action||null;
+    const allowed=new Set(['prepare_workout','recipe','training','nutrition','checkin']);
+    if(action&&!allowed.has(action.type))action=null;
+    if(action?.type==='prepare_workout'){
+      const ids=new Set((context?.availableWorkouts||[]).map(w=>String(w.id)));
+      if(!ids.has(String(action.workoutId||'')))action=null;
+    }
     if(action)action={type:action.type,label:String(action.label||'Ouvrir').slice(0,60),workoutId:action.workoutId?String(action.workoutId):''};
-    return{statusCode:200,headers:{'Content-Type':'application/json','Cache-Control':'no-store'},body:JSON.stringify({answer:String(out.answer),action,model,version:'2.7-generative'})};
-  }catch(e){console.error(e);return{statusCode:500,body:JSON.stringify({error:'COMPANION_FAILED',detail:e.message||''})}}
+    return jsonResponse(200,{answer:String(out.answer),action,model,version:'2.7.2-autopsy'});
+  }catch(e){
+    console.error('COMPANION_FAILED',e);
+    return jsonResponse(500,{error:'COMPANION_FAILED',detail:e.message||'Erreur inconnue',version:'2.7.2-autopsy'});
+  }
 };

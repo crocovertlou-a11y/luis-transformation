@@ -275,3 +275,6 @@ Moteur déterministe Aujourd'hui, états validés, respiration du logo, commenta
 - Ajout de « Mon évolution » dans les accès rapides du Compagnon.
 - Les photos restent stockées dans Évolution mais sont accessibles depuis le Compagnon, avec accès direct à la comparaison/analyse IA et à l’ajout d’une photo.
 - Cache PWA incrémenté.
+
+
+V2.7.2 Autopsy: suppression du fallback silencieux dailyDecision, double tentative Gemini, parsing JSON robuste, erreurs IA visibles pour diagnostic.

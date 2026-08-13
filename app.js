@@ -1833,7 +1833,12 @@ async function sendChat(){
   try{
     const r=await fetch('/.netlify/functions/companion-v1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:text,context:snap.context,history:priorHistory})});
     const data=await r.json(); if(!r.ok)throw new Error(data.detail||data.error||'IA indisponible'); answer=data.answer||'Je n’ai pas de réponse utile pour le moment.'; companionAction=data.action||null;
-  }catch(err){console.error(err);answer=await localCompanion(text);companionAction=null}
+  }catch(err){
+    console.error('COMPANION_REMOTE_FAILED',err);
+    answer='Je n’ai pas réussi à analyser ta question. Réessaie dans un instant.';
+    companionAction=null;
+    toast(`Compagnon indisponible · ${String(err?.message||'erreur IA').slice(0,90)}`);
+  }
   answer=cleanCompanionText(answer);
   // Les actions sont décidées par le Compagnon à partir de l'intention, jamais déduites d'un mot présent dans sa réponse.
   await LTDB.put('events',{id:uid(),type:'CHAT',role:'companion',text:answer,action:companionAction,createdAt:new Date().toISOString()});render();
