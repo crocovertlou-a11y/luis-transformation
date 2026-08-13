@@ -608,6 +608,13 @@ async function companionSnapshot(){
     recentCardio:recentCardio.slice(0,8).map(c=>({date:c.date,type:c.type||null,name:c.name||null,distance:c.distance??null,duration:c.durationLabel||null})),
     recentCheckins:recentCheckins.slice(0,7).map(c=>({date:c.date,sleep:c.sleep??null,stress:c.stress??null,energy:c.energy??null,recovery:c.recovery??null,hunger:c.hunger??null,weight:c.weight??null,waist:c.waist??null})),
     dailyDecision:decision,
+    continuity:{
+      forceLast7:recentWorkouts.filter(w=>daysAgo(w.date)<=7).length,
+      cardioLast7:recentCardio.filter(c=>daysAgo(c.date)<=7).length,
+      checkinsLast7:recentCheckins.length,
+      lastForce:recentWorkouts[0]?{date:recentWorkouts[0].date,name:recentWorkouts[0].name||null}:null,
+      lastCardio:recentCardio[0]?{date:recentCardio[0].date,type:recentCardio[0].type||null,name:recentCardio[0].name||null,distance:recentCardio[0].distance??null}:null
+    },
     availableWorkouts:workoutLibrary().map(w=>({id:w.id,title:w.title,subtitle:w.subtitle,tags:w.tags||[],plan:w.plan})),
     allowedExercises:[...new Set(workoutLibrary().flatMap(w=>w.plan.map(e=>e.name)))]
   };
@@ -702,7 +709,7 @@ function bindPage(){
   document.querySelectorAll('[data-companion-action]').forEach(b=>b.addEventListener('click',()=>{const a=b.dataset.companionAction;if(a==='training')navigate('training');else if(a==='checkin')openSheet('checkin');}));
   document.querySelectorAll('[data-companion-chat-action]').forEach(b=>b.addEventListener('click',()=>{
     const a=b.dataset.companionChatAction,id=b.dataset.companionWorkout;
-    if(a==='open_workout'&&id){const w=workoutById(id);if(w)workoutDetailSheet(w);}
+    if((a==='open_workout'||a==='prepare_workout')&&id){prepareCompanionAction({type:'prepare_workout',workoutId:id});}
     else if(a==='training')navigate('training');
     else if(a==='nutrition')navigate('nutrition');
     else if(a==='checkin')openSheet('checkin');
@@ -1668,6 +1675,20 @@ async function openCompanionHistoryDay(day){
   </div>`);
   document.querySelector('#historyBack')?.addEventListener('click',openCompanionHistory);
 }
+async function prepareCompanionAction(action){
+  if(!action||!action.type)return;
+  if(action.type==='prepare_workout'){
+    const w=workoutById(action.workoutId);
+    if(!w){toast('Séance indisponible');return}
+    window.__companionPreparedWorkout=w.id;
+    workoutDetailSheet(w);
+    toast('Séance préparée · rien n’est enregistré sans ta validation');
+    return;
+  }
+  if(action.type==='nutrition')navigate('nutrition');
+  else if(action.type==='training')navigate('training');
+  else if(action.type==='checkin')openSheet('checkin');
+}
 async function sendChat(){
   const input=$('#chatInput'),text=input?.value.trim();if(!text)return;
   input.disabled=true;$('#sendChat').disabled=true;
@@ -1686,7 +1707,7 @@ async function sendChat(){
       const title=norm(w.title),id=norm(w.id);
       return (title.length>=4&&a.includes(title))||(id.length>=4&&a.includes(id));
     });
-    if(match)companionAction={type:'open_workout',label:`Ouvrir ${match.title}`,workoutId:match.id};
+    if(match)companionAction={type:'prepare_workout',label:`Préparer ${match.title}`,workoutId:match.id};
   }
   const recentCompanion=(await LTDB.all('events')).filter(x=>x.type==='CHAT'&&x.role==='companion').sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''))[0];
   if(recentCompanion&&companionFingerprint(recentCompanion.text)===companionFingerprint(answer)&&!companionAction){
