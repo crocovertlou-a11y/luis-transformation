@@ -58,7 +58,7 @@ Une action est exceptionnelle et doit être demandée ou directement utile.
 prepare_workout seulement si l'utilisateur demande une séance et avec un workoutId exact de context.availableWorkouts.
 recipe si l'utilisateur demande quoi manger, une idée de repas ou une recette.
 training/nutrition/checkin uniquement si ouvrir cet écran répond directement à la demande.
-Pour objectif/tendances, relance conversationnelle ou « dois-je faire plus d'abdos ? », action=null sauf demande explicite.
+Pour objectif/tendances/pilotage, relance conversationnelle ou « dois-je faire plus d'abdos ? », action=null sauf demande explicite.
 
 Retourne UNIQUEMENT un objet JSON valide :
 {"answer":"réponse naturelle","action":null}
@@ -75,7 +75,7 @@ CONTEXTE FACTUEL:\n${JSON.stringify(context||{})}\nHISTORIQUE AVANT LA QUESTION 
       const retryPrompt=`${prompt}\n\nIMPORTANT: réponds maintenant avec UNIQUEMENT le JSON demandé, sans balises ni commentaire.`;
       try{ out=parseStructured(await callGemini(apiKey,model,retryPrompt,false)); }
       catch(secondErr){
-        return jsonResponse(502,{error:'AI_SERVICE_ERROR',detail:secondErr.message||firstErr.message||'Erreur Gemini',firstAttempt:firstErr.message||'',version:'2.7.2-autopsy'});
+        return jsonResponse(502,{error:'AI_SERVICE_ERROR',detail:secondErr.message||firstErr.message||'Erreur Gemini',firstAttempt:firstErr.message||'',version:'2.9-pilotage'});
       }
     }
     if(!out?.answer)throw new Error('Réponse sans answer');
@@ -87,9 +87,9 @@ CONTEXTE FACTUEL:\n${JSON.stringify(context||{})}\nHISTORIQUE AVANT LA QUESTION 
       if(!ids.has(String(action.workoutId||'')))action=null;
     }
     if(action)action={type:action.type,label:String(action.label||'Ouvrir').slice(0,60),workoutId:action.workoutId?String(action.workoutId):''};
-    return jsonResponse(200,{answer:String(out.answer),action,model,version:'2.7.2-autopsy'});
+    return jsonResponse(200,{answer:String(out.answer),action,model,version:'2.9-pilotage'});
   }catch(e){
     console.error('COMPANION_FAILED',e);
-    return jsonResponse(500,{error:'COMPANION_FAILED',detail:e.message||'Erreur inconnue',version:'2.7.2-autopsy'});
+    return jsonResponse(500,{error:'COMPANION_FAILED',detail:e.message||'Erreur inconnue',version:'2.9-pilotage'});
   }
 };
