@@ -646,6 +646,10 @@ function companionFingerprint(text){
 }
 async function renderCompanion(){
   const messages=await LTDB.all('events');
+  for(const m of messages.filter(x=>x.type==='CHAT'&&x.role==='companion'&&/\*\*|__/.test(String(x.text||'')))){
+    const cleaned=cleanCompanionText(m.text);
+    if(cleaned!==m.text)await LTDB.put('events',{...m,text:cleaned});
+  }
   const chat=messages.filter(x=>x.type==='CHAT').sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||'')).slice(-8);
   const snap=await companionSnapshot(),b=snap.brief;
   return `<section class="hero"><div class="companion-page-mark">${companionMark("companion-mark-large")}</div><div class="hello">Compagnon</div><div class="subtle">Je relie ton ressenti, tes entraînements, ton cardio et ton alimentation.</div></section>
@@ -1640,6 +1644,15 @@ async function sendChat(){
     const data=await r.json(); if(!r.ok)throw new Error(data.detail||data.error||'IA indisponible'); answer=data.answer||'Je n’ai pas de réponse utile pour le moment.'; var companionAction=data.action||null;
   }catch(err){console.error(err);answer=await localCompanion(text);var companionAction=null}
   answer=cleanCompanionText(answer);
+  if(!companionAction){
+    const norm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+    const a=norm(answer);
+    const match=workoutLibrary().find(w=>{
+      const title=norm(w.title),id=norm(w.id);
+      return (title.length>=4&&a.includes(title))||(id.length>=4&&a.includes(id));
+    });
+    if(match)companionAction={type:'open_workout',label:`Ouvrir ${match.title}`,workoutId:match.id};
+  }
   const recentCompanion=(await LTDB.all('events')).filter(x=>x.type==='CHAT'&&x.role==='companion').sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''))[0];
   if(recentCompanion&&companionFingerprint(recentCompanion.text)===companionFingerprint(answer)&&!companionAction){
     answer='Je garde la même recommandation. Dis-moi simplement ce que tu veux ajuster : durée, matériel ou intensité.';
