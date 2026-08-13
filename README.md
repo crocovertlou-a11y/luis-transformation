@@ -275,3 +275,10 @@ Moteur déterministe Aujourd'hui, états validés, respiration du logo, commenta
 - Ajout de « Mon évolution » dans les accès rapides du Compagnon.
 - Les photos restent stockées dans Évolution mais sont accessibles depuis le Compagnon, avec accès direct à la comparaison/analyse IA et à l’ajout d’une photo.
 - Cache PWA incrémenté.
+
+## V2.7 — Tendances
+- Le Compagnon reçoit des synthèses locales sur 7, 14 et 30 jours.
+- Signaux croisés : poids/tour de taille, ressenti, Force, Cardio et alimentation/protéines.
+- Seuils de couverture pour éviter de transformer une donnée isolée en tendance.
+- Une analyse de tendance reste observationnelle : aucune action automatique et aucun diagnostic.
+- Ajout du raccourci « Mes tendances » dans le Compagnon, sans nouvel écran.

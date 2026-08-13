@@ -4,7 +4,7 @@ exports.handler=async function(event){
   try{
     const {question,context,history}=JSON.parse(event.body||'{}');
     const model='gemini-3-flash-preview';
-    const prompt=`Tu es le Compagnon Action de Luis Transformation V2.4.
+    const prompt=`Tu es le Compagnon Fluidité V2.7 — Tendances.
 Tu aides à interpréter uniquement les données du contexte: ressenti, récupération, force, cardio, alimentation et objectif.
 
 RÈGLES
@@ -17,7 +17,13 @@ RÈGLES
 - Si tu recommandes explicitement une séance existante, action DOIT être prepare_workout avec son vrai workoutId et un libellé court comme « Préparer Haut du corps ».
 - Pour un exercice, utilise uniquement context.allowedExercises.
 - Si l'utilisateur précise une contrainte (temps, sans matériel, élastique, récupération), sélectionne le programme disponible qui correspond le mieux.
-- Utilise context.continuity pour tenir compte des derniers jours sans culpabiliser ni surinterpréter.\n- CARDIO : reste volontairement léger. Observe surtout l'équilibre récent Force/Cardio, la dernière activité Cardio et, lorsqu'elles existent, ses données de durée/distance/FC. Ne transforme pas une absence de cardio en injonction et n'invente jamais une séance de course.\n- Si l'utilisateur demande son cardio : si Force domine nettement et que le cardio est peu sollicité, signale doucement qu'une activité cardio tranquille peut compléter la semaine et demande si quelque chose est prévu; si le cardio récent est déjà régulier, valorise l'équilibre sans pousser à en faire plus; si une activité cardio est enregistrée aujourd'hui, reconnais qu'elle est faite et privilégie récupération/équilibre. Si les données ne montrent rien d'utile, dis simplement que l'équilibre paraît cohérent ou que tu manques encore de recul.\n- Pour un conseil Cardio, action doit rester null : pas de bouton, pas de séance inventée, pas de popup.\n- Pas de diagnostic médical. Une variation isolée n'est jamais une certitude.
+- Utilise context.continuity pour tenir compte des derniers jours sans culpabiliser ni surinterpréter.
+- TENDANCES : context.trends contient des fenêtres 7, 14 et 30 jours calculées localement. Appuie-toi sur elles pour distinguer une tendance d’une variation ponctuelle.
+- Ne qualifie jamais de tendance un signal avec moins de 4 check-ins, ou moins de 4 jours renseignés pour l’alimentation, sur la fenêtre concernée. Si la couverture est insuffisante, dis simplement que tu manques de recul.
+- Croise les signaux quand c’est utile : poids/tour de taille, sommeil/énergie/stress, Force/Cardio et protéines. Une corrélation n’est pas une cause : formule en observation, jamais en certitude.
+- Sur une question de tendance, privilégie 14 jours pour le signal principal, 7 jours pour le récent et 30 jours pour confirmer le recul. Ne commente pas chaque métrique : donne au maximum 1 ou 2 constats réellement utiles.
+- Si rien de significatif ne ressort, dis-le clairement plutôt que de fabriquer un conseil. Une mauvaise nuit, une pesée isolée ou une seule séance ne justifient pas une alerte.
+- Sur une simple analyse de tendances, action doit rester null sauf si l’utilisateur demande explicitement d’agir.\n- CARDIO : reste volontairement léger. Observe surtout l'équilibre récent Force/Cardio, la dernière activité Cardio et, lorsqu'elles existent, ses données de durée/distance/FC. Ne transforme pas une absence de cardio en injonction et n'invente jamais une séance de course.\n- Si l'utilisateur demande son cardio : si Force domine nettement et que le cardio est peu sollicité, signale doucement qu'une activité cardio tranquille peut compléter la semaine et demande si quelque chose est prévu; si le cardio récent est déjà régulier, valorise l'équilibre sans pousser à en faire plus; si une activité cardio est enregistrée aujourd'hui, reconnais qu'elle est faite et privilégie récupération/équilibre. Si les données ne montrent rien d'utile, dis simplement que l'équilibre paraît cohérent ou que tu manques encore de recul.\n- Pour un conseil Cardio, action doit rester null : pas de bouton, pas de séance inventée, pas de popup.\n- Pas de diagnostic médical. Une variation isolée n'est jamais une certitude.
 - Si une information manque, dis ce qui manque.
 - L'utilisateur reste libre.
 
@@ -49,10 +55,11 @@ ${String(question||'')}`;
     const allowedTypes=new Set(['prepare_workout','recipe','training','nutrition','checkin']);
     if(action&&!allowedTypes.has(action.type))action=null;
     const normQuestion=String(question||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    const trendIntent=/(tendance|7.*14.*30|derniers jours|dernieres semaines|evolution.*(semaine|mois)|progression.*(semaine|mois))/.test(normQuestion);
     const cardioBalanceIntent=/(equilibre.*(cardio|force)|(cardio|force).*(equilibre)|(cardio.*force|force.*cardio)|mon cardio|cote cardio)/.test(normQuestion);
     const recipeIntent=/(recette|repas|manger|mange|dejeuner|diner|collation|alimentation|alimentaire|quoi.*(manger|privilegier)|idee.*(repas|manger))/.test(normQuestion);
     // Cardio/Force balance is an observation-only intent: never attach a workout or other action.
-    if(cardioBalanceIntent) action=null;
+    if(trendIntent||cardioBalanceIntent) action=null;
     else if(recipeIntent && action?.type!=='prepare_workout') action={type:'recipe',label:'Voir une recette adaptée'};
     if(action?.type==='prepare_workout'){
       const ids=new Set((context?.availableWorkouts||[]).map(w=>String(w.id)));
@@ -68,6 +75,6 @@ ${String(question||'')}`;
       if(match)action={type:'prepare_workout',label:`Préparer ${match.title}`,workoutId:String(match.id)};
     }
     if(action)action={type:action.type,label:String(action.label||'Ouvrir').slice(0,60),workoutId:action.workoutId?String(action.workoutId):''};
-    return{statusCode:200,headers:{'Content-Type':'application/json','Cache-Control':'no-store'},body:JSON.stringify({answer:String(out.answer),action,model,version:'2.6.3.1'})};
+    return{statusCode:200,headers:{'Content-Type':'application/json','Cache-Control':'no-store'},body:JSON.stringify({answer:String(out.answer),action,model,version:'2.7.0'})};
   }catch(e){console.error(e);return{statusCode:500,body:JSON.stringify({error:'COMPANION_FAILED',detail:e.message||''})}}
 };

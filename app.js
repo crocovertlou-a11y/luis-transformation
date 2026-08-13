@@ -584,6 +584,40 @@ function exerciseJournal(workouts){
   }
   return rows.join('');
 }
+function trendAverage(rows,key){
+  const vals=rows.map(x=>Number(x?.[key])).filter(Number.isFinite);
+  return vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:null;
+}
+function trendWindowSummary(days,checkins,workouts,cardio,food,proteinTarget){
+  const ci=checkins.filter(x=>daysAgo(x.date)>=0&&daysAgo(x.date)<days);
+  const wo=workouts.filter(x=>daysAgo(x.date)>=0&&daysAgo(x.date)<days);
+  const ca=cardio.filter(x=>daysAgo(x.date)>=0&&daysAgo(x.date)<days);
+  const fo=food.filter(x=>daysAgo(x.date)>=0&&daysAgo(x.date)<days);
+  const dailyFood={};
+  for(const x of fo){
+    if(!dailyFood[x.date])dailyFood[x.date]={protein:0,calories:0,entries:0};
+    dailyFood[x.date].protein+=Number(x.protein)||0; dailyFood[x.date].calories+=Number(x.calories)||0; dailyFood[x.date].entries++;
+  }
+  const foodDays=Object.values(dailyFood), proteinDays=foodDays.filter(x=>x.entries>0);
+  const half=Math.max(2,Math.floor(days/2));
+  const recent=ci.filter(x=>daysAgo(x.date)<half), previous=ci.filter(x=>daysAgo(x.date)>=half&&daysAgo(x.date)<days);
+  const delta=(key)=>{const a=trendAverage(recent,key),b=trendAverage(previous,key);return a!=null&&b!=null&&recent.length>=2&&previous.length>=2?Math.round((a-b)*10)/10:null};
+  const cardioDistance=ca.reduce((sum,x)=>sum+(Number(x.distance)||0),0);
+  return {
+    days,
+    coverage:{checkins:ci.length,nutritionDays:proteinDays.length,forceSessions:wo.length,cardioSessions:ca.length},
+    body:{weightAvg:trendAverage(ci,'weight'),waistAvg:trendAverage(ci,'waist'),weightRecentVsPrevious:delta('weight'),waistRecentVsPrevious:delta('waist')},
+    wellbeing:{sleepAvg:trendAverage(ci,'sleep'),energyAvg:trendAverage(ci,'energy'),stressAvg:trendAverage(ci,'stress'),hungerAvg:trendAverage(ci,'hunger'),sleepRecentVsPrevious:delta('sleep'),energyRecentVsPrevious:delta('energy'),stressRecentVsPrevious:delta('stress')},
+    training:{forceSessions:wo.length,cardioSessions:ca.length,cardioDistance:Math.round(cardioDistance*10)/10,activeDays:new Set([...wo,...ca].map(x=>x.date)).size},
+    nutrition:{daysLogged:proteinDays.length,proteinAvg:proteinDays.length?Math.round(proteinDays.reduce((a,b)=>a+b.protein,0)/proteinDays.length):null,proteinTargetDays:proteinTarget?proteinDays.filter(x=>x.protein>=proteinTarget).length:null}
+  };
+}
+function buildCompanionTrends(checkins,workouts,cardio,food,proteinTarget){
+  return {
+    windows:[7,14,30].map(d=>trendWindowSummary(d,checkins,workouts,cardio,food,proteinTarget)),
+    interpretationRules:{minimumCheckinsForTrend:4,minimumNutritionDaysForTrend:4,note:'Une variation isolée ne constitue pas une tendance. Privilégier les signaux répétés et la cohérence entre plusieurs données.'}
+  };
+}
 async function companionSnapshot(){
   const [checkins,workouts,cardio,food]=await Promise.all(['checkins','workouts','cardio','food'].map(s=>LTDB.all(s)));
   const today=todayKey();
@@ -611,6 +645,7 @@ async function companionSnapshot(){
     recentCardio:recentCardio.slice(0,8).map(c=>({date:c.date,type:c.type||null,name:c.name||null,distance:c.distance??null,duration:c.durationLabel||null,heartRateAvg:c.heartRateAvg??null,cadenceAvg:c.cadenceAvg??c.cadence??null})),
     recentCheckins:recentCheckins.slice(0,7).map(c=>({date:c.date,sleep:c.sleep??null,stress:c.stress??null,energy:c.energy??null,recovery:c.recovery??null,hunger:c.hunger??null,weight:c.weight??null,waist:c.waist??null})),
     dailyDecision:decision,
+    trends:buildCompanionTrends(checkins,workouts,cardio,food,proteinTarget),
     continuity:{
       forceLast7:recentWorkouts.filter(w=>daysAgo(w.date)<=7).length,
       cardioLast7:recentCardio.filter(c=>daysAgo(c.date)<=7).length,
@@ -698,6 +733,7 @@ async function renderCompanion(){
       <button class="action secondary compact" data-companion-prompt="Comment trouves-tu mon équilibre cardio et force ces derniers jours ?">Mon cardio</button>
       <button class="action secondary compact" data-companion-prompt="Que dois-je encore privilégier côté alimentation aujourd’hui ?">Mon alimentation</button>
       <button class="action secondary compact" id="openCompanionEvolution">Mon évolution</button>
+      <button class="action secondary compact" data-companion-prompt="Quelles tendances utiles vois-tu sur mes 7, 14 et 30 derniers jours ?">Mes tendances</button>
     </div>
   </div>
   <div class="card chat" id="chat">${chat.length?chat.map(x=>`<div class="bubble ${x.role==='user'?'user':'companion'}">${escapeHtml(cleanCompanionText(x.text))}${x.role==='companion'&&x.action?`<button class="companion-inline-action" data-companion-chat-action="${escapeHtml(x.action.type||'')}" data-companion-workout="${escapeHtml(x.action.workoutId||'')}">${escapeHtml(x.action.label||'Voir')}</button>`:''}</div>`).join(''):'<div class="bubble companion">Je peux maintenant répondre en tenant compte de ta journée réelle, sans inventer les données qui manquent.</div>'}</div>
