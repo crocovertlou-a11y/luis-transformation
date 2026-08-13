@@ -403,3 +403,11 @@ button.done-tile:active{transform:scale(.985)}
 .companion-photo-strip img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:18px;display:block;background:#f4f1ee}
 .companion-photo-strip span{display:block;font-size:11px;color:#777;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .companion-evolution-actions{margin-top:18px}
+
+/* V2.8 — Sécurité & sauvegarde */
+.backup-card .card-actions{display:grid;grid-template-columns:1fr;gap:10px;margin-top:12px}
+.backup-status{display:flex;flex-direction:column;gap:4px;margin:14px 0;padding:14px 16px;border-radius:16px;background:#f7f4ef}
+.backup-status span{font-size:14px}.backup-status small{color:#7d777f}
+.backup-advanced{margin-top:16px;padding-top:12px;border-top:1px solid rgba(0,0,0,.07)}
+.backup-advanced summary{cursor:pointer;font-weight:700}
+.backup-advanced .action{margin-top:10px;width:100%}

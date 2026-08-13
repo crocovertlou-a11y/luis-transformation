@@ -278,3 +278,19 @@ Moteur déterministe Aujourd'hui, états validés, respiration du logo, commenta
 
 
 V2.7.2 Autopsy: suppression du fallback silencieux dailyDecision, double tentative Gemini, parsing JSON robuste, erreurs IA visibles pour diagnostic.
+
+
+## V2.8 — Sécurité & sauvegarde
+
+- IndexedDB passe en version 3 avec un store système `backups`.
+- Instantané local automatique une fois par jour, rotation sur les 7 derniers instantanés.
+- Instantané manuel et restauration locale depuis Profil.
+- Avant tout import/restauration externe, Fluidité crée un instantané local de sécurité.
+- Restauration transactionnelle en mode remplacement : validation complète avant écriture et pas de mélange silencieux avec les anciennes données.
+- Export chiffré `.fluidite` : AES-256-GCM, clé dérivée du mot de passe via PBKDF2-SHA-256 (250 000 itérations). Le mot de passe n'est jamais stocké.
+- Import compatible avec les sauvegardes chiffrées et les anciens exports JSON.
+- Le JSON brut reste disponible uniquement dans les options avancées et est explicitement marqué non chiffré.
+- En-têtes Netlify renforcés : CSP, anti-framing, nosniff, no-referrer et permissions minimales.
+- Les clés Gemini et Strava restent uniquement côté Netlify (variables d'environnement), jamais dans le navigateur/GitHub.
+
+Important : les 7 instantanés locaux protègent contre une erreur de manipulation sur l'appareil, mais pas contre la perte ou la réinitialisation de l'iPhone. Pour cela, conserver régulièrement un fichier `.fluidite` chiffré dans iCloud Drive ou un autre espace personnel.
