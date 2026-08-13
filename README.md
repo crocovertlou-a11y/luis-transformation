@@ -276,10 +276,9 @@ Moteur déterministe Aujourd'hui, états validés, respiration du logo, commenta
 - Les photos restent stockées dans Évolution mais sont accessibles depuis le Compagnon, avec accès direct à la comparaison/analyse IA et à l’ajout d’une photo.
 - Cache PWA incrémenté.
 
-
-## V2.7.1 — Routage intelligent Tendances
-- Les questions libres sur l'objectif, la progression, la trajectoire et le fait d'être « sur la bonne voie » déclenchent désormais automatiquement l'analyse Tendances 7/14/30 jours.
-- Le Compagnon répond d'abord à la question de progression avec les signaux disponibles et reconnaît explicitement le manque de recul si nécessaire.
-- Les intentions Tendances sont protégées contre les boutons Force/recette ajoutés par inférence de texte.
-- Aucun changement UX sur Force, Cardio, Alimentation, Évolution ou l'historique du Compagnon.
-- Cache PWA incrémenté.
+V2.7 Conversationnelle
+- Reconstruite depuis V2.6.4 stable.
+- Routage question -> contexte du dernier échange -> intention -> données pertinentes -> réponse -> action.
+- Tendances 7/14/30 jours.
+- Follow-ups conversationnels.
+- Suppression de l inference automatique de bouton Force depuis le texte.
