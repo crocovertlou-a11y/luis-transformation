@@ -1482,8 +1482,8 @@ function loadZXing(){
   if(window.ZXingBrowser) return Promise.resolve(window.ZXingBrowser);
   if(window.__zxingLoading) return window.__zxingLoading;
   const sources=[
-    'https://unpkg.com/@zxing/browser@0.1.5/umd/zxing-browser.min.js',
-    'https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/umd/zxing-browser.min.js'
+    'https://cdn.jsdelivr.net/npm/@zxing/browser@0.0.2/umd/zxing-browser.min.js',
+    'https://unpkg.com/@zxing/browser@0.0.2/umd/zxing-browser.min.js'
   ];
   const trySource=(src)=>new Promise((resolve,reject)=>{
     document.querySelectorAll('script[data-zxing]').forEach(el=>el.remove());
@@ -1540,9 +1540,12 @@ async function startBarcodeCamera(){
   if(!barcodeScanning)return;
   stage='démarrage ZXing';
   barcodeZXingReader=new ZX.BrowserMultiFormatReader();
-  barcodeZXingControls=await barcodeZXingReader.decodeFromVideoElement(video,(result,error)=>{
+  // @zxing/browser 0.0.2: continuous decoding is the compatible camera API.
+  // decodeFromVideoElement() is one-shot in this release and does not take the callback.
+  barcodeZXingReader.decodeFromVideoElementContinuously(video,(result,error)=>{
     if(result&&barcodeScanning) barcodeFound(result.getText?result.getText():result.text);
   });
+  barcodeZXingControls={stop:()=>barcodeZXingReader?.stopContinuousDecode?.()};
   if(status)status.textContent='Cadre le code-barres…';
  }catch(err){
   console.error('Scanner barcode · '+stage,err);stopBarcodeCamera();
