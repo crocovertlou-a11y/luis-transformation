@@ -354,3 +354,10 @@ Important : les 7 instantanés locaux protègent contre une erreur de manipulati
 - L’iPhone charge ensuite uniquement la copie same-origin locale ; aucun CDN n’est requis au moment du scan.
 - Le service worker pré-cache le bundle local et invalide le cache scanner précédent.
 - Périmètre volontairement limité au scanner Alimentation.
+
+
+## V2.10.4.7 — Scanner iPhone ZXing device
+- ZXing 0.0.2 local/same-origin conservé.
+- Correction du démarrage caméra : `decodeFromVideoDevice(undefined, video, callback)`.
+- Le flux `getUserMedia` préparatoire est fermé avant que ZXing ouvre le sien, afin d'éviter deux flux caméra concurrents sur iOS/PWA.
+- Aucun changement Force/Cardio/Photos/vignettes.
