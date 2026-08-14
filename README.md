@@ -347,3 +347,10 @@ Important : les 7 instantanés locaux protègent contre une erreur de manipulati
 - ZXing analyse le flux vidéo déjà autorisé au lieu de rouvrir la caméra.
 - Diagnostic précis de l’étape en échec.
 - Aucun autre module fonctionnel modifié.
+
+
+## V2.10.4.6 — Scanner iPhone / ZXing local
+- Le bundle officiel @zxing/browser 0.0.2 est rapatrié pendant le build Netlify dans `zxing-browser.min.js`.
+- L’iPhone charge ensuite uniquement la copie same-origin locale ; aucun CDN n’est requis au moment du scan.
+- Le service worker pré-cache le bundle local et invalide le cache scanner précédent.
+- Périmètre volontairement limité au scanner Alimentation.

@@ -1,5 +1,5 @@
 [build]
-  command = "rm -rf .netlify-functions && mkdir -p .netlify-functions && cp analyze-food-v2.js product-lookup.js companion-v1.js compare-photos-v1.js strava-lib.js strava-auth-start.js strava-auth-callback.js strava-activities.js strava-activity-detail.js training-ai-v1.js food-search.js nutrition-recipes-v1.js .netlify-functions/"
+  command = "(curl -fsSL --retry 3 --connect-timeout 10 https://cdn.jsdelivr.net/npm/@zxing/browser@0.0.2/umd/zxing-browser.min.js -o zxing-browser.min.js || curl -fsSL --retry 3 --connect-timeout 10 https://unpkg.com/@zxing/browser@0.0.2/umd/zxing-browser.min.js -o zxing-browser.min.js) && test -s zxing-browser.min.js && rm -rf .netlify-functions && mkdir -p .netlify-functions && cp analyze-food-v2.js product-lookup.js companion-v1.js compare-photos-v1.js strava-lib.js strava-auth-start.js strava-auth-callback.js strava-activities.js strava-activity-detail.js training-ai-v1.js food-search.js nutrition-recipes-v1.js .netlify-functions/"
   functions = ".netlify-functions"
   publish = "."
 

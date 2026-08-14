@@ -1481,10 +1481,7 @@ function stopBarcodeCamera(){
 function loadZXing(){
   if(window.ZXingBrowser) return Promise.resolve(window.ZXingBrowser);
   if(window.__zxingLoading) return window.__zxingLoading;
-  const sources=[
-    'https://cdn.jsdelivr.net/npm/@zxing/browser@0.0.2/umd/zxing-browser.min.js',
-    'https://unpkg.com/@zxing/browser@0.0.2/umd/zxing-browser.min.js'
-  ];
+  const sources=['./zxing-browser.min.js?v=v21046'];
   const trySource=(src)=>new Promise((resolve,reject)=>{
     document.querySelectorAll('script[data-zxing]').forEach(el=>el.remove());
     const script=document.createElement('script');
