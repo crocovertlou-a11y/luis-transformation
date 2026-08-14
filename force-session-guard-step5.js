@@ -37,15 +37,7 @@
     if(e.target.closest('.fvis-video,.force-v1-video')) captureWorkoutDraft();
   }, true);
 
-  // Override Technique -> session return at the last-loaded layer.
-  document.addEventListener('click', e=>{
-    const back=e.target.closest('[data-fvis-back]');
-    if(!back || !state.pendingWorkout) return;
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    chosenWorkoutForm();
-    requestAnimationFrame(()=>requestAnimationFrame(restoreWorkoutDraft));
-  }, true);
+  // V2.10.5.3: do not intercept [data-fvis-back]. The stable Technique router owns that transition.
 
   // Clear only when the workout is really submitted.
   document.addEventListener('submit', e=>{

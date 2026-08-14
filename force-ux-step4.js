@@ -11,9 +11,6 @@
   }
   workoutDetailSheet = async function(workout){ await originalDetail(workout); requestAnimationFrame(polish); };
   new MutationObserver(polish).observe(document.body,{childList:true,subtree:true});
-  document.addEventListener('click',e=>{
-    const back=e.target.closest('[data-fvis-back]');
-    if(back && state.pendingWorkout){e.preventDefault();e.stopImmediatePropagation();originalDetail(state.pendingWorkout);requestAnimationFrame(polish);}
-  },true);
+  // V2.10.5.3: Technique back navigation is owned exclusively by force-technique-router-stable.js.
   polish();
 })();
