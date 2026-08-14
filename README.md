@@ -317,3 +317,12 @@ Important : les 7 instantanés locaux protègent contre une erreur de manipulati
 - Les images ne sont pas injectées dans le DOM de l’écran Évolution lorsque le coffre est verrouillé.
 - La protection concerne uniquement les photos d’évolution ; les photos utilisées ponctuellement pour analyser un repas ne sont pas incluses dans ce coffre.
 - Aucun changement sur Force, Cardio, Alimentation, Compagnon, Pilotage ou Sauvegardes.
+
+
+## V2.10.4 — Suggestion → Action
+- Ajout d’une action principale directement sur la suggestion Entraînement.
+- Une recommandation de récupération active peut maintenant être ouverte immédiatement, puis démarrée depuis sa fiche.
+- Même parcours pour les autres suggestions de séance : suggestion → fiche → démarrage.
+- La récupération active utilise le programme existant (mobilité, respiration, core), avec intensité affichée comme légère.
+- Aucun autre module fonctionnel n’a été modifié.
+- Cache PWA incrémenté.
