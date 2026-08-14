@@ -326,3 +326,8 @@ Important : les 7 instantanés locaux protègent contre une erreur de manipulati
 - La récupération active utilise le programme existant (mobilité, respiration, core), avec intensité affichée comme légère.
 - Aucun autre module fonctionnel n’a été modifié.
 - Cache PWA incrémenté.
+
+
+## V2.10.4.1 — Correctif bouton Suggestion → Action
+- Branche le bouton de démarrage de la suggestion dans le cycle d’événements de la page Entraînement.
+- Aucun autre comportement fonctionnel modifié.
