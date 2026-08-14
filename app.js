@@ -528,14 +528,16 @@ function workoutLibrary(){
       {name:'Développé incliné',sets:3,reps:10,rest:'90 s'},
       {name:'Développé épaules',sets:3,reps:10,rest:'75 s'},
       {name:'Élévations latérales',sets:3,reps:15,rest:'60 s'},
-      {name:'Extensions triceps',sets:3,reps:12,rest:'60 s'}
+      {name:'Extensions triceps',sets:3,reps:12,rest:'60 s'},
+      {name:'Dead bug',sets:3,reps:'8 / côté',rest:'45 s'}
     ]},
     {id:'pull',title:'Pull',subtitle:'~35 min · tirage',goalLabel:'Hypertrophie',tags:['upper','pull'],plan:[
       {name:'Tractions',sets:4,reps:8,rest:'90 s'},
       {name:'Rowing',sets:4,reps:10,rest:'90 s'},
       {name:'Tirage vertical',sets:3,reps:10,rest:'75 s'},
       {name:'Face pull',sets:3,reps:15,rest:'60 s'},
-      {name:'Curl biceps',sets:3,reps:12,rest:'60 s'}
+      {name:'Curl biceps',sets:3,reps:12,rest:'60 s'},
+      {name:'Pallof press',sets:3,reps:'10 / côté',rest:'45 s'}
     ]},
     {id:'upper-push',title:'Haut orienté poussée',subtitle:'~40 min · pecs / épaules / triceps',goalLabel:'Hypertrophie',tags:['upper','push'],plan:[
       {name:'Développé couché',sets:4,reps:6,rest:'2 min'},

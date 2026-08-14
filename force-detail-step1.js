@@ -55,7 +55,6 @@
         <div class="fstep-preview-head"><strong>APERÇU DES EXERCICES</strong><button type="button" data-fstep-all>Voir tout (${plan.length}) ›</button></div>
         <div class="fstep-list">${preview.map((x,i)=>`
           <button type="button" class="fstep-row" data-fstep-tech="${escapeHtml(x.name)}">
-            ${thumb(x.name)}
             <span class="fstep-copy"><b>${i+1}. ${escapeHtml(x.name)}</b><small>${x.sets} séries · ${x.reps} reps · Repos ${x.rest}</small></span>
             <em>${muscleFor(x.name)}</em>
           </button>`).join('')}</div>
@@ -75,7 +74,6 @@
       <p class="subtle">Touche un exercice pour consulter sa fiche technique.</p>
       <div class="fstep-list">${w.plan.map((x,i)=>`
         <button type="button" class="fstep-row" data-fstep-tech="${escapeHtml(x.name)}">
-          ${thumb(x.name)}
           <span class="fstep-copy"><b>${i+1}. ${escapeHtml(x.name)}</b><small>${x.sets} séries · ${x.reps} reps · Repos ${x.rest}</small></span>
           <em>${muscleFor(x.name)}</em>
         </button>`).join('')}</div>

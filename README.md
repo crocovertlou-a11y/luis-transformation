@@ -294,3 +294,10 @@ V2.7.2 Autopsy: suppression du fallback silencieux dailyDecision, double tentati
 - Les clés Gemini et Strava restent uniquement côté Netlify (variables d'environnement), jamais dans le navigateur/GitHub.
 
 Important : les 7 instantanés locaux protègent contre une erreur de manipulation sur l'appareil, mais pas contre la perte ou la réinitialisation de l'iPhone. Pour cela, conserver régulièrement un fichier `.fluidite` chiffré dans iCloud Drive ou un autre espace personnel.
+
+
+## V2.10.1 — Force épurée + Core/Abdos
+- Suppression des vignettes/visuels d’exercices dans Force et les fiches techniques.
+- Conservation des conseils d’exécution et des liens vidéo.
+- Core intégré aux programmes : Dead bug (Push), Pallof press (Pull), Gainage déjà présent sur Lower/Full/Upper.
+- Aucun changement fonctionnel volontaire hors Force.

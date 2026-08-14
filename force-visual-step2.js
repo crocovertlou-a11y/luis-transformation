@@ -25,13 +25,6 @@
     if(s.includes('face pull élastique')) return 'facepull';
         return 'generic';
   };
-  const REAL={
-    bench:{thumb:'force-bench-thumb.webp',start:'force-bench-start.webp',profile:'force-bench-profile.webp',muscles:'force-bench-muscles.webp'},
-    pullup:{thumb:'force-pullup-thumb.webp'},
-    row:{thumb:'force-row-thumb.webp'},
-    shoulder:{thumb:'force-shoulder-thumb.webp'}
-  };
-  const photo=(src,alt,cls='')=>`<img class="freal-photo ${cls}" src="${src}" alt="${esc(alt)}" loading="eager">`;
   const DATA={
     bench:{focus:'Pectoraux · Triceps · Deltoïdes antérieurs',primary:'Pectoraux',secondary:'Triceps · Deltoïdes antérieurs',
       steps:['Pieds bien ancrés, omoplates serrées et épaules basses.','Descends la barre sous contrôle vers le bas des pectoraux.','Pousse la barre en gardant les poignets alignés et les épaules stables.'],
@@ -59,80 +52,13 @@
       tip:'Privilégie toujours la qualité d’exécution.'}
   };
 
-  function mannequin(type,phase='start',mini=false){
-    const end=phase==='end';
-    let art='';
-    if(type==='bench'){
-      const barY=end?42:82;
-      art=`<rect x="38" y="148" width="190" height="10" rx="5" fill="#313136"/><rect x="54" y="156" width="8" height="35" fill="#4a4a50"/><rect x="205" y="156" width="8" height="35" fill="#4a4a50"/>
-      <ellipse cx="137" cy="123" rx="50" ry="22" fill="url(#body)"/><circle cx="193" cy="113" r="14" fill="url(#body)"/>
-      <path d="M102 116 Q137 96 171 116 L161 134 Q137 122 112 134Z" fill="url(#muscle)"/>
-      <path d="M111 116 L${end?101:88} ${barY+8}" stroke="url(#body)" stroke-width="15" stroke-linecap="round"/><path d="M162 116 L${end?173:187} ${barY+8}" stroke="url(#body)" stroke-width="15" stroke-linecap="round"/>
-      <line x1="58" y1="${barY}" x2="218" y2="${barY}" stroke="#2d2d31" stroke-width="7"/><circle cx="72" cy="${barY}" r="21" fill="#252529"/><circle cx="204" cy="${barY}" r="21" fill="#252529"/>`;
-    } else if(type==='pullup'){
-      const headY=end?65:104, shoulderY=end?83:122;
-      art=`<line x1="42" y1="28" x2="230" y2="28" stroke="#29292d" stroke-width="9"/><line x1="54" y1="28" x2="54" y2="194" stroke="#38383d" stroke-width="7"/><line x1="218" y1="28" x2="218" y2="194" stroke="#38383d" stroke-width="7"/>
-      <circle cx="136" cy="${headY}" r="15" fill="url(#body)"/><path d="M105 ${shoulderY} Q136 ${shoulderY-14} 167 ${shoulderY} L157 ${shoulderY+58} Q136 ${shoulderY+70} 115 ${shoulderY+58}Z" fill="url(#body)"/>
-      <path d="M111 ${shoulderY+6} Q136 ${shoulderY+18} 161 ${shoulderY+6} L155 ${shoulderY+46} Q136 ${shoulderY+57} 117 ${shoulderY+46}Z" fill="url(#muscle)"/>
-      <line x1="109" y1="${shoulderY+8}" x2="92" y2="34" stroke="url(#body)" stroke-width="13" stroke-linecap="round"/><line x1="163" y1="${shoulderY+8}" x2="180" y2="34" stroke="url(#body)" stroke-width="13" stroke-linecap="round"/>`;
-    } else if(type==='row'){
-      const barY=end?112:158;
-      art=`<circle cx="176" cy="61" r="14" fill="url(#body)"/><path d="M90 94 Q126 67 169 78 L158 115 Q126 105 84 120Z" fill="url(#body)"/>
-      <path d="M96 92 Q128 78 162 82 L154 107 Q126 98 91 111Z" fill="url(#muscle)"/><line x1="104" y1="108" x2="${end?120:105}" y2="${barY}" stroke="url(#body)" stroke-width="13" stroke-linecap="round"/>
-      <line x1="153" y1="103" x2="${end?160:173}" y2="${barY}" stroke="url(#body)" stroke-width="13" stroke-linecap="round"/><line x1="52" y1="${barY}" x2="226" y2="${barY}" stroke="#2d2d31" stroke-width="7"/>
-      <circle cx="64" cy="${barY}" r="19" fill="#252529"/><circle cx="214" cy="${barY}" r="19" fill="#252529"/>`;
-    } else {
-      art=`<circle cx="136" cy="48" r="21" fill="url(#body)"/><path d="M98 76 Q136 60 174 76 L161 145 Q136 158 111 145Z" fill="url(#body)"/><path d="M108 82 Q136 69 164 82 L156 111 Q136 101 116 111Z" fill="url(#muscle)"/>`;
-    }
-    return `<svg class="fvis-svg ${mini?'mini':''}" viewBox="0 0 280 210"><defs><linearGradient id="body" x1="0" x2="1"><stop stop-color="#e7e7e7"/><stop offset=".55" stop-color="#bcbcbc"/><stop offset="1" stop-color="#8d8d8d"/></linearGradient><linearGradient id="muscle" x1="0" x2="1"><stop stop-color="#ff8058"/><stop offset="1" stop-color="#e95232"/></linearGradient></defs>${art}</svg>`;
-  }
-  const DECK_VISUALS={
-    "Développé couché":{card:"deck-developpe-couche.webp",thumb:"deck-thumb-developpe-couche.webp"},
-    "Développé incliné":{card:"deck-developpe-incline.webp",thumb:"deck-thumb-developpe-incline.webp"},
-    "Développé épaules":{card:"deck-developpe-epaules.webp",thumb:"deck-thumb-developpe-epaules.webp"},
-    "Élévations latérales":{card:"deck-elevations-laterales.webp",thumb:"deck-thumb-elevations-laterales.webp"},
-    "Face pull":{card:"deck-face-pull.webp",thumb:"deck-thumb-face-pull.webp"},
-    "Rowing":{card:"deck-rowing.webp",thumb:"deck-thumb-rowing.webp"},
-    "Tractions":{card:"deck-tractions.webp",thumb:"deck-thumb-tractions.webp"},
-    "Curl biceps":{card:"deck-curl-biceps.webp",thumb:"deck-thumb-curl-biceps.webp"},
-    "Extensions triceps":{card:"deck-extensions-triceps.webp",thumb:"deck-thumb-extensions-triceps.webp"},
-    "Dips":{card:"deck-dips.webp",thumb:"deck-thumb-dips.webp"},
-    "Squat":{card:"deck-squat.webp",thumb:"deck-thumb-squat.webp"},
-    "Presse à cuisses":{card:"deck-presse-a-cuisses.webp",thumb:"deck-thumb-presse-a-cuisses.webp"},
-    "Fentes":{card:"deck-fentes.webp",thumb:"deck-thumb-fentes.webp"},
-    "Soulevé de terre roumain":{card:"deck-souleve-de-terre-roumain.webp",thumb:"deck-thumb-souleve-de-terre-roumain.webp"},
-    "Mollets":{card:"deck-mollets-debout.webp",thumb:"deck-thumb-mollets-debout.webp"},
-    "Gainage":{card:"deck-gainage.webp",thumb:"deck-thumb-gainage.webp"}
-  };
-  window.forceVisualThumb=name=>{
-    const dv=DECK_VISUALS[name];
-    if(dv) return `<span class="fstep-thumb fvis-thumb"><img class="deck-real-thumb" src="${dv.thumb}" alt="${esc(name)}" loading="eager"></span>`;
-    const k=key(name),r=REAL[k];
-    if(r?.thumb) return `<span class="fstep-thumb fvis-thumb">${photo(r.thumb,name,'freal-thumb')}</span>`;
-    return `<span class="fstep-thumb fvis-thumb fvis-no-visual" aria-hidden="true"></span>`;
-  };
+  window.forceVisualThumb=()=>'';
 
   window.forceTechniqueStep2=name=>{
     const k=key(name),d=DATA[k]||DATA.generic;
     const youtube='https://www.youtube.com/results?search_query='+encodeURIComponent(name+' technique musculation');
-    const r=REAL[k],dv=DECK_VISUALS[name];
-    if(dv){
-      const back=window.__forceTechniqueBack || null;
-      showSheet(`<div class="fvis-tech deck-tech"><div class="fvis-head"><div><div class="fstep-top">TECHNIQUE</div><h2>${esc(name)}</h2><p>${esc(d.focus)}</p></div><span>${esc(d.primary)}</span></div>
-      <div class="deck-tech-visual"><img src="${dv.card}" alt="${esc(name)} — fiche technique validée" loading="eager"></div>
-      <section class="fvis-exec"><strong>COMMENT EXÉCUTER</strong>${d.steps.map((x,i)=>`<div><b>${i+1}</b><span>${esc(x)}</span></div>`).join('')}</section>
-      <section class="fvis-tip"><strong>💡 &nbsp; CONSEIL</strong><p>${esc(d.tip)}</p></section>
-      <a class="action secondary fvis-video" href="${youtube}" target="_blank" rel="noopener">▶ Voir la vidéo</a>
-      <button class="action orange" type="button" data-fvis-back>Retour</button></div>`,back);
-      return;
-    }
-    const startVisual=r?.start?photo(r.start,name+' — position de départ','freal-tech'):'';
-    const secondVisual=r?.profile?photo(r.profile,name+' — vue de profil','freal-tech'):'';
-    const muscleVisual=r?.muscles?photo(r.muscles,'Muscles sollicités — '+d.primary,'freal-muscles'):'';
-    const secondLabel=r?.profile?'PROFIL':'POSITION 2';
     showSheet(`<div class="fvis-tech"><div class="fvis-head"><div><div class="fstep-top">TECHNIQUE</div><h2>${esc(name)}</h2><p>${esc(d.focus)}</p></div><span>${esc(d.primary)}</span></div>
-    ${(startVisual||secondVisual)?`<div class="fvis-positions freal-positions">${startVisual?`<section><strong><b>1</b>DÉPART</strong>${startVisual}</section>`:''}${secondVisual?`<section><strong><b>2</b>${secondLabel}</strong>${secondVisual}</section>`:''}</div>`:'<div class="fvis-visual-unavailable">Fiche technique disponible · visuel volontairement masqué en attendant un asset validé.</div>'}
-    <section class="fvis-muscles">${muscleVisual?`<div class="fvis-muscle-model">${muscleVisual}</div>`:''}<div><strong>MUSCLES SOLLICITÉS</strong><p><i></i><b>Principal</b><br>${esc(d.primary)}</p><p><i class="secondary"></i><b>Secondaires</b><br>${esc(d.secondary)}</p></div></section>
+    <section class="fvis-muscles"><div><strong>MUSCLES SOLLICITÉS</strong><p><i></i><b>Principal</b><br>${esc(d.primary)}</p><p><i class="secondary"></i><b>Secondaires</b><br>${esc(d.secondary)}</p></div></section>
     <section class="fvis-exec"><strong>COMMENT EXÉCUTER</strong>${d.steps.map((x,i)=>`<div><b>${i+1}</b><span>${esc(x)}</span></div>`).join('')}</section>
     <section class="fvis-tip"><strong>💡 &nbsp; CONSEIL</strong><p>${esc(d.tip)}</p></section>
     <a class="action secondary fvis-video" href="${youtube}" target="_blank" rel="noopener">▶ Voir la vidéo</a>
