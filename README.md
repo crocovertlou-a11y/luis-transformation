@@ -301,3 +301,10 @@ Important : les 7 instantanés locaux protègent contre une erreur de manipulati
 - Conservation des conseils d’exécution et des liens vidéo.
 - Core intégré aux programmes : Dead bug (Push), Pallof press (Pull), Gainage déjà présent sur Lower/Full/Upper.
 - Aucun changement fonctionnel volontaire hors Force.
+
+## V2.10.2 — Force réalignée après suppression des vignettes
+- Rééquilibrage des cartes d’exercices désormais sans visuel : contenu aligné naturellement à gauche.
+- Nom, séries/répétitions/repos puis accès Technique structurés sur toute la largeur utile.
+- Conservation stricte des fiches techniques et liens vidéo.
+- Aucun changement fonctionnel volontaire hors présentation Force.
+- Cache PWA incrémenté pour forcer la mise à jour sur iPhone.
