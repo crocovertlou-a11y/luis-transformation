@@ -1481,13 +1481,28 @@ function stopBarcodeCamera(){
 function loadZXing(){
   if(window.ZXingBrowser) return Promise.resolve(window.ZXingBrowser);
   if(window.__zxingLoading) return window.__zxingLoading;
-  window.__zxingLoading=new Promise((resolve,reject)=>{
-    const existing=document.querySelector('script[data-zxing]');
-    if(existing){existing.addEventListener('load',()=>resolve(window.ZXingBrowser),{once:true});existing.addEventListener('error',reject,{once:true});return}
-    const script=document.createElement('script');script.dataset.zxing='1';script.src='https://unpkg.com/@zxing/browser@0.1.5/umd/zxing-browser.min.js';script.async=true;
-    script.onload=()=>window.ZXingBrowser?resolve(window.ZXingBrowser):reject(new Error('ZXING_NOT_READY'));
-    script.onerror=()=>reject(new Error('ZXING_LOAD_FAILED'));document.head.appendChild(script);
-  }).finally(()=>{window.__zxingLoading=null});
+  const sources=[
+    'https://unpkg.com/@zxing/browser@0.1.5/umd/zxing-browser.min.js',
+    'https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/umd/zxing-browser.min.js'
+  ];
+  const trySource=(src)=>new Promise((resolve,reject)=>{
+    document.querySelectorAll('script[data-zxing]').forEach(el=>el.remove());
+    const script=document.createElement('script');
+    script.dataset.zxing='1';script.src=src;script.async=true;
+    let settled=false;
+    const finish=(ok,err)=>{if(settled)return;settled=true;clearTimeout(timer);ok?resolve(window.ZXingBrowser):reject(err||new Error('ZXING_LOAD_FAILED'))};
+    const timer=setTimeout(()=>{script.remove();finish(false,new Error('ZXING_LOAD_TIMEOUT'))},6500);
+    script.onload=()=>window.ZXingBrowser?finish(true):finish(false,new Error('ZXING_NOT_READY'));
+    script.onerror=()=>finish(false,new Error('ZXING_LOAD_FAILED'));
+    document.head.appendChild(script);
+  });
+  window.__zxingLoading=(async()=>{
+    let lastErr;
+    for(const src of sources){
+      try{return await trySource(src)}catch(err){lastErr=err}
+    }
+    throw lastErr||new Error('ZXING_LOAD_FAILED');
+  })().finally(()=>{window.__zxingLoading=null});
   return window.__zxingLoading;
 }
 async function barcodeFound(raw){
@@ -1506,8 +1521,9 @@ async function startBarcodeCamera(){
     barcodeStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false});
     video.srcObject=barcodeStream;await video.play();if(status)status.textContent='Cadre le code-barres…';scanBarcodeFrame();return;
   }
-  if(status)status.textContent='Ouverture de la caméra…';
+  if(status)status.textContent='Chargement du scanner…';
   const ZX=await loadZXing();
+  if(status)status.textContent='Ouverture de la caméra…';
   if(!barcodeScanning)return;
   barcodeZXingReader=new ZX.BrowserMultiFormatReader();
   barcodeZXingControls=await barcodeZXingReader.decodeFromConstraints({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false},video,(result,error)=>{

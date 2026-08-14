@@ -1,3 +1,11 @@
+# V2.10.4.3 — Correctif scanner Alimentation iPhone
+
+- Corrige le blocage sur « Ouverture de la caméra… » / « Chargement du scanner… ».
+- Recharge proprement ZXing après une tentative échouée au lieu de rester bloqué sur un script déjà chargé.
+- Ajoute un délai de sécurité puis un second CDN de secours pour le moteur de lecture code-barres.
+- Mise à jour du cache PWA pour forcer la prise en compte du correctif sur iPhone.
+- Aucun changement fonctionnel sur Force, Cardio, Photos, Compagnon, recettes ou vignettes.
+
 # Luis Transformation — Build 0.6.4
 
 ## IA Nutrition
