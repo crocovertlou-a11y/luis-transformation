@@ -411,3 +411,12 @@ button.done-tile:active{transform:scale(.985)}
 .backup-advanced{margin-top:16px;padding-top:12px;border-top:1px solid rgba(0,0,0,.07)}
 .backup-advanced summary{cursor:pointer;font-weight:700}
 .backup-advanced .action{margin-top:10px;width:100%}
+
+/* V2.10.3 — Coffre Photos */
+.photo-vault-preview{width:100%;border:1px solid rgba(122,85,209,.18);background:linear-gradient(135deg,rgba(122,85,209,.07),rgba(255,107,61,.05));border-radius:20px;padding:16px;display:grid;grid-template-columns:96px 1fr auto;grid-template-rows:auto auto;gap:4px 14px;align-items:center;text-align:left;color:inherit;font:inherit;margin-top:16px}
+.photo-vault-blur-grid{grid-row:1/3;display:grid;grid-template-columns:repeat(3,1fr);gap:4px;width:96px;height:72px;filter:blur(3px);opacity:.72}
+.photo-vault-blur-grid i{display:block;border-radius:9px;background:linear-gradient(145deg,#c9b7ec,#f3d6d0)}
+.photo-vault-preview strong{font-size:16px}.photo-vault-preview small{color:var(--muted);font-size:12px;line-height:1.35}.photo-vault-preview b{grid-column:3;grid-row:1/3;color:#6f4bd8;font-size:13px;background:#fff;border:1px solid rgba(122,85,209,.2);padding:9px 12px;border-radius:999px}
+.photo-vault-lock{text-align:center;padding:16px 4px 8px}.photo-vault-lock h2{margin:8px 0 10px}.photo-vault-icon{width:76px;height:76px;border-radius:24px;margin:4px auto 16px;display:grid;place-items:center;font-size:34px;color:#6f4bd8;background:linear-gradient(145deg,rgba(122,85,209,.15),rgba(255,107,61,.12));border:1px solid rgba(122,85,209,.15)}
+.photo-vault-actions{display:grid;gap:10px;margin:20px 0 10px}.photo-vault-note{font-size:12px;line-height:1.45;color:var(--muted);margin:12px auto 0;max-width:330px}.photo-privacy-card .backup-status{margin:14px 0}
+@media(max-width:520px){.photo-vault-preview{grid-template-columns:82px 1fr;grid-template-rows:auto auto auto}.photo-vault-blur-grid{width:82px;height:66px;grid-row:1/3}.photo-vault-preview b{grid-column:2;grid-row:3;justify-self:start;margin-top:8px}}

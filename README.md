@@ -308,3 +308,12 @@ Important : les 7 instantanés locaux protègent contre une erreur de manipulati
 - Conservation stricte des fiches techniques et liens vidéo.
 - Aucun changement fonctionnel volontaire hors présentation Force.
 - Cache PWA incrémenté pour forcer la mise à jour sur iPhone.
+
+## V2.10.3 — Coffre Photos
+
+- Les photos d’évolution sont masquées tant que le coffre est verrouillé.
+- Premier accès : configuration d’une vérification locale via WebAuthn (authentificateur de plateforme iPhone) ou d’un code Fluidité de secours.
+- Le coffre se verrouille à nouveau lorsque l’app passe en arrière-plan, lorsqu’on quitte la zone protégée, à la fermeture d’une fiche photo et après environ 3 minutes.
+- Les images ne sont pas injectées dans le DOM de l’écran Évolution lorsque le coffre est verrouillé.
+- La protection concerne uniquement les photos d’évolution ; les photos utilisées ponctuellement pour analyser un repas ne sont pas incluses dans ce coffre.
+- Aucun changement sur Force, Cardio, Alimentation, Compagnon, Pilotage ou Sauvegardes.
