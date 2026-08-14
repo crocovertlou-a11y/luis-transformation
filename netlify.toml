@@ -1,5 +1,5 @@
 [build]
-  command = "(curl -fsSL --retry 3 --connect-timeout 10 https://cdn.jsdelivr.net/npm/@zxing/browser@0.0.2/umd/zxing-browser.min.js -o zxing-browser.min.js || curl -fsSL --retry 3 --connect-timeout 10 https://unpkg.com/@zxing/browser@0.0.2/umd/zxing-browser.min.js -o zxing-browser.min.js) && test -s zxing-browser.min.js && rm -rf .netlify-functions && mkdir -p .netlify-functions && cp analyze-food-v2.js product-lookup.js companion-v1.js compare-photos-v1.js strava-lib.js strava-auth-start.js strava-auth-callback.js strava-activities.js strava-activity-detail.js training-ai-v1.js food-search.js nutrition-recipes-v1.js .netlify-functions/"
+  command = "rm -rf .netlify-functions && mkdir -p .netlify-functions && cp analyze-food-v2.js product-lookup.js companion-v1.js compare-photos-v1.js strava-lib.js strava-auth-start.js strava-auth-callback.js strava-activities.js strava-activity-detail.js training-ai-v1.js food-search.js nutrition-recipes-v1.js .netlify-functions/"
   functions = ".netlify-functions"
   publish = "."
 
@@ -10,7 +10,7 @@
     X-Frame-Options = "DENY"
     Referrer-Policy = "no-referrer"
     Permissions-Policy = "camera=(self), microphone=(), geolocation=(), payment=(), usb=()"
-    Content-Security-Policy = "default-src 'self'; script-src 'self' https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
 
 [[headers]]
   for = "/index.html"

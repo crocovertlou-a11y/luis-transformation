@@ -1,11 +1,3 @@
-# V2.10.4.3 — Correctif scanner Alimentation iPhone
-
-- Corrige le blocage sur « Ouverture de la caméra… » / « Chargement du scanner… ».
-- Recharge proprement ZXing après une tentative échouée au lieu de rester bloqué sur un script déjà chargé.
-- Ajoute un délai de sécurité puis un second CDN de secours pour le moteur de lecture code-barres.
-- Mise à jour du cache PWA pour forcer la prise en compte du correctif sur iPhone.
-- Aucun changement fonctionnel sur Force, Cardio, Photos, Compagnon, recettes ou vignettes.
-
 # Luis Transformation — Build 0.6.4
 
 ## IA Nutrition
@@ -341,23 +333,7 @@ Important : les 7 instantanés locaux protègent contre une erreur de manipulati
 - Aucun autre comportement fonctionnel modifié.
 
 
-## V2.10.4.4 — Scanner iPhone
-- Ouverture explicite de la caméra avant ZXing.
-- Contraintes caméra assouplies en secours sur iOS.
-- ZXing analyse le flux vidéo déjà autorisé au lieu de rouvrir la caméra.
-- Diagnostic précis de l’étape en échec.
-- Aucun autre module fonctionnel modifié.
-
-
-## V2.10.4.6 — Scanner iPhone / ZXing local
-- Le bundle officiel @zxing/browser 0.0.2 est rapatrié pendant le build Netlify dans `zxing-browser.min.js`.
-- L’iPhone charge ensuite uniquement la copie same-origin locale ; aucun CDN n’est requis au moment du scan.
-- Le service worker pré-cache le bundle local et invalide le cache scanner précédent.
-- Périmètre volontairement limité au scanner Alimentation.
-
-
-## V2.10.4.7 — Scanner iPhone ZXing device
-- ZXing 0.0.2 local/same-origin conservé.
-- Correction du démarrage caméra : `decodeFromVideoDevice(undefined, video, callback)`.
-- Le flux `getUserMedia` préparatoire est fermé avant que ZXing ouvre le sien, afin d'éviter deux flux caméra concurrents sur iOS/PWA.
-- Aucun changement Force/Cardio/Photos/vignettes.
+## V2.10.5 — Saisie rapide Alimentation
+- Modifier un repas permet désormais de l’ajouter/retirer des favoris.
+- Une ligne peut être copiée vers un autre repas du jour sans ressaisie.
+- Confirmation visuelle après copie pour éviter les doubles clics accidentels.

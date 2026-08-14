@@ -1156,16 +1156,25 @@ async function editFoodSheet(id){
     <div class="range-row"><div class="field"><label>Protéines (g)</label><input name="protein" type="number" step="0.1" value="${x.protein??''}"></div><div class="field"><label>Calories</label><input name="calories" type="number" value="${x.calories??''}"></div></div>
     <div class="range-row"><div class="field"><label>Glucides (g)</label><input name="carbs" type="number" step="0.1" value="${x.carbs??''}"></div><div class="field"><label>Lipides (g)</label><input name="fat" type="number" step="0.1" value="${x.fat??''}"></div></div>
     <div class="field"><label>Eau (L)</label><input name="water" type="number" step="0.1" value="${x.water??''}"></div>
+    <label class="checkline nutrition-edit-favorite"><input type="checkbox" name="classic" ${x.classic?'checked':''}> Ajouter aux favoris</label>
+    <div class="nutrition-edit-copy"><div class="field"><label>Copier vers un autre repas du jour</label><select id="foodCopyMealType">${mealTypeOptions(x.mealType||'')}</select></div><button class="action secondary" type="button" id="copyFoodToMeal">Copier cette ligne</button></div>
     <div class="edit-actions"><button class="action" type="submit">Enregistrer les modifications</button><button class="action danger" type="button" id="deleteFood">Supprimer</button></div>
   </form>`);
 }
 async function updateFood(e){
   e.preventDefault(); const f=new FormData(e.currentTarget); const old=await LTDB.get('food',f.get('id')); if(!old)return;
-  await LTDB.put('food',{...old,date:f.get('date')||old.date||todayKey(),mealType:f.get('mealType')||old.mealType||'lunch',description:f.get('description')||'Repas',protein:num(f.get('protein')),calories:num(f.get('calories')),carbs:num(f.get('carbs')),fat:num(f.get('fat')),water:num(f.get('water')),updatedAt:new Date().toISOString()});
+  await LTDB.put('food',{...old,date:f.get('date')||old.date||todayKey(),mealType:f.get('mealType')||old.mealType||'lunch',description:f.get('description')||'Repas',protein:num(f.get('protein')),calories:num(f.get('calories')),carbs:num(f.get('carbs')),fat:num(f.get('fat')),water:num(f.get('water')),classic:f.get('classic')==='on',updatedAt:new Date().toISOString()});
   toast('Repas modifié'); const editedDate=f.get('date')||old.date||todayKey(); if(editedDate===todayKey()) await nutritionHubSheet(); else await nutritionHistoryDaySheet(editedDate); render();
 }
 async function deleteFood(id){
   const old=await LTDB.get('food',id); await LTDB.del('food',id); toast('Repas supprimé'); if(old?.date&&old.date!==todayKey()) await nutritionHistoryDaySheet(old.date); else await nutritionHubSheet(); render();
+}
+async function copyFoodToMeal(id,mealType,button){
+  const x=await LTDB.get('food',id); if(!x)return;
+  const target=mealType||'snack';
+  await LTDB.put('food',{...x,id:uid(),date:todayKey(),dateTime:new Date().toISOString(),mealType:target,source:'meal-copy',createdAt:new Date().toISOString(),updatedAt:null});
+  if(button){button.disabled=true;button.textContent=`✓ Copié vers ${mealTypeLabel(target)}`;}
+  toast(`Copié vers ${mealTypeLabel(target)}`); render();
 }
 
 let mealIdeaIndex=0;
@@ -1347,6 +1356,7 @@ function bindSheet(){
   document.querySelectorAll('[data-edit-food]').forEach(b=>b.addEventListener('click',()=>editFoodSheet(b.dataset.editFood)));
   document.querySelectorAll('[data-edit-activity]').forEach(b=>b.addEventListener('click',()=>{const [kind,id]=b.dataset.editActivity.split(':'); editActivitySheet(kind,id);}));
   $('#foodEditForm')?.addEventListener('submit',updateFood);
+  $('#copyFoodToMeal')?.addEventListener('click',()=>{const id=$('#foodEditForm')?.elements.id.value;const target=$('#foodCopyMealType')?.value;if(id&&target)copyFoodToMeal(id,target,$('#copyFoodToMeal'));});
   $('#activityEditForm')?.addEventListener('submit',updateActivity);
   $('#deleteFood')?.addEventListener('click',()=>{const id=$('#foodEditForm')?.elements.id.value;if(id)deleteFood(id);});
   $('#deleteActivity')?.addEventListener('click',()=>{const f=$('#activityEditForm');if(f)deleteActivity(f.elements.kind.value,f.elements.id.value);});
@@ -1481,25 +1491,13 @@ function stopBarcodeCamera(){
 function loadZXing(){
   if(window.ZXingBrowser) return Promise.resolve(window.ZXingBrowser);
   if(window.__zxingLoading) return window.__zxingLoading;
-  const sources=['./zxing-browser.min.js?v=v21047'];
-  const trySource=(src)=>new Promise((resolve,reject)=>{
-    document.querySelectorAll('script[data-zxing]').forEach(el=>el.remove());
-    const script=document.createElement('script');
-    script.dataset.zxing='1';script.src=src;script.async=true;
-    let settled=false;
-    const finish=(ok,err)=>{if(settled)return;settled=true;clearTimeout(timer);ok?resolve(window.ZXingBrowser):reject(err||new Error('ZXING_LOAD_FAILED'))};
-    const timer=setTimeout(()=>{script.remove();finish(false,new Error('ZXING_LOAD_TIMEOUT'))},6500);
-    script.onload=()=>window.ZXingBrowser?finish(true):finish(false,new Error('ZXING_NOT_READY'));
-    script.onerror=()=>finish(false,new Error('ZXING_LOAD_FAILED'));
-    document.head.appendChild(script);
-  });
-  window.__zxingLoading=(async()=>{
-    let lastErr;
-    for(const src of sources){
-      try{return await trySource(src)}catch(err){lastErr=err}
-    }
-    throw lastErr||new Error('ZXING_LOAD_FAILED');
-  })().finally(()=>{window.__zxingLoading=null});
+  window.__zxingLoading=new Promise((resolve,reject)=>{
+    const existing=document.querySelector('script[data-zxing]');
+    if(existing){existing.addEventListener('load',()=>resolve(window.ZXingBrowser),{once:true});existing.addEventListener('error',reject,{once:true});return}
+    const script=document.createElement('script');script.dataset.zxing='1';script.src='https://unpkg.com/@zxing/browser@0.1.5/umd/zxing-browser.min.js';script.async=true;
+    script.onload=()=>window.ZXingBrowser?resolve(window.ZXingBrowser):reject(new Error('ZXING_NOT_READY'));
+    script.onerror=()=>reject(new Error('ZXING_LOAD_FAILED'));document.head.appendChild(script);
+  }).finally(()=>{window.__zxingLoading=null});
   return window.__zxingLoading;
 }
 async function barcodeFound(raw){
@@ -1512,49 +1510,23 @@ async function startBarcodeCamera(){
  const status=$('#barcodeScanStatus'),video=$('#barcodeVideo');
  if(!video)return;
  if(!navigator.mediaDevices?.getUserMedia){if(status)status.textContent='Caméra indisponible ici. Utilise la saisie manuelle.';$('#barcodeForm')?.classList.remove('hidden');return}
- let stage='initialisation';
  try{
   stopBarcodeCamera(); barcodeScanning=true;
-  stage='permission caméra';
-  if(status)status.textContent='Ouverture de la caméra…';
-  try{
-    barcodeStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false});
-  }catch(cameraErr){
-    if(cameraErr?.name==='OverconstrainedError') barcodeStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});
-    else throw cameraErr;
-  }
-  stage='flux vidéo';
-  video.srcObject=barcodeStream;
-  await video.play();
-  if(!barcodeScanning)return;
   if('BarcodeDetector' in window){
-    if(status)status.textContent='Cadre le code-barres…';
-    scanBarcodeFrame();return;
+    barcodeStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false});
+    video.srcObject=barcodeStream;await video.play();if(status)status.textContent='Cadre le code-barres…';scanBarcodeFrame();return;
   }
-  stage='chargement ZXing';
-  if(status)status.textContent='Chargement du lecteur code-barres…';
+  if(status)status.textContent='Ouverture de la caméra…';
   const ZX=await loadZXing();
   if(!barcodeScanning)return;
-  stage='démarrage ZXing';
-  // ZXing ouvre et gère lui-même son flux caméra. Fermer le flux de permission/preview
-  // évite un second accès concurrent à la caméra sur iOS/PWA.
-  if(barcodeStream){barcodeStream.getTracks().forEach(t=>t.stop());barcodeStream=null}
-  try{video.pause()}catch(e){}
-  video.srcObject=null;
   barcodeZXingReader=new ZX.BrowserMultiFormatReader();
-  barcodeZXingControls=await barcodeZXingReader.decodeFromVideoDevice(undefined,video,(result,error,controls)=>{
+  barcodeZXingControls=await barcodeZXingReader.decodeFromConstraints({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false},video,(result,error)=>{
     if(result&&barcodeScanning) barcodeFound(result.getText?result.getText():result.text);
   });
   if(status)status.textContent='Cadre le code-barres…';
  }catch(err){
-  console.error('Scanner barcode · '+stage,err);stopBarcodeCamera();
-  const name=err?.name||'';
-  let msg=`Scanner bloqué à l’étape « ${stage} ».`;
-  if(name==='NotAllowedError'||name==='SecurityError') msg='Accès caméra refusé. Autorise la caméra pour Fluidité dans les réglages iPhone.';
-  else if(name==='NotFoundError') msg='Aucune caméra compatible détectée.';
-  else if(stage==='chargement ZXing') msg='Caméra OK · le lecteur de code-barres n’a pas pu se charger.';
-  else if(stage==='démarrage ZXing') msg='Caméra OK · le lecteur de code-barres n’a pas pu démarrer.';
-  if(status)status.textContent=msg;
+  console.error(err);stopBarcodeCamera();
+  if(status)status.textContent='Impossible d’ouvrir le scanner. Autorise la caméra ou utilise la saisie manuelle.';
   $('#barcodeForm')?.classList.remove('hidden');
  }
 }
