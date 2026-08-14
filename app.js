@@ -1515,24 +1515,44 @@ async function startBarcodeCamera(){
  const status=$('#barcodeScanStatus'),video=$('#barcodeVideo');
  if(!video)return;
  if(!navigator.mediaDevices?.getUserMedia){if(status)status.textContent='Caméra indisponible ici. Utilise la saisie manuelle.';$('#barcodeForm')?.classList.remove('hidden');return}
+ let stage='initialisation';
  try{
   stopBarcodeCamera(); barcodeScanning=true;
-  if('BarcodeDetector' in window){
-    barcodeStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false});
-    video.srcObject=barcodeStream;await video.play();if(status)status.textContent='Cadre le code-barres…';scanBarcodeFrame();return;
-  }
-  if(status)status.textContent='Chargement du scanner…';
-  const ZX=await loadZXing();
+  stage='permission caméra';
   if(status)status.textContent='Ouverture de la caméra…';
+  try{
+    barcodeStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false});
+  }catch(cameraErr){
+    if(cameraErr?.name==='OverconstrainedError') barcodeStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});
+    else throw cameraErr;
+  }
+  stage='flux vidéo';
+  video.srcObject=barcodeStream;
+  await video.play();
   if(!barcodeScanning)return;
+  if('BarcodeDetector' in window){
+    if(status)status.textContent='Cadre le code-barres…';
+    scanBarcodeFrame();return;
+  }
+  stage='chargement ZXing';
+  if(status)status.textContent='Chargement du lecteur code-barres…';
+  const ZX=await loadZXing();
+  if(!barcodeScanning)return;
+  stage='démarrage ZXing';
   barcodeZXingReader=new ZX.BrowserMultiFormatReader();
-  barcodeZXingControls=await barcodeZXingReader.decodeFromConstraints({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false},video,(result,error)=>{
+  barcodeZXingControls=await barcodeZXingReader.decodeFromVideoElement(video,(result,error)=>{
     if(result&&barcodeScanning) barcodeFound(result.getText?result.getText():result.text);
   });
   if(status)status.textContent='Cadre le code-barres…';
  }catch(err){
-  console.error(err);stopBarcodeCamera();
-  if(status)status.textContent='Impossible d’ouvrir le scanner. Autorise la caméra ou utilise la saisie manuelle.';
+  console.error('Scanner barcode · '+stage,err);stopBarcodeCamera();
+  const name=err?.name||'';
+  let msg=`Scanner bloqué à l’étape « ${stage} ».`;
+  if(name==='NotAllowedError'||name==='SecurityError') msg='Accès caméra refusé. Autorise la caméra pour Fluidité dans les réglages iPhone.';
+  else if(name==='NotFoundError') msg='Aucune caméra compatible détectée.';
+  else if(stage==='chargement ZXing') msg='Caméra OK · le lecteur de code-barres n’a pas pu se charger.';
+  else if(stage==='démarrage ZXing') msg='Caméra OK · le lecteur de code-barres n’a pas pu démarrer.';
+  if(status)status.textContent=msg;
   $('#barcodeForm')?.classList.remove('hidden');
  }
 }

@@ -339,3 +339,11 @@ Important : les 7 instantanés locaux protègent contre une erreur de manipulati
 ## V2.10.4.1 — Correctif bouton Suggestion → Action
 - Branche le bouton de démarrage de la suggestion dans le cycle d’événements de la page Entraînement.
 - Aucun autre comportement fonctionnel modifié.
+
+
+## V2.10.4.4 — Scanner iPhone
+- Ouverture explicite de la caméra avant ZXing.
+- Contraintes caméra assouplies en secours sur iOS.
+- ZXing analyse le flux vidéo déjà autorisé au lieu de rouvrir la caméra.
+- Diagnostic précis de l’étape en échec.
+- Aucun autre module fonctionnel modifié.
