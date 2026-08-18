@@ -337,3 +337,10 @@ Important : les 7 instantanés locaux protègent contre une erreur de manipulati
 - Modifier un repas permet désormais de l’ajouter/retirer des favoris.
 - Une ligne peut être copiée vers un autre repas du jour sans ressaisie.
 - Confirmation visuelle après copie pour éviter les doubles clics accidentels.
+
+
+## V2.10.5.4 — Stability Rescue
+- Service worker nettoyé : un seul cycle install/activate, plus de caches concurrents.
+- Scanner : chargement ZXing avec timeout + récupération propre et saisie manuelle toujours accessible.
+- Strava : refresh token durci, timeout, no-store et message de reconnexion explicite.
+- Aucun changement de structure de données.

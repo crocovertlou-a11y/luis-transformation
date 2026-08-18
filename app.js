@@ -1346,7 +1346,7 @@ function bindSheet(){
   document.querySelectorAll('[data-pick-workout]').forEach(b=>b.addEventListener('click',()=>{openSheet('workout'); setTimeout(()=>{const f=$('#workoutForm'); if(f) f.elements.name.value=b.dataset.pickWorkout;},0)}));
   document.querySelectorAll('input[type="range"]').forEach(r=>r.addEventListener('input',()=>updateRange(r)));
   $('#goalEditForm')?.addEventListener('submit',async e=>{e.preventDefault();const f=new FormData(e.currentTarget),custom=String(f.get('customGoal')||'').trim(),goal=custom||String(f.get('goal')||'').trim();if(!goal)return;state.profile.goal=goal;await LTDB.put('profile',state.profile);$('#sheet').close();toast('Objectif mis à jour');render();});
-  $('#checkinForm')?.addEventListener('submit',saveCheckin); $('#workoutForm')?.addEventListener('submit',saveWorkout); $('#cardioForm')?.addEventListener('submit',saveCardio); $('#cardioImportInput')?.addEventListener('change',handleCardioImport); $('#cardioImportConfirmForm')?.addEventListener('submit',saveImportedCardio); $('#fetchStravaActivities')?.addEventListener('click',fetchStravaActivities); $('#askSmartTraining')?.addEventListener('click',loadSmartTrainingSuggestion); $('#stravaConfirmForm')?.addEventListener('submit',saveStravaCardio); $('#hydrationQuickForm')?.addEventListener('submit',saveHydrationQuick); $('#foodForm')?.addEventListener('submit',saveFood); $('#foodSearchForm')?.addEventListener('submit',searchFoods); $('#foodSearchConfirmForm')?.addEventListener('submit',saveSearchedFood); $('#barcodeForm')?.addEventListener('submit',lookupBarcode); $('#startBarcodeCamera')?.addEventListener('click',startBarcodeCamera); $('#toggleManualBarcode')?.addEventListener('click',()=>$('#barcodeForm')?.classList.toggle('hidden')); $('#barcodeConfirmForm')?.addEventListener('submit',saveBarcodeFood); $('#aiFoodConfirmForm')?.addEventListener('submit',saveAIFood);
+  $('#checkinForm')?.addEventListener('submit',saveCheckin); $('#workoutForm')?.addEventListener('submit',saveWorkout); $('#cardioForm')?.addEventListener('submit',saveCardio); $('#cardioImportInput')?.addEventListener('change',handleCardioImport); $('#cardioImportConfirmForm')?.addEventListener('submit',saveImportedCardio); $('#fetchStravaActivities')?.addEventListener('click',e=>{e.currentTarget.__fluiditeHandled=true;fetchStravaActivities();setTimeout(()=>{if(e.currentTarget)e.currentTarget.__fluiditeHandled=false},0)}); $('#askSmartTraining')?.addEventListener('click',loadSmartTrainingSuggestion); $('#stravaConfirmForm')?.addEventListener('submit',saveStravaCardio); $('#hydrationQuickForm')?.addEventListener('submit',saveHydrationQuick); $('#foodForm')?.addEventListener('submit',saveFood); $('#foodSearchForm')?.addEventListener('submit',searchFoods); $('#foodSearchConfirmForm')?.addEventListener('submit',saveSearchedFood); $('#barcodeForm')?.addEventListener('submit',lookupBarcode); $('#startBarcodeCamera')?.addEventListener('click',startBarcodeCamera);  $('#barcodeConfirmForm')?.addEventListener('submit',saveBarcodeFood); $('#aiFoodConfirmForm')?.addEventListener('submit',saveAIFood);
   $('#foodPhotoInput')?.addEventListener('change',previewFoodPhoto);
   $('#foodLibraryInput')?.addEventListener('change',previewFoodPhoto);
   $('#openProgressCamera')?.addEventListener('click',openProgressCamera); $('#progressLibraryInput')?.addEventListener('click',rememberProgressPhotoMeta); $('#progressLibraryInput')?.addEventListener('change',prepareProgressPhoto);
@@ -1361,6 +1361,18 @@ function bindSheet(){
   $('#deleteFood')?.addEventListener('click',()=>{const id=$('#foodEditForm')?.elements.id.value;if(id)deleteFood(id);});
   $('#deleteActivity')?.addEventListener('click',()=>{const f=$('#activityEditForm');if(f)deleteActivity(f.elements.kind.value,f.elements.id.value);});
 }
+
+// V2.10.5.4 — safety net for dynamic sheet actions. One delegated listener avoids losing handlers after a sheet rerender.
+document.addEventListener('click',e=>{
+  const manual=e.target.closest?.('#toggleManualBarcode');
+  if(manual){e.preventDefault();$('#barcodeForm')?.classList.toggle('hidden');return;}
+  const strava=e.target.closest?.('#fetchStravaActivities');
+  if(strava && !strava.dataset.boundFallback){
+    // bindSheet normally handles this. If the dynamic handler was lost, this delegated fallback keeps the action alive.
+    if(!strava.__fluiditeHandled){e.preventDefault();fetchStravaActivities();}
+  }
+},false);
+
 function updateAllRanges(){ document.querySelectorAll('input[type="range"]').forEach(updateRange); }
 function updateRange(r){ const out=document.querySelector(`[data-output="${r.name}"]`); if(out) out.value=`${r.value}${r.dataset.rangeUnit||''}`; }
 async function saveCheckin(e){e.preventDefault(); const f=new FormData(e.currentTarget); const date=f.get('date')||todayKey(); const row={id:date,date,sleep:num(f.get('sleep')),energy:num(f.get('energy')),stress:num(f.get('stress')),recovery:num(f.get('recovery')),hunger:num(f.get('hunger')),weight:num(f.get('weight')),waist:num(f.get('waist')),source:'manual',updatedAt:new Date().toISOString()}; await LTDB.put('checkins',row); $('#sheet').close(); toast('Point du jour enregistré'); render();}
@@ -1381,16 +1393,25 @@ async function saveWorkout(e){
 
 
 async function fetchStravaActivities(){
-  const status=$('#stravaStatus'),box=$('#stravaActivities');if(status)status.textContent='Connexion à Strava…';
+  const status=$('#stravaStatus'),box=$('#stravaActivities'),btn=$('#fetchStravaActivities');
+  if(status)status.textContent='Connexion à Strava…';
+  if(btn){btn.disabled=true;btn.textContent='Récupération…'}
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15000);
   try{
-    const r=await fetch('/.netlify/functions/strava-activities',{credentials:'include'}),data=await r.json();
-    if(r.status===401){if(status)status.textContent='Strava n’est pas encore connecté.';return}
-    if(!r.ok)throw new Error(data.detail||data.error||'Strava indisponible');
+    const r=await fetch('/.netlify/functions/strava-activities?ts='+Date.now(),{credentials:'include',cache:'no-store',signal:controller.signal});
+    const text=await r.text();let data={};try{data=text?JSON.parse(text):{}}catch(e){throw new Error('Réponse Strava invalide')}
+    if(r.status===401){if(status)status.innerHTML='Connexion Strava expirée. <a href="/.netlify/functions/strava-auth-start">Reconnecter Strava</a>';return}
+    if(!r.ok)throw new Error(data.detail||data.error||`Strava indisponible (${r.status})`);
     const existing=await LTDB.all('cardio'),imported=new Set(existing.map(x=>String(x.stravaId||'')).filter(Boolean));
     if(status)status.textContent=`${data.activities.length} activité${data.activities.length>1?'s':''} récente${data.activities.length>1?'s':''}.`;
     box.innerHTML=`<div class="strava-list">${data.activities.map(a=>`<button class="strava-activity-row" data-strava-id="${a.id}" ${imported.has(String(a.id))?'disabled':''}><div><strong>${escapeHtml(a.name||a.type||'Activité')}</strong><span>${formatPhotoDate(a.date)} · ${a.distance?Number(a.distance).toFixed(2)+' km · ':''}${formatDuration(a.durationSeconds||0)}</span></div><span class="pill">${imported.has(String(a.id))?'Déjà importée':'Prévisualiser'}</span></button>`).join('')||'<div class="empty">Aucune activité récente.</div>'}</div>`;
     document.querySelectorAll('[data-strava-id]').forEach(b=>b.addEventListener('click',()=>previewStravaActivity(b.dataset.stravaId)));
-  }catch(err){console.error(err);if(status)status.textContent=`Impossible de récupérer Strava : ${err.message}`}
+  }catch(err){
+    console.error(err);
+    if(status)status.textContent=err?.name==='AbortError'?'Strava ne répond pas. Réessaie ou reconnecte ton compte.':`Impossible de récupérer Strava : ${err.message||'erreur inconnue'}`;
+  }finally{
+    clearTimeout(timer);if(btn){btn.disabled=false;btn.textContent='Récupérer mes activités'}
+  }
 }
 function formatDuration(sec){sec=Math.max(0,Math.round(Number(sec)||0));const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;return h?`${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`:`${m}:${String(s).padStart(2,'0')}`}
 async function previewStravaActivity(id){
@@ -1492,11 +1513,18 @@ function loadZXing(){
   if(window.ZXingBrowser) return Promise.resolve(window.ZXingBrowser);
   if(window.__zxingLoading) return window.__zxingLoading;
   window.__zxingLoading=new Promise((resolve,reject)=>{
-    const existing=document.querySelector('script[data-zxing]');
-    if(existing){existing.addEventListener('load',()=>resolve(window.ZXingBrowser),{once:true});existing.addEventListener('error',reject,{once:true});return}
-    const script=document.createElement('script');script.dataset.zxing='1';script.src='https://unpkg.com/@zxing/browser@0.1.5/umd/zxing-browser.min.js';script.async=true;
-    script.onload=()=>window.ZXingBrowser?resolve(window.ZXingBrowser):reject(new Error('ZXING_NOT_READY'));
-    script.onerror=()=>reject(new Error('ZXING_LOAD_FAILED'));document.head.appendChild(script);
+    let settled=false;
+    const finish=(ok,value)=>{if(settled)return;settled=true;clearTimeout(timer);ok?resolve(value):reject(value)};
+    const stale=document.querySelector('script[data-zxing]');
+    if(stale) stale.remove();
+    const script=document.createElement('script');
+    script.dataset.zxing='1';
+    script.src='https://unpkg.com/@zxing/browser@0.1.5/umd/zxing-browser.min.js?fluidite=v21054';
+    script.async=true;
+    script.onload=()=>window.ZXingBrowser?finish(true,window.ZXingBrowser):finish(false,new Error('ZXING_NOT_READY'));
+    script.onerror=()=>finish(false,new Error('ZXING_LOAD_FAILED'));
+    const timer=setTimeout(()=>{try{script.remove()}catch(e){}finish(false,new Error('ZXING_TIMEOUT'))},8000);
+    document.head.appendChild(script);
   }).finally(()=>{window.__zxingLoading=null});
   return window.__zxingLoading;
 }
@@ -1526,7 +1554,7 @@ async function startBarcodeCamera(){
   if(status)status.textContent='Cadre le code-barres…';
  }catch(err){
   console.error(err);stopBarcodeCamera();
-  if(status)status.textContent='Impossible d’ouvrir le scanner. Autorise la caméra ou utilise la saisie manuelle.';
+  if(status)status.textContent='Scanner indisponible. Tu peux saisir le code manuellement ci-dessous.';
   $('#barcodeForm')?.classList.remove('hidden');
  }
 }
