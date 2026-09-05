@@ -1,5 +1,5 @@
-const CACHE='fluidite-v21054-stability';
-const ASSETS=['./','./index.html','./styles.css?v=v21054','./app.js?v=v21054','./db.js?v=v21054','./manifest.webmanifest','./icon-192.png','./icon-512.png','./force-detail-step1.js','./force-detail-step1.css','./nutrition-resilience.js'];
+const CACHE='fluidite-v211-nutrition';
+const ASSETS=['./','./index.html','./styles.css?v=v211','./app.js?v=v211','./db.js?v=v211','./manifest.webmanifest','./icon-192.png','./icon-512.png','./force-detail-step1.js','./force-detail-step1.css','./nutrition-resilience.js'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil((async()=>{for(const key of await caches.keys())if(key!==CACHE)await caches.delete(key);await self.clients.claim()})()));
 self.addEventListener('fetch',event=>{

@@ -21,11 +21,11 @@ function generic(q){const terms=q.toLowerCase().normalize('NFD').replace(/\p{Dia
 exports.handler=async function(event){
  const q=String(event.queryStringParameters?.q||'').trim();if(q.length<2)return{statusCode:400,body:JSON.stringify({error:'QUERY_TOO_SHORT'})};
  try{
-  const search=async term=>{const url='https://world.openfoodfacts.org/cgi/search.pl?search_terms='+encodeURIComponent(term)+'&search_simple=1&action=process&json=1&page_size=12&fields=code,product_name,brands,quantity,image_front_small_url,nutriments,serving_quantity';const r=await fetch(url,{headers:{'User-Agent':'LuisTransformation/0.9.1'}});return r.ok?await r.json():{products:[]}};
+  const search=async term=>{const url='https://world.openfoodfacts.org/cgi/search.pl?search_terms='+encodeURIComponent(term)+'&search_simple=1&action=process&json=1&page_size=30&fields=code,product_name,brands,quantity,image_front_small_url,nutriments,serving_quantity';const r=await fetch(url,{headers:{'User-Agent':'LuisTransformation/0.9.1'}});return r.ok?await r.json():{products:[]}};
   let d=await search(q);
   if(!(d.products||[]).length){const relaxed=q.split(/\s+/).filter(x=>x.length>2)[0];if(relaxed&&relaxed.toLowerCase()!==q.toLowerCase())d=await search(relaxed)}
-  const branded=(d.products||[]).filter(x=>x.product_name&&x.nutriments).map(x=>({id:x.code||'',source:'open-food-facts-search',sourceLabel:'Open Food Facts',name:x.product_name,brand:x.brands||'',quantity:x.quantity||'',image:x.image_front_small_url||'',servingGrams:n(x.serving_quantity)||100,per100:{calories:n(x.nutriments['energy-kcal_100g']),protein:n(x.nutriments.proteins_100g),carbs:n(x.nutriments.carbohydrates_100g),fat:n(x.nutriments.fat_100g)}})).filter(x=>x.per100.calories||x.per100.protein||x.per100.carbs||x.per100.fat).slice(0,8);
-  const gens=generic(q);const results=[...branded,...gens].slice(0,12);
+  const branded=(d.products||[]).filter(x=>x.product_name&&x.nutriments).map(x=>({id:x.code||'',source:'open-food-facts-search',sourceLabel:'Open Food Facts',name:x.product_name,brand:x.brands||'',quantity:x.quantity||'',image:x.image_front_small_url||'',servingGrams:n(x.serving_quantity)||100,per100:{calories:n(x.nutriments['energy-kcal_100g']),protein:n(x.nutriments.proteins_100g),carbs:n(x.nutriments.carbohydrates_100g),fat:n(x.nutriments.fat_100g)}})).filter(x=>x.per100.calories||x.per100.protein||x.per100.carbs||x.per100.fat).slice(0,18);
+  const gens=generic(q);const results=[...branded,...gens].slice(0,20);
   return{statusCode:200,headers:{'Content-Type':'application/json','Cache-Control':'public, max-age=300'},body:JSON.stringify({results})};
  }catch(e){console.error(e);const results=generic(q);return{statusCode:200,headers:{'Content-Type':'application/json'},body:JSON.stringify({results})}}
 };

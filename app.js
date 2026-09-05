@@ -885,11 +885,11 @@ function openSheet(kind){
 
   if(kind==='nutritionMealAdd'){
     const type=pendingNutritionMealType||'lunch';
-    return showSheet(`<h2>${mealTypeLabel(type)}</h2><p class="subtle">Comment veux-tu ajouter quelque chose à ce repas ?</p><div class="nutrition-actions meal-add-methods"><button class="sheet-choice nutrition-favorite-choice" data-food-favorites>★<strong>Mes aliments favoris</strong><span>Réutiliser en 1 clic avec la dernière quantité</span></button><button class="sheet-choice" data-sheet="foodSearch">⌕<strong>Rechercher un aliment</strong><span>Nom, marque ou produit</span></button><button class="sheet-choice" data-sheet="barcode">▣<strong>Scanner un produit</strong><span>Code-barres</span></button><button class="sheet-choice" data-sheet="photoFood">◉<strong>Photo aliment / repas</strong><span>Le Compagnon analyse puis tu confirmes</span></button><button class="sheet-choice" data-personal-recipes>♨<strong>Mes recettes</strong><span>Ajouter une recette personnelle</span></button><button class="sheet-choice" data-sheet="food">＋<strong>Saisie manuelle</strong><span>Description + macros</span></button></div>`,()=>nutritionHubSheet());
+    return showSheet(`<h2>${mealTypeLabel(type)}</h2><p class="subtle">Ajoute ce que tu as mangé, le plus vite possible.</p><div class="nutrition-actions meal-add-methods"><button class="sheet-choice nutrition-recent-choice" data-food-recents>↻<strong>Récents</strong><span>Retrouver les aliments utilisés dernièrement</span></button><button class="sheet-choice nutrition-favorite-choice" data-food-favorites>★<strong>Favoris</strong><span>Réutiliser en 1 clic avec la dernière quantité</span></button><button class="sheet-choice" data-sheet="foodSearch">⌕<strong>Rechercher un aliment</strong><span>Historique + base alimentaire</span></button><button class="sheet-choice" data-sheet="barcode">▣<strong>Scanner un produit</strong><span>Code-barres</span></button><button class="sheet-choice" data-sheet="photoFood">◉<strong>Photo aliment / repas</strong><span>Le Compagnon analyse puis tu confirmes</span></button><button class="sheet-choice" data-personal-recipes>♨<strong>Mes recettes</strong><span>Ajouter une recette personnelle</span></button><button class="sheet-choice" data-sheet="food">＋<strong>Saisie manuelle</strong><span>Description + macros</span></button></div>`,()=>nutritionHubSheet());
   }
   if(kind==='hydrationQuick') return (async()=>{const date=todayKey(),rows=(await LTDB.all('food')).filter(x=>x.date===date),current=rows.reduce((s,x)=>s+(Number(x.water)||0),0);showSheet(`<h2>Hydratation</h2><p class="subtle">Mets à jour ton total d’eau pour aujourd’hui.</p><form id="hydrationQuickForm">${dateField('date',date)}<div class="field"><label>Total aujourd’hui (L)</label><input name="water" type="number" min="0" max="8" step="0.1" inputmode="decimal" value="${current?current.toFixed(1):''}" placeholder="Ex. 1,5" required></div><button class="action" type="submit">Mettre à jour</button></form>`);})();
   if(kind==='food') return showSheet(`<h2>Ajouter un repas</h2><form id="foodForm">${dateField('date',todayKey())}<div class="field"><label>Moment</label><select name="mealType">${mealTypeOptions(pendingNutritionMealType||'lunch')}</select></div><div class="field"><label>Décris simplement</label><textarea name="description" rows="3" placeholder="Poulet, riz, légumes et un yaourt"></textarea></div><div class="range-row"><div class="field"><label>Protéines (g)</label><input name="protein" type="number" step="0.1"></div><div class="field"><label>Calories</label><input name="calories" type="number"></div></div><div class="range-row"><div class="field"><label>Glucides (g)</label><input name="carbs" type="number" step="0.1"></div><div class="field"><label>Lipides (g)</label><input name="fat" type="number" step="0.1"></div></div><div class="field"><label>Eau (L)</label><input name="water" type="number" step="0.1"></div><label class="checkline"><input type="checkbox" name="classic"> Ajouter à mes favoris</label><button class="action" type="submit">Enregistrer</button></form>`,pendingNutritionMealType?()=>openSheet('nutritionMealAdd'):null);
-  if(kind==='foodSearch') return showSheet(`<h2>Rechercher un aliment</h2><p class="subtle">Recherche par nom ou marque. Choisis un résultat, indique la quantité et confirme avant l’enregistrement.</p><input type="hidden" id="foodSearchMealContext" value="${escapeHtml(pendingNutritionMealType||'')}"><form id="foodSearchForm"><div class="food-search-line"><input name="query" autocomplete="off" placeholder="Ex. skyr, poulet, Lidl High Protein…" required><button class="action compact" type="submit">Rechercher</button></div></form><button class="text-action food-favorites-shortcut" type="button" data-food-favorites>★ Mes aliments favoris</button><div id="foodSearchStatus" class="ai-status"></div><div id="foodSearchResults"></div><div class="ai-note">Produits de marque : Open Food Facts. Aliments génériques : base nutritionnelle intégrée en complément.</div>`,pendingNutritionMealType?()=>openSheet('nutritionMealAdd'):null);
+  if(kind==='foodSearch') return showSheet(`<h2>Rechercher un aliment</h2><p class="subtle">Commence à écrire : Fluidité regarde aussi ce que tu as déjà utilisé.</p><input type="hidden" id="foodSearchMealContext" value="${escapeHtml(pendingNutritionMealType||'')}"><form id="foodSearchForm"><div class="food-search-line"><input name="query" autocomplete="off" autocapitalize="none" placeholder="Ex. skyr, poulet, Lidl High Protein…" required><button class="action compact" type="submit">Rechercher</button></div></form><div class="food-search-shortcuts"><button class="text-action" type="button" data-food-recents>↻ Récents</button><button class="text-action" type="button" data-food-favorites>★ Favoris</button></div><div id="foodSearchStatus" class="ai-status"></div><div id="foodSearchResults"></div><div class="ai-note">Fluidité privilégie tes aliments déjà utilisés puis complète avec la base alimentaire.</div>`,pendingNutritionMealType?()=>openSheet('nutritionMealAdd'):null);
   if(kind==='barcode') return showSheet(`<h2>Scanner un produit</h2><p class="subtle">Cadre le code-barres avec l’appareil photo. Dès qu’il est reconnu, le produit est recherché.</p><div class="barcode-scanner"><video id="barcodeVideo" playsinline muted></video><div class="barcode-frame"><span></span></div><div id="barcodeScanStatus" class="ai-status">Appuie sur « Ouvrir la caméra ».</div></div><button class="action" type="button" id="startBarcodeCamera">Ouvrir la caméra</button><button class="text-action" type="button" id="toggleManualBarcode">Saisir le code manuellement</button><form id="barcodeForm" class="manual-barcode hidden">${dateField('date',todayKey())}<div class="field"><label>Moment</label><select name="mealType">${mealTypeOptions(pendingNutritionMealType||'lunch')}</select></div><div class="field"><label>Code-barres</label><input name="barcode" inputmode="numeric" autocomplete="off" placeholder="7612345678901" required></div><button class="action secondary" type="submit" id="barcodeLookupBtn">Rechercher</button></form><div class="ai-note">Le scan est traité sur ton téléphone. Seul le numéro du code-barres est envoyé à Open Food Facts.</div>`,pendingNutritionMealType?()=>openSheet('nutritionMealAdd'):null);
   if(kind==='photoFood') return showSheet(`<h2>Photo aliment / repas</h2><p class="subtle">Prends une photo ou choisis-en une. Le Compagnon propose ce qu’il reconnaît, puis tu corriges ou confirmes.</p>${dateField('photoDate',todayKey())}<div class="field"><label>Moment</label><select id="photoMealType">${mealTypeOptions(pendingNutritionMealType||'lunch')}</select></div><div class="photo-actions"><label class="action photo-action">Prendre une photo<input id="foodPhotoInput" type="file" accept="image/*" capture="environment" hidden></label><label class="action secondary photo-action">Photothèque<input id="foodLibraryInput" type="file" accept="image/*" hidden></label></div><div id="foodPhotoPreview" class="photo-preview empty">Aucune photo sélectionnée.</div><div id="foodAIStatus" class="ai-status"></div>`,pendingNutritionMealType?()=>openSheet('nutritionMealAdd'):null);
   if(kind==='photoCompare') {
@@ -1315,6 +1315,8 @@ function bindSheet(){
 
 
   document.querySelectorAll('[data-food-favorites]').forEach(b=>b.addEventListener('click',foodFavoritesSheet));
+  document.querySelectorAll('[data-food-recents]').forEach(b=>b.addEventListener('click',foodRecentsSheet));
+  document.querySelectorAll('[data-use-food-recent]').forEach(b=>b.addEventListener('click',()=>reuseFoodRow(b.dataset.useFoodRecent,'recent-reuse')));
   document.querySelectorAll('[data-use-food-favorite]').forEach(b=>b.addEventListener('click',()=>useFoodFavorite(b.dataset.useFoodFavorite)));
   document.querySelectorAll('[data-personal-recipes]').forEach(b=>b.addEventListener('click',personalRecipesSheet));
   $('[data-new-recipe]')?.addEventListener('click',()=>recipeEditorSheet());
@@ -1568,6 +1570,19 @@ async function scanBarcodeFrame(){
  if(barcodeScanning)setTimeout(scanBarcodeFrame,180);
 }
 
+async function foodRecentsSheet(){
+  const food=(await LTDB.all('food')).filter(x=>x.mealType!=='hydration'&&x.description);
+  const map=new Map();
+  food.sort((a,b)=>(b.updatedAt||b.createdAt||b.dateTime||b.date||'').localeCompare(a.updatedAt||a.createdAt||a.dateTime||a.date||''));
+  food.forEach(x=>{const k=(x.sourceId||x.barcode||x.description||'').toLowerCase().trim();if(k&&!map.has(k))map.set(k,x)});
+  const recent=[...map.values()].slice(0,12);
+  showSheet(`<div class="nutrition-page-head"><div><div class="card-kicker">Alimentation</div><h2>Récents</h2></div></div>${recent.length?`<div class="food-result-list">${recent.map(x=>`<button class="food-result-row food-quick-row" type="button" data-use-food-recent="${escapeHtml(x.id)}"><span class="food-result-placeholder">↻</span><div><strong>${escapeHtml(x.description||'Aliment')}</strong><span>${Math.round(Number(x.calories)||0)} kcal · ${Number(x.protein||0).toFixed(1)} g prot. · dernière quantité</span></div><b>＋</b></button>`).join('')}</div>`:`<div class="empty">Tes aliments utilisés récemment apparaîtront ici.</div>`}`,()=>openSheet('nutritionMealAdd'));
+}
+async function reuseFoodRow(id,source='recent-reuse'){
+  const x=await LTDB.get('food',id);if(!x)return;
+  await LTDB.put('food',{...x,id:uid(),date:todayKey(),dateTime:new Date().toISOString(),mealType:pendingNutritionMealType||x.mealType||'lunch',source,createdAt:new Date().toISOString(),updatedAt:null});
+  toast(`${x.description||'Aliment'} ajouté`);pendingNutritionMealType=null;await nutritionHubSheet();render();
+}
 async function foodFavoritesSheet(){
   const food=(await LTDB.all('food')).filter(x=>x.classic && x.mealType!=='hydration');
   const map=new Map();
@@ -1576,24 +1591,31 @@ async function foodFavoritesSheet(){
   const fav=[...map.values()];
   showSheet(`<div class="nutrition-page-head"><div><div class="card-kicker">Alimentation</div><h2>Mes aliments favoris</h2></div></div>${fav.length?`<div class="food-result-list">${fav.map(x=>`<button class="food-result-row" type="button" data-use-food-favorite="${escapeHtml(x.id)}"><span class="food-result-placeholder">★</span><div><strong>${escapeHtml(x.description||'Aliment')}</strong><span>${Math.round(Number(x.calories)||0)} kcal · ${Number(x.protein||0).toFixed(1)} g prot. · dernière quantité</span></div><b>＋</b></button>`).join('')}</div>`:`<div class="empty">Aucun favori pour l’instant. Coche « Ajouter à mes favoris » lors de la confirmation d’un aliment.</div>`}`,()=>openSheet('nutritionMealAdd'));
 }
-async function useFoodFavorite(id){
-  const x=await LTDB.get('food',id);if(!x)return;
-  await LTDB.put('food',{...x,id:uid(),date:todayKey(),dateTime:new Date().toISOString(),mealType:pendingNutritionMealType||x.mealType||'lunch',source:'favorite-reuse',classic:true,createdAt:new Date().toISOString(),updatedAt:null});
-  toast(`${x.description||'Aliment'} ajouté`);pendingNutritionMealType=null;await nutritionHubSheet();render();
-}
+async function useFoodFavorite(id){return reuseFoodRow(id,'favorite-reuse')}
 async function searchFoods(e){
   state.foodSearchMealContext=$('#foodSearchMealContext')?.value||'';
   e.preventDefault();const q=String(new FormData(e.currentTarget).get('query')||'').trim(),status=$('#foodSearchStatus'),box=$('#foodSearchResults');
   if(q.length<2)return;
   if(status)status.textContent='Recherche…';if(box)box.innerHTML='';
+  const norm=v=>String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const terms=norm(q).split(/\s+/).filter(Boolean);
+  const history=(await LTDB.all('food')).filter(x=>x.mealType!=='hydration'&&x.description);
+  const seen=new Set(),local=[];
+  history.sort((a,b)=>(b.updatedAt||b.createdAt||b.dateTime||b.date||'').localeCompare(a.updatedAt||a.createdAt||a.dateTime||a.date||''));
+  for(const x of history){const hay=norm(`${x.description} ${x.brand||''}`);if(!terms.every(t=>hay.includes(t)))continue;const k=norm(x.sourceId||x.barcode||x.description);if(!k||seen.has(k))continue;seen.add(k);local.push({id:x.id,source:'fluidite-history',sourceLabel:'Déjà utilisé',name:x.description,brand:'',quantity:'',image:'',servingGrams:100,historyRowId:x.id,per100:{calories:Number(x.calories)||0,protein:Number(x.protein)||0,carbs:Number(x.carbs)||0,fat:Number(x.fat)||0},directValues:true});if(local.length>=6)break}
   try{
-    const r=await fetch(`/.netlify/functions/food-search?q=${encodeURIComponent(q)}`),data=await r.json();
+    const r=await fetch(`/.netlify/functions/food-search?q=${encodeURIComponent(q)}`,{cache:'no-store'}),data=await r.json();
     if(!r.ok)throw new Error(data.detail||data.error||'Recherche impossible');
-    if(status)status.textContent=`${data.results.length} résultat${data.results.length>1?'s':''}`;
-    box.innerHTML=`<div class="food-result-list">${data.results.map((x,i)=>`<button class="food-result-row" data-food-result="${i}" type="button">${x.image?`<img src="${escapeHtml(x.image)}" alt="">`:'<span class="food-result-placeholder">◒</span>'}<div><strong>${escapeHtml(x.name)}</strong><span>${escapeHtml(x.brand||x.sourceLabel||'Aliment')} · ${Math.round(Number(x.per100?.calories)||0)} kcal · ${Number(x.per100?.protein||0).toFixed(1)} g prot. / 100 g</span></div><b>›</b></button>`).join('')||'<div class="empty">Aucun résultat. Tu peux utiliser la saisie manuelle ou la photo.</div>'}</div>`;
-    state.foodSearchResults=data.results;
-    document.querySelectorAll('[data-food-result]').forEach(b=>b.addEventListener('click',()=>showFoodSearchConfirm(data.results[Number(b.dataset.foodResult)])));
-  }catch(err){console.error(err);if(status)status.textContent='Recherche indisponible. La saisie manuelle reste disponible.'}
+    const remote=data.results||[];
+    state.foodSearchResults=[...local,...remote];
+    if(status)status.textContent=`${state.foodSearchResults.length} résultat${state.foodSearchResults.length>1?'s':''}${local.length?' · tes habitudes en premier':''}`;
+    box.innerHTML=`<div class="food-result-list">${state.foodSearchResults.map((x,i)=>`<button class="food-result-row" data-food-result="${i}" type="button">${x.source==='fluidite-history'?'<span class="food-result-placeholder">↻</span>':x.image?`<img src="${escapeHtml(x.image)}" alt="">`:'<span class="food-result-placeholder">◒</span>'}<div><strong>${escapeHtml(x.name)}</strong><span>${escapeHtml(x.brand||x.sourceLabel||'Aliment')} · ${Math.round(Number(x.per100?.calories)||0)} kcal · ${Number(x.per100?.protein||0).toFixed(1)} g prot.${x.directValues?' · dernière quantité':' / 100 g'}</span></div><b>${x.directValues?'＋':'›'}</b></button>`).join('')||'<div class="empty">Aucun résultat. Tu peux utiliser la saisie manuelle ou le scanner.</div>'}</div>`;
+    document.querySelectorAll('[data-food-result]').forEach(b=>b.addEventListener('click',()=>{const x=state.foodSearchResults[Number(b.dataset.foodResult)];return x?.directValues?reuseFoodRow(x.historyRowId,'search-history-reuse'):showFoodSearchConfirm(x)}));
+  }catch(err){
+    console.error(err);state.foodSearchResults=local;
+    if(local.length){if(status)status.textContent=`${local.length} résultat${local.length>1?'s':''} dans tes aliments déjà utilisés`;box.innerHTML=`<div class="food-result-list">${local.map((x,i)=>`<button class="food-result-row" data-local-food-result="${i}" type="button"><span class="food-result-placeholder">↻</span><div><strong>${escapeHtml(x.name)}</strong><span>Déjà utilisé · ${Math.round(x.per100.calories)} kcal · ${Number(x.per100.protein).toFixed(1)} g prot.</span></div><b>＋</b></button>`).join('')}</div>`;document.querySelectorAll('[data-local-food-result]').forEach(b=>b.onclick=()=>reuseFoodRow(local[Number(b.dataset.localFoodResult)].historyRowId,'search-history-reuse'));}
+    else if(status)status.textContent='Recherche en ligne indisponible. Scanner et saisie manuelle restent disponibles.';
+  }
 }
 function showFoodSearchConfirm(x){
   const grams=Number(x.servingGrams)||100,p=x.per100||{};

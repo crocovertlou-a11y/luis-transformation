@@ -425,3 +425,7 @@ button.done-tile:active{transform:scale(.985)}
 .nutrition-edit-favorite{margin:10px 0 14px;padding:13px 14px;border:1px solid var(--line);border-radius:16px;background:rgba(152,93,232,.05)}
 .nutrition-edit-copy{margin:4px 0 14px;padding:14px;border:1px solid var(--line);border-radius:18px;background:rgba(255,108,55,.045)}
 .nutrition-edit-copy .field{margin:0 0 10px}.nutrition-edit-copy .action{margin:0;width:100%}.nutrition-edit-copy .action:disabled{opacity:.65}
+
+/* V2.11 — Alimentation sans friction. Aucun visuel ajouté. */
+.nutrition-recent-choice{border-color:rgba(255,108,55,.20)!important;background:rgba(255,108,55,.035)!important}
+.food-search-shortcuts{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 4px}.food-search-shortcuts .text-action{padding:8px 11px;border:1px solid var(--line);border-radius:999px;text-decoration:none}.food-quick-row b{font-size:20px}
