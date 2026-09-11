@@ -1036,10 +1036,31 @@ async function nutritionProposalContext(){
 }
 async function fetchNutritionSuggestions(){
   const context=await nutritionProposalContext();
-  const r=await fetch('/.netlify/functions/nutrition-recipes-v1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({context})});
-  const data=await r.json();if(!r.ok)throw new Error(data.detail||data.error||'Propositions indisponibles');
-  state.nutritionSuggestions=data.suggestions||[];
+  try{
+    const r=await fetch('/.netlify/functions/nutrition-recipes-v1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({context})});
+    const data=await r.json();if(!r.ok)throw new Error(data.detail||data.error||'Propositions indisponibles');
+    if(!Array.isArray(data.suggestions)||!data.suggestions.length)throw new Error('Aucune proposition reçue');
+    state.nutritionSuggestions=data.suggestions;
+    state.nutritionSuggestionsLocal=false;
+  }catch(e){
+    console.warn('Nutrition AI indisponible, propositions locales utilisées',e);
+    state.nutritionSuggestions=localNutritionSuggestions(context);
+    state.nutritionSuggestionsLocal=true;
+  }
   return state.nutritionSuggestions;
+}
+function localNutritionSuggestions(context={}){
+  const hour=Number(context.hour)||new Date().getHours();
+  const remaining=Math.max(0,(Number(context.proteinTarget)||170)-(Number(context.today?.protein)||0));
+  const cardio=Array.isArray(context.cardioToday)&&context.cardioToday.length>0;
+  const mealType=hour<10?'breakfast':hour<15?'lunch':hour<18?'snack':'dinner';
+  const base=[
+    {name:'Bowl poulet, riz et légumes',mealType:mealType==='breakfast'?'lunch':mealType,ingredients:['160 g de blanc de poulet','150 g de riz cuit','250 g de légumes variés','1 c. à café d’huile d’olive','Herbes et épices'],preparation:['Cuire ou réchauffer le poulet et le riz.','Faire revenir les légumes.','Assembler, assaisonner et servir.'],protein:52,calories:610,carbs:62,fat:16,reason:cardio?'Un repas complet avec des glucides pour accompagner la récupération.':'Un repas simple, complet et riche en protéines.'},
+    {name:'Omelette complète et pommes de terre',mealType:mealType==='breakfast'?'breakfast':mealType,ingredients:['3 œufs','150 g de blancs d’œufs','250 g de pommes de terre','200 g de légumes','30 g de fromage frais protéiné'],preparation:['Cuire les pommes de terre et les légumes.','Ajouter les œufs battus et cuire doucement.','Servir avec le fromage frais.'],protein:48,calories:590,carbs:50,fat:22,reason:'Des ingrédients courants pour un repas rassasiant et facile à préparer.'},
+    {name:'Bol skyr, avoine et fruits',mealType:mealType==='dinner'?'snack':mealType,ingredients:['300 g de skyr nature','40 g de flocons d’avoine','1 banane ou 150 g de fruits rouges','15 g d’amandes','Cannelle'],preparation:['Verser le skyr dans un bol.','Ajouter l’avoine et les fruits.','Terminer avec les amandes et la cannelle.'],protein:38,calories:480,carbs:58,fat:11,reason:'Une option rapide quand tu veux quelque chose de frais et sans cuisine.'}
+  ];
+  if(remaining<30)return base.map((x,i)=>i?x:{...x,name:'Salade thon, œuf et légumes',ingredients:['120 g de thon au naturel','1 œuf','300 g de légumes variés','100 g de pommes de terre cuites','1 c. à café d’huile d’olive'],preparation:['Égoutter le thon et couper les ingrédients.','Tout assembler dans un grand bol.','Assaisonner selon tes goûts.'],protein:38,calories:430,carbs:28,fat:16,reason:'Une proposition plus légère car ton repère protéines est déjà proche.'});
+  return base;
 }
 async function openCompanionRecipe(){
   showSheet(`<h2>Ta recette</h2><div class="nutrition-ai-loading">Je regarde ta journée et je prépare une recette adaptée…</div>`,()=>{$('#sheet').close()});
@@ -1053,7 +1074,7 @@ async function openNutritionProposals(){
 }
 function renderNutritionProposals(){
   const rows=state.nutritionSuggestions||[];
-  showSheet(`<h2>Propositions de repas</h2><p class="subtle">Estimations à confirmer avant enregistrement.</p><div class="nutrition-ai-list">${rows.map((x,i)=>`<button class="nutrition-ai-card nutrition-ai-card-button" data-open-ai-recipe="${i}"><div><strong>${escapeHtml(x.name)}</strong><small>${Math.round(x.calories)} kcal · ${Math.round(x.protein)} g prot. · ${Math.round(x.carbs)} g gluc. · ${Math.round(x.fat)} g lip.</small></div><p>${escapeHtml(x.reason||'Voir la recette')}</p></button>`).join('')}</div>`);
+  showSheet(`<h2>Propositions de repas</h2><p class="subtle">${state.nutritionSuggestionsLocal?'Le Compagnon te propose des recettes fiables disponibles même hors connexion.':'Estimations à confirmer avant enregistrement.'}</p><div class="nutrition-ai-list">${rows.map((x,i)=>`<button class="nutrition-ai-card nutrition-ai-card-button" data-open-ai-recipe="${i}"><div><strong>${escapeHtml(x.name)}</strong><small>${Math.round(x.calories)} kcal · ${Math.round(x.protein)} g prot. · ${Math.round(x.carbs)} g gluc. · ${Math.round(x.fat)} g lip.</small></div><p>${escapeHtml(x.reason||'Voir la recette')}</p></button>`).join('')}</div>`);
   document.querySelectorAll('[data-open-ai-recipe]').forEach(b=>b.onclick=()=>showNutritionRecipeDetail(Number(b.dataset.openAiRecipe),renderNutritionProposals));
 }
 function normalizeRecipeName(v=''){return String(v).trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim();}
@@ -1143,6 +1164,7 @@ async function nutritionHubSheet(){
       </div>
       <div class="nutrition-fluidity-note">${companionMark("companion-mark-mini")}<div>${fluidityText}</div></div>
     </section>
+    <button type="button" class="nutrition-companion-recipe" data-nutrition-proposals>${companionMark("companion-mark-mini")}<div><strong>Pas d’idée ?</strong><span>Demander une recette au Compagnon</span></div><b>›</b></button>
     <div class="nutrition-meals nutrition-meals-v2">${mealOrder.map(type=>nutritionMealCard(type,byMeal[type])).join('')}</div>
     <button type="button" class="nutrition-recipes-link" data-personal-recipes><span>▤</span><div><strong>Mes recettes</strong><small>Voir et gérer tes recettes</small></div><b>›</b></button>`);
 }

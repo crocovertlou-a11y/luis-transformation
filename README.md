@@ -1,5 +1,10 @@
 # Luis Transformation — Build 0.6.4
 
+## V2.11.1 — Recettes du Compagnon
+- Le bouton « Me proposer un repas » de l’accueil et le nouvel accès dans Alimentation utilisent le même parcours.
+- La fiche recette conserve les ingrédients, macros, ajout au suivi et enregistrement dans Mes recettes.
+- Si le service IA est indisponible, trois propositions locales adaptées à l’heure, au repère protéines et au cardio évitent désormais l’écran d’échec.
+
 ## IA Nutrition
 - Photo d’un aliment ou d’un repas → analyse Gemini Vision.
 - Identification des éléments visibles, estimation des portions et des macros.

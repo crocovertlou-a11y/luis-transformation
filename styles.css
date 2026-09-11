@@ -377,6 +377,8 @@ button.done-tile:active{transform:scale(.985)}
 .nutrition-ai-card strong{display:block;font-size:16px}.nutrition-ai-card small{display:block;color:#777;margin-top:4px}
 .nutrition-ai-card p{font-size:14px;line-height:1.45}.nutrition-ai-actions{display:flex;gap:8px;flex-wrap:wrap}
 .nutrition-ai-loading{padding:24px 4px;color:#777}
+.nutrition-companion-recipe{width:100%;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;margin:12px 0 14px;padding:14px 16px;border:1px solid rgba(111,78,205,.16);border-radius:18px;background:linear-gradient(135deg,rgba(111,78,205,.08),rgba(255,108,55,.06));font:inherit;color:inherit;text-align:left}
+.nutrition-companion-recipe div{display:flex;flex-direction:column;gap:2px}.nutrition-companion-recipe strong{font-size:14px}.nutrition-companion-recipe span{font-size:12px;color:var(--muted)}.nutrition-companion-recipe>b{font-size:20px;color:#6f4bd8}
 
 /* V2.6 · fiche recette Compagnon — volontairement sans visuel */
 .companion-recipe-detail h2{margin:5px 0 8px;font-size:25px;line-height:1.12}
