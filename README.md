@@ -1,5 +1,9 @@
 # Luis Transformation — Build 0.6.4
 
+## V2.11.2 — Correctif action Recettes
+- Le bouton « Demander une recette au Compagnon » dans la fenêtre Alimentation déclenche désormais le même parcours que celui de l’accueil.
+- Un gestionnaire délégué protège aussi cette action lors des nouveaux rendus dynamiques de la fenêtre.
+
 ## V2.11.1 — Recettes du Compagnon
 - Le bouton « Me proposer un repas » de l’accueil et le nouvel accès dans Alimentation utilisent le même parcours.
 - La fiche recette conserve les ingrédients, macros, ajout au suivi et enregistrement dans Mes recettes.

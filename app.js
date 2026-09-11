@@ -1326,6 +1326,7 @@ function showTechnique(name){
 
 function bindSheet(){
   document.querySelectorAll('[data-sheet]').forEach(b=>b.addEventListener('click',()=>openSheet(b.dataset.sheet)));
+  document.querySelectorAll('[data-nutrition-proposals]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();b.__fluiditeHandled=true;openNutritionProposals();queueMicrotask(()=>{b.__fluiditeHandled=false})}));
   document.querySelectorAll('[data-meal-add]').forEach(b=>b.addEventListener('click',()=>{pendingNutritionMealType=b.dataset.mealAdd;openSheet('nutritionMealAdd')}));
   document.querySelectorAll('[data-copy-yesterday]').forEach(b=>b.addEventListener('click',()=>copyMealFromYesterday(b.dataset.copyYesterday)));
 
@@ -1388,6 +1389,12 @@ function bindSheet(){
 
 // V2.10.5.4 — safety net for dynamic sheet actions. One delegated listener avoids losing handlers after a sheet rerender.
 document.addEventListener('click',e=>{
+  const nutritionProposal=e.target.closest?.('[data-nutrition-proposals]');
+  if(nutritionProposal && nutritionProposal.closest('#sheet') && !nutritionProposal.__fluiditeHandled){
+    e.preventDefault();
+    openNutritionProposals();
+    return;
+  }
   const manual=e.target.closest?.('#toggleManualBarcode');
   if(manual){e.preventDefault();$('#barcodeForm')?.classList.toggle('hidden');return;}
   const strava=e.target.closest?.('#fetchStravaActivities');
