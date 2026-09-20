@@ -1,4 +1,14 @@
-# Luis Transformation — Build 0.6.4
+# Luis Transformation — Fluidité V2.12
+
+## V2.12 — Garmin confirmé
+- Import volontaire d’une capsule JSON Garmin produite dans ChatGPT avec Fitness AI Connector.
+- Coller ou choisir un fichier, puis prévisualiser et corriger toutes les valeurs avant confirmation.
+- Données Garmin conservées séparément avec source, date de récupération, valeur originale et date de confirmation.
+- Préremplissage prudent du sommeil, du poids et de la composition corporelle ; le stress physiologique Garmin ne remplace jamais le stress mental déclaré.
+- Suivi de la fréquence cardiaque au repos et construction progressive d’une référence personnelle.
+- L’entraînement n’est adapté que lorsque plusieurs signaux confirmés convergent ; une valeur isolée ne bloque jamais une séance.
+- Historique santé inclus dans les sauvegardes Fluidité.
+- Aucun changement volontaire sur Alimentation, Force, recettes, scanner, photos ou Strava.
 
 ## V2.11.2 — Correctif action Recettes
 - Le bouton « Demander une recette au Compagnon » dans la fenêtre Alimentation déclenche désormais le même parcours que celui de l’accueil.

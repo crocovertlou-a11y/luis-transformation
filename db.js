@@ -1,7 +1,7 @@
 const LTDB = (() => {
   const DB_NAME = 'luis-transformation';
-  const DB_VERSION = 3;
-  const dataStores = ['profile','checkins','workouts','cardio','food','memory','settings','events','photos'];
+  const DB_VERSION = 4;
+  const dataStores = ['profile','checkins','workouts','cardio','food','memory','settings','events','photos','health'];
   const systemStores = ['backups'];
   const stores = [...dataStores,...systemStores];
   const BACKUP_LIMIT = 7;
