@@ -1,4 +1,4 @@
-/* Fluidité V2.12 — capsule Garmin confirmée. Aucun accès direct au connecteur depuis l'app. */
+/* Fluidité V13 — capsule Garmin confirmée, sommeil conservé à la minute. */
 (()=>{
   const SCHEMA='fluidite-garmin-capsule-v1';
   let pending=null;
@@ -33,13 +33,18 @@
     const battery=daily.body_battery||daily.bodyBattery||{};
     const calories=daily.calories||{};
     const intensity=daily.intensity_duration_s||daily.intensityDuration||{};
+    const sleepSeconds=n(first(data.sleepDurationSeconds,data.sleep_duration_seconds,sleep.duration_s,sleep.duration_seconds,sleep.durationInSeconds,sleep.total_sleep_seconds,sleep.totalSleepSeconds));
+    const sleepMinutes=n(first(data.sleepMinutes,data.sleep_minutes,sleep.duration_minutes,sleep.durationMinutes,sleep.total_sleep_minutes,sleep.totalSleepMinutes,sleepSeconds!=null?sleepSeconds/60:null));
+    const sleepHours=n(first(data.sleepHours,sleep.duration_hours,sleep.durationHours,sleepMinutes!=null?sleepMinutes/60:null));
     const values={
       restingHeartRate:n(first(data.restingHeartRate,daily.restingHeartRate,heart.resting)),
       averageHeartRate:n(first(data.averageHeartRate,daily.averageHeartRate,heart.avg)),
       minimumHeartRate:n(first(data.minimumHeartRate,heart.min)),
       maximumHeartRate:n(first(data.maximumHeartRate,heart.max)),
       hrvMs:n(first(data.hrvMs,hrv.last_night_avg,hrv.lastNightAvg,hrv.average,hrv.value)),
-      sleepHours:n(first(data.sleepHours,sleep.duration_hours,sleep.durationHours,sleep.duration_s!=null?sleep.duration_s/3600:null)),
+      sleepHours,
+      sleepMinutes:sleepMinutes!=null?Math.round(sleepMinutes):sleepHours!=null?Math.round(sleepHours*60):null,
+      sleepDurationSeconds:sleepSeconds!=null?Math.round(sleepSeconds):sleepHours!=null?Math.round(sleepHours*3600):null,
       sleepScore:n(first(data.sleepScore,sleep.score)),
       stressAverage:n(first(data.stressAverage,daily.stress_avg,stress.average,stress.avg)),
       stressMaximum:n(first(data.stressMaximum,daily.stress_max,stress.maximum,stress.max)),
@@ -66,13 +71,14 @@
     };
     const activities=(payload.activities||data.activities||[]).map(normalizeActivity);
     if(!Object.values(values).some(v=>v!=null)&&!activities.length)throw new Error('Aucune donnée Garmin reconnue dans cette capsule');
-    return {schema:SCHEMA,date:String(first(payload.date,daily.calendar_date,data.date,localDate())).slice(0,10),fetchedAt:first(payload.fetchedAt,payload.fetched_at,new Date().toISOString()),source:'Garmin via Fitness AI Connector',values,activities};
+    return {schema:SCHEMA,date:String(first(payload.date,daily.calendar_date,data.date,localDate())).slice(0,10),fetchedAt:first(payload.fetchedAt,payload.fetched_at,new Date().toISOString()),source:'Garmin via Fitness AI Connector',values,activities,missing:Array.isArray(payload.missing)?payload.missing.map(String):[],dataStatus:first(payload.data_status,payload.dataStatus,null),notes:Array.isArray(payload.notes)?payload.notes.map(String):[]};
   }
 
   function input(name,label,value,step='1',suffix=''){
     return `<div class="field"><label>${label}${suffix?` (${suffix})`:''}</label><input name="${name}" type="number" step="${step}" value="${value??''}" placeholder="—"></div>`;
   }
   function section(title,rows){return `<section class="garmin-preview-section"><h3>${title}</h3><div class="garmin-preview-grid">${rows}</div></section>`}
+  function sleepLabel(v={}){return v.sleepMinutes!=null?formatSleepDuration(v.sleepHours,v.sleepMinutes):v.sleepHours!=null?formatSleepDuration(v.sleepHours):'—'}
   function openImport(){
     pending=null;
     showSheet(`<div class="card-kicker">GARMIN · IMPORT VOLONTAIRE</div><h2>Importer ma capsule santé</h2><p class="subtle">Dans ChatGPT, demande « Prépare ma capsule Garmin Fluidité du jour », puis colle le JSON ou importe le fichier reçu.</p><div class="garmin-import-tabs"><label>Coller le JSON</label><label>Choisir un fichier<input id="garminCapsuleFile" type="file" accept=".json,application/json" hidden></label></div><textarea id="garminCapsuleText" class="garmin-capsule-text" placeholder='{"schema":"fluidite-garmin-capsule-v1", ...}'></textarea><div class="garmin-confirm-note"><b>Contrôle utilisateur obligatoire.</b> Rien n’est enregistré avant l’écran de vérification.</div><button class="action" id="garminParseCapsule" type="button">Prévisualiser les données</button>`);
@@ -84,12 +90,13 @@
     const v=pending.values;
     const activities=pending.activities||[];
     showSheet(`<div class="card-kicker">GARMIN · PRÉVISUALISATION</div><h2>Vérifie avant d’enregistrer</h2><form id="garminConfirmForm">${dateField('date',pending.date,'Date Garmin')}
-      ${section('Récupération',input('restingHeartRate','Fréquence cardiaque au repos',v.restingHeartRate,'1','bpm')+input('hrvMs','HRV nocturne',v.hrvMs,'0.1','ms')+input('sleepHours','Sommeil',v.sleepHours,'0.05','h')+input('sleepScore','Score de sommeil',v.sleepScore))}
+      ${section('Récupération',input('restingHeartRate','Fréquence cardiaque au repos',v.restingHeartRate,'1','bpm')+input('hrvMs','HRV nocturne',v.hrvMs,'0.1','ms')+input('sleepHours','Sommeil décimal',v.sleepHours,'0.0166667','h')+input('sleepScore','Score de sommeil',v.sleepScore))}
       ${section('Stress physiologique',input('stressAverage','Stress Garmin moyen',v.stressAverage)+input('stressMaximum','Stress Garmin maximal',v.stressMaximum)+input('bodyBatteryCharged','Body Battery chargé',v.bodyBatteryCharged)+input('bodyBatteryDrained','Body Battery consommé',v.bodyBatteryDrained))}
       ${section('Activité quotidienne',input('steps','Pas',v.steps)+input('distanceKm','Distance',v.distanceKm,'0.01','km')+input('activeMinutes','Temps actif',v.activeMinutes,'0.1','min')+input('floorsClimbed','Étages montés',v.floorsClimbed)+input('activeCalories','Calories actives',v.activeCalories)+input('totalCalories','Calories totales',v.totalCalories)+input('moderateMinutes','Minutes modérées',v.moderateMinutes,'0.1','min')+input('vigorousMinutes','Minutes soutenues',v.vigorousMinutes,'0.1','min'))}
       ${section('Corps et respiration',input('weightKg','Poids',v.weightKg,'0.1','kg')+input('bodyFatPercent','Masse grasse',v.bodyFatPercent,'0.1','%')+input('muscleMassKg','Masse musculaire',v.muscleMassKg,'0.1','kg')+input('bodyWaterPercent','Eau corporelle',v.bodyWaterPercent,'0.1','%')+input('respirationRate','Respiration',v.respirationRate,'0.1','/min')+input('spo2Average','SpO₂ moyenne',v.spo2Average,'0.1','%')+input('spo2Minimum','SpO₂ minimale',v.spo2Minimum,'0.1','%'))}
       ${section('Mesures facultatives',input('bloodPressureSystolic','Tension systolique',v.bloodPressureSystolic,'1','mmHg')+input('bloodPressureDiastolic','Tension diastolique',v.bloodPressureDiastolic,'1','mmHg')+input('bloodPressurePulse','Pouls lors de la mesure',v.bloodPressurePulse,'1','bpm'))}
       ${activities.length?`<section class="garmin-preview-section"><h3>Activités Garmin détectées</h3><div class="garmin-activity-preview">${activities.map((a,i)=>`<label><input type="checkbox" name="activityIndex" value="${i}" ${a.cardioLike?'checked':''}><span><strong>${escapeHtml(a.name||a.type)}</strong><small>${displayDate(a.date)}${a.device?` · ${escapeHtml(a.device)}`:''}${a.distanceKm!=null?` · ${fmt(a.distanceKm,2)} km`:''}${a.durationSeconds!=null?` · ${durationLabel(a.durationSeconds)}`:''}</small></span></label>`).join('')}</div><p class="subtle">Les activités cardio sont présélectionnées. Les autres restent conservées dans la capsule santé mais ne sont pas transformées automatiquement en séance Force.</p></section>`:''}
+      ${v.sleepMinutes!=null?`<div class="garmin-sleep-confirmed"><b>Sommeil Garmin reconnu</b><span>${sleepLabel(v)}${v.sleepScore!=null?` · score ${fmt(v.sleepScore)}`:''}</span></div>`:`<div class="garmin-missing-warning"><b>Sommeil absent de cette capsule.</b><span>Fluidité ne modifiera pas ton sommeil. Vérifie la synchronisation Garmin et l’autorisation Historical Data Export – Sleep.</span></div>`}
       <div class="garmin-confirm-note"><b>Important :</b> le stress Garmin est physiologique. Il restera distinct de ton stress mental. Le sommeil et le poids ne préremplissent le point du jour que si tu n’as pas déjà renseigné ces valeurs.</div>
       <button class="action" type="submit">Confirmer ces données Garmin</button><button class="action secondary" type="button" id="garminBackImport">Corriger la capsule</button></form>`);
     $('#garminConfirmForm')?.addEventListener('submit',confirmCapsule);
@@ -111,10 +118,13 @@
     e.preventDefault();const f=new FormData(e.currentTarget),values={...pending.values};
     Object.keys(values).forEach(k=>{if(f.has(k))values[k]=n(f.get(k))});
     const date=String(f.get('date')||pending.date),readiness=await readinessFor(date,values),now=new Date().toISOString();
-    const row={id:date,date,source:pending.source,fetchedAt:pending.fetchedAt,confirmed:true,confirmedAt:now,original:pending.values,values,activities:pending.activities||[],readiness};
+    if(values.sleepHours!=null){values.sleepMinutes=Math.round(values.sleepHours*60);values.sleepDurationSeconds=values.sleepMinutes*60}
+    const row={id:date,date,source:pending.source,fetchedAt:pending.fetchedAt,confirmed:true,confirmedAt:now,original:pending.values,values,activities:pending.activities||[],readiness,missing:pending.missing||[],dataStatus:pending.dataStatus||null,notes:pending.notes||[]};
     await LTDB.put('health',row);
     const previous=await LTDB.get('checkins',date)||{id:date,date};
-    const checkin={...previous,id:date,date,sleep:previous.sleep??values.sleepHours??null,weight:previous.weight??values.weightKg??null,garminHealth:{source:row.source,confirmedAt:now,values,readiness},source:previous.source||'garmin-confirmed',updatedAt:now};
+    const canUseGarminSleep=previous.sleep==null||previous.sleepSource==='garmin-confirmed'||(previous.source==='garmin-confirmed'&&previous.garminHealth);
+    const importedSleep=values.sleepMinutes!=null?values.sleepMinutes/60:values.sleepHours;
+    const checkin={...previous,id:date,date,sleep:canUseGarminSleep&&importedSleep!=null?importedSleep:previous.sleep??null,sleepMinutes:canUseGarminSleep&&values.sleepMinutes!=null?values.sleepMinutes:previous.sleepMinutes??null,sleepSource:canUseGarminSleep&&importedSleep!=null?'garmin-confirmed':previous.sleepSource??null,weight:previous.weight??values.weightKg??null,garminHealth:{source:row.source,confirmedAt:now,values,readiness,missing:row.missing},source:previous.source||'garmin-confirmed',updatedAt:now};
     await LTDB.put('checkins',checkin);
     for(const rawIndex of f.getAll('activityIndex')){
       const a=pending.activities?.[Number(rawIndex)];if(!a)continue;
@@ -128,17 +138,17 @@
   async function todayCard(){
     const row=await LTDB.get('health',todayKey());
     if(!row)return `<section class="garmin-health-card garmin-health-empty"><div><div class="card-kicker">GARMIN · BASIC ACTIF</div><h2>Préremplir ma journée</h2><p>Importe la capsule préparée dans ChatGPT. Tu vérifieras chaque valeur avant son enregistrement.</p></div><button class="garmin-health-action" data-garmin-import>Importer</button></section>`;
-    const v=row.values||{};return `<section class="garmin-health-card"><div class="garmin-health-head"><div><div class="card-kicker">SANTÉ · AUJOURD’HUI</div><h2>Données Garmin confirmées</h2><p>${displayDate(row.date)} · ${escapeHtml(row.source||'Garmin')}</p></div><span class="garmin-source-pill">Garmin ✓</span></div><div class="garmin-health-grid">${metric('FC repos',fmt(v.restingHeartRate),' bpm')}${metric('HRV',fmt(v.hrvMs),' ms')}${metric('Sommeil',fmt(v.sleepHours,1),' h')}${metric('Stress physio.',fmt(v.stressAverage))}</div><div class="garmin-health-foot"><div class="garmin-readiness"><b>${escapeHtml(statusText(row.readiness))}</b><br>${row.readiness?.signals?.length?escapeHtml(row.readiness.signals.join(' · ')):`${row.readiness?.baseline?.days||0} jour(s) de référence`}</div><button class="garmin-health-action" data-garmin-details>Détails</button></div></section>`;
+    const v=row.values||{};return `<section class="garmin-health-card"><div class="garmin-health-head"><div><div class="card-kicker">SANTÉ · AUJOURD’HUI</div><h2>Données Garmin confirmées</h2><p>${displayDate(row.date)} · ${escapeHtml(row.source||'Garmin')}</p></div><span class="garmin-source-pill">Garmin ✓</span></div><div class="garmin-health-grid">${metric('FC repos',fmt(v.restingHeartRate),' bpm')}${metric('HRV',fmt(v.hrvMs),' ms')}${metric('Sommeil',sleepLabel(v))}${metric('Stress physio.',fmt(v.stressAverage))}</div>${v.sleepMinutes==null?'<div class="garmin-health-missing">Sommeil non transmis dans cette capsule · ta saisie manuelle reste inchangée.</div>':''}<div class="garmin-health-foot"><div class="garmin-readiness"><b>${escapeHtml(statusText(row.readiness))}</b><br>${row.readiness?.signals?.length?escapeHtml(row.readiness.signals.join(' · ')):`${row.readiness?.baseline?.days||0} jour(s) de référence`}</div><button class="garmin-health-action" data-garmin-details>Détails</button></div></section>`;
   }
   async function openDetails(){
     const rows=(await LTDB.all('health')).filter(x=>x.confirmed).sort((a,b)=>b.date.localeCompare(a.date));
     const latest=rows[0];if(!latest)return openImport();const v=latest.values||{};
-    showSheet(`<div class="card-kicker">SANTÉ · GARMIN</div><h2>Historique confirmé</h2><p class="subtle">Fluidité conserve uniquement les capsules que tu as vérifiées.</p><div class="garmin-history-list">${rows.slice(0,30).map(x=>`<div class="garmin-history-row"><div><strong>${displayDate(x.date)}</strong><span>FC repos ${fmt(x.values?.restingHeartRate)} bpm · HRV ${fmt(x.values?.hrvMs)} ms</span><small>Sommeil ${fmt(x.values?.sleepHours,1)} h · Stress physio. ${fmt(x.values?.stressAverage)}</small></div><div><b>${escapeHtml(statusText(x.readiness))}</b><button class="text-action" type="button" data-garmin-delete="${escapeHtml(x.date)}">Supprimer</button></div></div>`).join('')}</div><button class="action" type="button" id="garminImportAnother">Importer une capsule</button>`);
+    showSheet(`<div class="card-kicker">SANTÉ · GARMIN</div><h2>Historique confirmé</h2><p class="subtle">Fluidité conserve uniquement les capsules que tu as vérifiées.</p><div class="garmin-history-list">${rows.slice(0,30).map(x=>`<div class="garmin-history-row"><div><strong>${displayDate(x.date)}</strong><span>FC repos ${fmt(x.values?.restingHeartRate)} bpm · HRV ${fmt(x.values?.hrvMs)} ms</span><small>Sommeil ${sleepLabel(x.values)} · Stress physio. ${fmt(x.values?.stressAverage)}</small></div><div><b>${escapeHtml(statusText(x.readiness))}</b><button class="text-action" type="button" data-garmin-delete="${escapeHtml(x.date)}">Supprimer</button></div></div>`).join('')}</div><button class="action" type="button" id="garminImportAnother">Importer une capsule</button>`);
     $('#garminImportAnother')?.addEventListener('click',openImport);
     document.querySelectorAll('[data-garmin-delete]').forEach(b=>b.addEventListener('click',async()=>{const date=b.dataset.garminDelete;if(!confirm(`Supprimer les données Garmin du ${displayDate(date)} ?`))return;await LTDB.del('health',date);const check=await LTDB.get('checkins',date);if(check?.garminHealth){delete check.garminHealth;await LTDB.put('checkins',check)}toast('Données Garmin supprimées');await openDetails();render()}));
   }
   async function injectCheckin(){
-    const form=$('#checkinForm');if(!form)return;const row=await LTDB.get('health',form.elements.date?.value||todayKey());if(!row)return;const v=row.values||{},box=document.createElement('div');box.className='garmin-prefill';box.innerHTML=`<strong>Garmin confirmé</strong><span>Sommeil ${fmt(v.sleepHours,1)} h · FC repos ${fmt(v.restingHeartRate)} bpm · HRV ${fmt(v.hrvMs)} ms · stress physiologique ${fmt(v.stressAverage)}. Le curseur Stress ci-dessous correspond à ton ressenti mental.</span>`;form.insertBefore(box,form.children[1]||null);
+    const form=$('#checkinForm');if(!form)return;const row=await LTDB.get('health',form.elements.date?.value||todayKey());if(!row)return;const v=row.values||{},box=document.createElement('div');box.className='garmin-prefill';box.innerHTML=`<strong>Garmin confirmé</strong><span>Sommeil ${sleepLabel(v)} · FC repos ${fmt(v.restingHeartRate)} bpm · HRV ${fmt(v.hrvMs)} ms · stress physiologique ${fmt(v.stressAverage)}. Le curseur Stress ci-dessous correspond à ton ressenti mental.</span>`;form.insertBefore(box,form.children[1]||null);
   }
   const baseRenderToday=renderToday;
   renderToday=async function(...args){return `${await todayCard()}${await baseRenderToday(...args)}`};

@@ -1,4 +1,12 @@
-# Luis Transformation — Fluidité V2.12
+# Luis Transformation — Fluidité V13
+
+## V13 — Sommeil Garmin exact
+- La durée Garmin est conservée et affichée à la minute (`7 h 32`) sur Aujourd’hui, dans le point du jour et dans l’historique Garmin.
+- Le normaliseur accepte les durées Garmin en secondes, minutes ou heures et plusieurs variantes de champs du connecteur.
+- Une nouvelle capsule met à jour le sommeil déjà importé depuis Garmin, mais n’écrase jamais une correction manuelle.
+- Si le sommeil est absent de la capsule, Fluidité le dit explicitement et conserve la saisie existante.
+- La récupération du sommeil nécessite l’autorisation Garmin `Historical Data Export – Sleep` pour les données rétroactives.
+- Aucun changement Force, Cardio, Alimentation, Photos ou vignettes.
 
 ## V2.12 — Garmin confirmé
 - Import volontaire d’une capsule JSON Garmin produite dans ChatGPT avec Fitness AI Connector.

@@ -1,5 +1,5 @@
-const CACHE='fluidite-v212-garmin-confirmed';
-const ASSETS=['./','./index.html','./styles.css?v=v2112','./app.js?v=v2112','./db.js?v=v211','./garmin-health-v212.js?v=v212','./garmin-health-v212.css?v=v212','./manifest.webmanifest','./icon-192.png','./icon-512.png','./force-detail-step1.js','./force-detail-step1.css','./nutrition-resilience.js'];
+const CACHE='fluidite-v13-garmin-sleep-exact';
+const ASSETS=['./','./index.html','./styles.css?v=v2112','./app.js?v=v13','./db.js?v=v211','./garmin-health-v212.js?v=v13','./garmin-health-v212.css?v=v13','./manifest.webmanifest','./icon-192.png','./icon-512.png','./force-detail-step1.js','./force-detail-step1.css','./nutrition-resilience.js'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil((async()=>{for(const key of await caches.keys())if(key!==CACHE)await caches.delete(key);await self.clients.claim()})()));
 self.addEventListener('fetch',event=>{
