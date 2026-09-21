@@ -1,4 +1,4 @@
-/* Fluidité V14 — Garmin sans friction. Import robuste, date auto, remplacement propre des capsules enrichies. */
+/* Fluidité V14.1 — Garmin import iPhone fiable. Boutons réels, presse-papiers avec repli, erreurs visibles dans la feuille. */
 (()=>{
   const SCHEMA='fluidite-garmin-capsule-v1';
   let pending=null;
@@ -82,15 +82,32 @@
   }
   function section(title,rows){return `<section class="garmin-preview-section"><h3>${title}</h3><div class="garmin-preview-grid">${rows}</div></section>`}
   function sleepLabel(v={}){return v.sleepMinutes!=null?formatSleepDuration(v.sleepHours,v.sleepMinutes):v.sleepHours!=null?formatSleepDuration(v.sleepHours):'—'}
+  function importMessage(message,type='error'){
+    const box=$('#garminImportMessage');if(!box)return;
+    box.textContent=message||'';box.hidden=!message;box.dataset.type=type;
+  }
   function openImport(){
     pending=null;
-    showSheet(`<div class="card-kicker">GARMIN · IMPORT SANS FRICTION</div><h2>Capsule du jour</h2><p class="subtle">Colle directement la capsule préparée dans ChatGPT ou choisis le fichier JSON. Fluidité détecte automatiquement la date et ouvre la vérification dès que la capsule est valide.</p><div class="garmin-import-tabs"><label>Coller le JSON</label><label>Choisir un fichier<input id="garminCapsuleFile" type="file" accept=".json,application/json,text/plain" hidden></label></div><textarea id="garminCapsuleText" class="garmin-capsule-text" placeholder='{"schema":"fluidite-garmin-capsule-v1", ...}'></textarea><div class="garmin-confirm-note"><b>Toujours sous ton contrôle.</b> L’import est accéléré, mais aucune donnée n’est enregistrée avant ta confirmation.</div><button class="action" id="garminParseCapsule" type="button">Prévisualiser les données</button>`);
-    const area=$('#garminCapsuleText');
-    $('#garminParseCapsule')?.addEventListener('click',()=>parseText(area?.value));
-    area?.addEventListener('paste',()=>setTimeout(()=>{const raw=area.value;if(raw.trim().length>20)parseText(raw,true)},0));
-    $('#garminCapsuleFile')?.addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;try{parseText(await f.text(),true)}catch(err){toast(err.message||'Fichier illisible')}});
+    showSheet(`<div class="card-kicker">GARMIN · IMPORT SANS FRICTION</div><h2>Capsule du jour</h2><p class="subtle">Colle directement la capsule préparée dans ChatGPT ou choisis le fichier JSON. Fluidité détecte automatiquement la date et ouvre la vérification dès que la capsule est valide.</p><div class="garmin-import-tabs"><button id="garminPasteCapsule" type="button">Coller le JSON</button><label for="garminCapsuleFile">Choisir un fichier<input id="garminCapsuleFile" type="file" accept=".json,application/json,text/plain" hidden></label></div><textarea id="garminCapsuleText" class="garmin-capsule-text" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder='{"schema":"fluidite-garmin-capsule-v1", ...}'></textarea><div id="garminImportMessage" class="garmin-import-message" role="status" hidden></div><div class="garmin-confirm-note"><b>Toujours sous ton contrôle.</b> L’import est accéléré, mais aucune donnée n’est enregistrée avant ta confirmation.</div><button class="action" id="garminParseCapsule" type="button">Prévisualiser les données</button>`);
+    const area=$('#garminCapsuleText'), file=$('#garminCapsuleFile'), paste=$('#garminPasteCapsule'), preview=$('#garminParseCapsule');
+    preview?.addEventListener('click',()=>parseText(area?.value));
+    paste?.addEventListener('click',async()=>{
+      importMessage('');
+      try{
+        if(!navigator.clipboard?.readText)throw new Error('clipboard-unavailable');
+        const raw=await navigator.clipboard.readText();
+        if(!raw.trim())throw new Error('clipboard-empty');
+        area.value=raw;parseText(raw);
+      }catch(_){
+        area?.focus();
+        importMessage('iPhone bloque parfois l’accès direct au presse-papiers. Appuie dans la zone blanche puis choisis « Coller », ensuite « Prévisualiser les données ».','info');
+      }
+    });
+    area?.addEventListener('input',()=>importMessage(''));
+    area?.addEventListener('paste',()=>setTimeout(()=>{const raw=area.value;if(raw.trim().length>20)parseText(raw,true)},30));
+    file?.addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;try{const raw=await f.text();area.value=raw;parseText(raw)}catch(err){importMessage(err.message||'Fichier illisible')}});
   }
-  function parseText(raw,silent=false){try{pending=normalize(parseJSONLoose(raw));openPreview()}catch(err){if(!silent||String(raw||'').trim().length>40)toast(err.message||'Capsule invalide')}}
+  function parseText(raw,silent=false){try{importMessage('');pending=normalize(parseJSONLoose(raw));openPreview()}catch(err){if(!silent||String(raw||'').trim().length>40)importMessage(err.message||'Capsule invalide')}}
   async function mergeExistingForPreview(){
     if(!pending?.date)return null;
     const existing=await LTDB.get('health',pending.date);
