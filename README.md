@@ -1,3 +1,7 @@
+## Fluidité V14 — Garmin sans friction
+
+Patch Garmin uniquement : collage/fichier JSON plus robuste, prévisualisation automatique, détection automatique de date et remplacement propre d’une capsule du même jour sans doublon. Les autres modules restent inchangés.
+
 # Luis Transformation — Fluidité V13
 
 ## V13 — Sommeil Garmin exact

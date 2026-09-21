@@ -1,10 +1,13 @@
-/* Fluidité V13 — capsule Garmin confirmée, sommeil conservé à la minute. */
+/* Fluidité V14 — Garmin sans friction. Import robuste, date auto, remplacement propre des capsules enrichies. */
 (()=>{
   const SCHEMA='fluidite-garmin-capsule-v1';
   let pending=null;
   const n=v=>v===null||v===undefined||v===''?null:(Number.isFinite(Number(v))?Number(v):null);
   const first=(...xs)=>xs.find(x=>x!==undefined&&x!==null&&x!=='');
   const localDate=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
+  const isoDate=v=>{const m=String(v||'').match(/(20\d{2}-\d{2}-\d{2})/);return m?m[1]:null};
+  const detectedDate=(payload,data,daily,sleep,activities)=>first(isoDate(payload.date),isoDate(daily.calendar_date),isoDate(daily.calendarDate),isoDate(data.date),isoDate(sleep.calendar_date),isoDate(sleep.calendarDate),isoDate(sleep.start_time_local),isoDate(sleep.startTimeLocal),...(activities||[]).map(a=>isoDate(first(a.start_time_local,a.startTimeLocal,a.start_time,a.startTime,a.date))),localDate());
+  function parseJSONLoose(raw){let text=String(raw||'').trim();if(!text)throw new Error('Colle d’abord la capsule JSON');text=text.replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'').trim();try{return JSON.parse(text)}catch(_){const a=text.indexOf('{'),b=text.lastIndexOf('}');if(a>=0&&b>a)return JSON.parse(text.slice(a,b+1));throw new Error('JSON non reconnu : recolle la capsule complète')}}
   const median=xs=>{const a=xs.filter(Number.isFinite).sort((x,y)=>x-y);if(!a.length)return null;const m=Math.floor(a.length/2);return a.length%2?a[m]:(a[m-1]+a[m])/2};
   const fmt=(v,d=0)=>v==null?'—':Number(v).toFixed(d).replace('.',',');
   const durationLabel=s=>{s=Math.max(0,Math.round(n(s)||0));const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;return h?`${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`:`${m}:${String(sec).padStart(2,'0')}`};
@@ -71,7 +74,7 @@
     };
     const activities=(payload.activities||data.activities||[]).map(normalizeActivity);
     if(!Object.values(values).some(v=>v!=null)&&!activities.length)throw new Error('Aucune donnée Garmin reconnue dans cette capsule');
-    return {schema:SCHEMA,date:String(first(payload.date,daily.calendar_date,data.date,localDate())).slice(0,10),fetchedAt:first(payload.fetchedAt,payload.fetched_at,new Date().toISOString()),source:'Garmin via Fitness AI Connector',values,activities,missing:Array.isArray(payload.missing)?payload.missing.map(String):[],dataStatus:first(payload.data_status,payload.dataStatus,null),notes:Array.isArray(payload.notes)?payload.notes.map(String):[]};
+    return {schema:SCHEMA,date:String(detectedDate(payload,data,daily,sleep,payload.activities||data.activities||[])).slice(0,10),fetchedAt:first(payload.fetchedAt,payload.fetched_at,new Date().toISOString()),source:'Garmin via Fitness AI Connector',values,activities,missing:Array.isArray(payload.missing)?payload.missing.map(String):[],dataStatus:first(payload.data_status,payload.dataStatus,null),notes:Array.isArray(payload.notes)?payload.notes.map(String):[]};
   }
 
   function input(name,label,value,step='1',suffix=''){
@@ -81,15 +84,31 @@
   function sleepLabel(v={}){return v.sleepMinutes!=null?formatSleepDuration(v.sleepHours,v.sleepMinutes):v.sleepHours!=null?formatSleepDuration(v.sleepHours):'—'}
   function openImport(){
     pending=null;
-    showSheet(`<div class="card-kicker">GARMIN · IMPORT VOLONTAIRE</div><h2>Importer ma capsule santé</h2><p class="subtle">Dans ChatGPT, demande « Prépare ma capsule Garmin Fluidité du jour », puis colle le JSON ou importe le fichier reçu.</p><div class="garmin-import-tabs"><label>Coller le JSON</label><label>Choisir un fichier<input id="garminCapsuleFile" type="file" accept=".json,application/json" hidden></label></div><textarea id="garminCapsuleText" class="garmin-capsule-text" placeholder='{"schema":"fluidite-garmin-capsule-v1", ...}'></textarea><div class="garmin-confirm-note"><b>Contrôle utilisateur obligatoire.</b> Rien n’est enregistré avant l’écran de vérification.</div><button class="action" id="garminParseCapsule" type="button">Prévisualiser les données</button>`);
-    $('#garminParseCapsule')?.addEventListener('click',()=>parseText($('#garminCapsuleText')?.value));
-    $('#garminCapsuleFile')?.addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;try{parseText(await f.text())}catch(err){toast(err.message||'Fichier illisible')}});
+    showSheet(`<div class="card-kicker">GARMIN · IMPORT SANS FRICTION</div><h2>Capsule du jour</h2><p class="subtle">Colle directement la capsule préparée dans ChatGPT ou choisis le fichier JSON. Fluidité détecte automatiquement la date et ouvre la vérification dès que la capsule est valide.</p><div class="garmin-import-tabs"><label>Coller le JSON</label><label>Choisir un fichier<input id="garminCapsuleFile" type="file" accept=".json,application/json,text/plain" hidden></label></div><textarea id="garminCapsuleText" class="garmin-capsule-text" placeholder='{"schema":"fluidite-garmin-capsule-v1", ...}'></textarea><div class="garmin-confirm-note"><b>Toujours sous ton contrôle.</b> L’import est accéléré, mais aucune donnée n’est enregistrée avant ta confirmation.</div><button class="action" id="garminParseCapsule" type="button">Prévisualiser les données</button>`);
+    const area=$('#garminCapsuleText');
+    $('#garminParseCapsule')?.addEventListener('click',()=>parseText(area?.value));
+    area?.addEventListener('paste',()=>setTimeout(()=>{const raw=area.value;if(raw.trim().length>20)parseText(raw,true)},0));
+    $('#garminCapsuleFile')?.addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;try{parseText(await f.text(),true)}catch(err){toast(err.message||'Fichier illisible')}});
   }
-  function parseText(raw){try{pending=normalize(JSON.parse(String(raw||'').trim()));openPreview()}catch(err){toast(err.message||'Capsule invalide')}}
-  function openPreview(){
+  function parseText(raw,silent=false){try{pending=normalize(parseJSONLoose(raw));openPreview()}catch(err){if(!silent||String(raw||'').trim().length>40)toast(err.message||'Capsule invalide')}}
+  async function mergeExistingForPreview(){
+    if(!pending?.date)return null;
+    const existing=await LTDB.get('health',pending.date);
+    if(!existing?.confirmed)return null;
+    const incoming=pending.values||{}, prior=existing.values||{};
+    pending.values=Object.fromEntries(Object.keys({...prior,...incoming}).map(k=>[k,incoming[k]!=null?incoming[k]:prior[k]??null]));
+    const byId=new Map((existing.activities||[]).map(a=>[String(a.activityId),a]));
+    for(const a of (pending.activities||[]))byId.set(String(a.activityId),{...(byId.get(String(a.activityId))||{}),...a});
+    pending.activities=[...byId.values()];
+    pending.replacesExisting=true;
+    pending.previousConfirmedAt=existing.confirmedAt||null;
+    return existing;
+  }
+  async function openPreview(){
+    await mergeExistingForPreview();
     const v=pending.values;
     const activities=pending.activities||[];
-    showSheet(`<div class="card-kicker">GARMIN · PRÉVISUALISATION</div><h2>Vérifie avant d’enregistrer</h2><form id="garminConfirmForm">${dateField('date',pending.date,'Date Garmin')}
+    showSheet(`<div class="card-kicker">GARMIN · PRÉVISUALISATION</div><h2>${pending.replacesExisting?'Mettre à jour la capsule':'Vérifie avant d’enregistrer'}</h2>${pending.replacesExisting?'<div class="garmin-update-note"><b>Capsule déjà présente pour cette date.</b><span>La version enrichie remplace proprement la précédente, sans doublon. Les valeurs déjà confirmées sont conservées si la nouvelle capsule ne les retransmet pas.</span></div>':''}<form id="garminConfirmForm">${dateField('date',pending.date,'Date Garmin détectée')}
       ${section('Récupération',input('restingHeartRate','Fréquence cardiaque au repos',v.restingHeartRate,'1','bpm')+input('hrvMs','HRV nocturne',v.hrvMs,'0.1','ms')+input('sleepHours','Sommeil décimal',v.sleepHours,'0.0166667','h')+input('sleepScore','Score de sommeil',v.sleepScore))}
       ${section('Stress physiologique',input('stressAverage','Stress Garmin moyen',v.stressAverage)+input('stressMaximum','Stress Garmin maximal',v.stressMaximum)+input('bodyBatteryCharged','Body Battery chargé',v.bodyBatteryCharged)+input('bodyBatteryDrained','Body Battery consommé',v.bodyBatteryDrained))}
       ${section('Activité quotidienne',input('steps','Pas',v.steps)+input('distanceKm','Distance',v.distanceKm,'0.01','km')+input('activeMinutes','Temps actif',v.activeMinutes,'0.1','min')+input('floorsClimbed','Étages montés',v.floorsClimbed)+input('activeCalories','Calories actives',v.activeCalories)+input('totalCalories','Calories totales',v.totalCalories)+input('moderateMinutes','Minutes modérées',v.moderateMinutes,'0.1','min')+input('vigorousMinutes','Minutes soutenues',v.vigorousMinutes,'0.1','min'))}
