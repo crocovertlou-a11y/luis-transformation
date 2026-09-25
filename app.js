@@ -874,14 +874,17 @@ function openSheet(kind){
   if(kind==='workout') return showSheet(`<h2>Ta séance Force</h2><form id="workoutForm"><input type="hidden" name="name" value="Haut du corps">${dateField('date',todayKey())}${forceExerciseInput('Développé couché',4,6,'2 min')}${forceExerciseInput('Tractions',4,8,'90 s')}${forceExerciseInput('Rowing',3,10,'90 s')}${forceExerciseInput('Développé épaules',3,10,'75 s')}${forceExerciseInput('Gainage',3,'45 s','45 s')}<div class="field"><label>Durée totale (min)</label><input name="durationMin" type="number" inputmode="numeric" value="40"></div>${slider('effort','Ressenti','1','5','1','3','/5')}<button class="action" type="submit">Terminer la séance</button></form>`);
   if(kind==='suggestedWorkout') return LTDB.all('workouts').then(ws=>workoutDetailSheet(suggestWorkout(ws)));
   if(kind==='exerciseLibrary'){
-    const groups={
+    // V14.5: source unique = bibliothèque Force intelligente (V14.4).
+    // Fallback conservé uniquement si le module n'est pas chargé.
+    const groups=window.fluiditeForceGroups||{
       'Récupération & mobilité':['Respiration 90/90','Cat-Cow','Rotation thoracique','Étirement fléchisseur de hanche','Dead bug'],
       'Sans matériel':['Pompes','Squat au poids du corps','Fentes marchées','Mountain climbers','Gainage'],
       'Élastiques':['Rowing élastique','Squat avec élastique','Développé poitrine élastique','Face pull élastique','Pallof press'],
       'Haut du corps':['Développé couché','Développé incliné','Développé épaules','Élévations latérales','Face pull','Tractions','Rowing','Tirage horizontal','Tirage vertical','Curl biceps','Extensions triceps'],
       'Bas du corps':['Squat','Fentes','Soulevé de terre roumain','Mollets']
     };
-    return showSheet(`<h2>Bibliothèque d’exercices</h2><p class="subtle">30 exercices disponibles aujourd’hui · chaque exercice ouvre sa fiche technique.</p><div class="exercise-library-groups">${Object.entries(groups).map(([g,names])=>`<section class="exercise-library-group"><h3>${escapeHtml(g)}</h3><div class="exercise-library-grid">${names.map(name=>`<button class="exercise-library-item" type="button" data-technique="${escapeHtml(name)}"><strong>${escapeHtml(name)}</strong><span>Technique ›</span></button>`).join('')}</div></section>`).join('')}</div>`);
+    const exerciseCount=new Set(Object.values(groups).flat()).size;
+    return showSheet(`<h2>Bibliothèque d’exercices</h2><p class="subtle">${exerciseCount} exercices disponibles aujourd’hui · chaque exercice ouvre sa fiche technique.</p><div class="exercise-library-groups">${Object.entries(groups).map(([g,names])=>`<section class="exercise-library-group"><h3>${escapeHtml(g)}</h3><div class="exercise-library-grid">${names.map(name=>`<button class="exercise-library-item" type="button" data-technique="${escapeHtml(name)}"><strong>${escapeHtml(name)}</strong><span>Technique ›</span></button>`).join('')}</div></section>`).join('')}</div>`);
   }
   if(kind==='workoutIdeas') return showSheet(`<h2>Choisir l’entraînement</h2><p class="subtle">Choisis librement le type de séance. La suggestion n’est qu’un point de départ.</p><div class="workout-choice-grid">${workoutLibrary().map(w=>`<button class="suggestion-card workout-choice-card" data-workout-choice="${w.id}"><div><strong>${escapeHtml(w.title)}</strong><span>${escapeHtml(w.subtitle)} · ${escapeHtml(w.goalLabel)}</span></div><span>›</span></button>`).join('')}</div>`);
   if(kind==='forceHistory') return LTDB.all('workouts').then(rows=>showSheet(`<h2>Historique Force</h2><div class="list">${rows.sort((a,b)=>b.date.localeCompare(a.date)).map(x=>`<button class="list-row history-button" data-edit-activity="Force:${x.id}"><div><strong>${escapeHtml(x.name||'Séance Force')}</strong><div class="status">${formatPhotoDate(x.date)}${x.durationLabel?` · ${x.durationLabel}`:''}</div></div><span class="pill">Modifier</span></button>`).join('')||'<div class="empty">Aucune séance Force.</div>'}</div>`));

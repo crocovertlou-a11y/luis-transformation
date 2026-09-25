@@ -388,3 +388,6 @@ V14.3 Force adaptative: analyse des 4 dernières exécutions par exercice, maint
 
 
 V14.4 — Bibliothèque Force intelligente: variantes structurées (2–4 alternatives utiles par mouvement lorsque pertinent), utilisées par le moteur adaptatif après détection de plateau. Aucun remplacement automatique.
+
+
+V14.5 — Bibliothèque Force visible raccordée à la bibliothèque intelligente V14.4 (source unique). Les nouveaux exercices sont visibles depuis le bouton Bibliothèque d’exercices et conservent le routage Technique/Vidéo.
