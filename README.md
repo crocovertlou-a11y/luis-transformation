@@ -382,3 +382,9 @@ Important : les 7 instantanés locaux protègent contre une erreur de manipulati
 - Saisie manuelle explicitement prévue pour compléter une activité absente de Garmin.
 - Le Compagnon reçoit désormais la source et la durée en secondes des activités cardio, afin de raisonner sur Garmin + manuel sans écraser la donnée Garmin.
 - Aucun changement aux vignettes, Force, Alimentation ou Photos.
+
+
+V14.3 Force adaptative: analyse des 4 dernières exécutions par exercice, maintien des exercices tant que la progression existe, détection de plateau sans remplacement automatique, proposition explicable de variante lorsque pertinente.
+
+
+V14.4 — Bibliothèque Force intelligente: variantes structurées (2–4 alternatives utiles par mouvement lorsque pertinent), utilisées par le moteur adaptatif après détection de plateau. Aucun remplacement automatique.

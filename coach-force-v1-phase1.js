@@ -46,8 +46,36 @@
     return {hit:miss===0,miss};
   }
 
+  function exerciseVariant(name){
+    const exact=String(name||'').trim();
+    const map=window.fluiditeForceAlternatives||{};
+    if(Array.isArray(map[exact]) && map[exact].length) return map[exact][0];
+    const key=Object.keys(map).find(k=>k.toLowerCase()===exact.toLowerCase());
+    return key && map[key]?.length ? map[key][0] : null;
+  }
+
+  function progressionSignal(spec,workouts){
+    const hist=historyFor(spec.name,workouts).slice(0,4);
+    if(hist.length<4) return {status:'building',sessions:hist.length};
+    const target=typeof spec.reps==='number'?spec.reps:null;
+    const weights=hist.map(x=>sessionWeight(x.entry));
+    const comps=hist.map(x=>completion(x.entry,target));
+    const valid=weights.every(x=>x!=null);
+    if(!valid) return {status:'building',sessions:hist.length};
+    const maxW=Math.max(...weights),minW=Math.min(...weights);
+    const totalReps=hist.map(x=>(x.entry?.series||[]).reduce((a,r)=>a+(n(r.reps)||0),0));
+    const repSpread=Math.max(...totalReps)-Math.min(...totalReps);
+    const plateau=(maxW-minW<0.5 && repSpread<=2 && comps.filter(x=>x.hit).length<2);
+    if(plateau){
+      return {status:'plateau',sessions:4,variant:exerciseVariant(spec.name),weight:weights[0]};
+    }
+    const progressed=weights[0]>weights[3] || totalReps[0]>totalReps[3];
+    return {status:progressed?'progressing':'stable',sessions:4};
+  }
+
   function recommendExercise(spec,workouts){
     const hist=historyFor(spec.name,workouts).slice(0,3);
+    const signal=progressionSignal(spec,workouts);
     const target=typeof spec.reps==='number'?spec.reps:null;
     const count=Number(spec.sets)||3;
     const empty={name:spec.name,confidence:'learning',reason:'Je manque encore d’historique sur cet exercice. Je garde les répétitions cibles et tu confirmes la charge.',sets:Array.from({length:count},()=>({reps:target,weight:null}))};
@@ -90,7 +118,16 @@
         reason=`Il manquait ${lastComp.miss} répétition${lastComp.miss>1?'s':''} à la cible. Je garde ${lastWeight} kg et je cherche d’abord à compléter les séries.`;
       }
     }
-    return {name:spec.name,confidence,reason,sets:Array.from({length:count},()=>({reps:target,weight}))};
+    const adaptation=signal.status==='plateau' ? {
+      status:'plateau',
+      sessions:signal.sessions,
+      variant:signal.variant,
+      message:signal.variant
+        ? `Plateau détecté sur ${signal.sessions} séances. Je ne change rien automatiquement : tu peux d’abord tenter une autre stratégie de progression ou essayer temporairement ${signal.variant}.`
+        : `Plateau détecté sur ${signal.sessions} séances. Je garde l’exercice et je propose d’abord d’ajuster la progression avant de changer le mouvement.`
+    } : {status:signal.status,sessions:signal.sessions||hist.length};
+    if(adaptation.status==='plateau') reason=`${reason} ${adaptation.message}`;
+    return {name:spec.name,confidence,reason,adaptation,sets:Array.from({length:count},()=>({reps:target,weight}))};
   }
 
   function applyDailyMode(spec,rec,workouts,mode){
@@ -174,7 +211,7 @@
         <input name="weight_${idx}_${s}" type="number" step="0.5" inputmode="decimal" value="${weightValue}" placeholder="kg">
       </div>`;
     }).join('');
-    const badge=rec?.confidence==='high'?'Historique solide':rec?.confidence==='medium'?'Historique partiel':'Apprentissage';
+    const badge=rec?.adaptation?.status==='plateau'?'Plateau détecté':rec?.confidence==='high'?'Historique solide':rec?.confidence==='medium'?'Historique partiel':'Apprentissage';
     return `<section class="force-v1-live-exercise coach-exercise">
       <div class="force-v1-live-title"><div><small>EXERCICE ${idx+1}</small><strong>${escape(x.name)}</strong><span>${x.sets} séries × ${x.reps} · repos conseillé ${x.rest}</span></div><button type="button" class="technique-btn" data-technique="${escape(x.name)}">Technique ›</button></div>
       <div class="coach-why"><span>✦ ${badge}</span><p>${escape(rec?.reason||'Je te propose une base prudente à confirmer.')}</p></div>
