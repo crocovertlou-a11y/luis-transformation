@@ -375,3 +375,10 @@ Important : les 7 instantanés locaux protègent contre une erreur de manipulati
 - Scanner : chargement ZXing avec timeout + récupération propre et saisie manuelle toujours accessible.
 - Strava : refresh token durci, timeout, no-store et message de reconnexion explicite.
 - Aucun changement de structure de données.
+
+
+## V14.2 — Cardio hybride Garmin + manuel
+- Ajout d’un accès direct à la capsule Garmin depuis Historique Cardio.
+- Saisie manuelle explicitement prévue pour compléter une activité absente de Garmin.
+- Le Compagnon reçoit désormais la source et la durée en secondes des activités cardio, afin de raisonner sur Garmin + manuel sans écraser la donnée Garmin.
+- Aucun changement aux vignettes, Force, Alimentation ou Photos.
