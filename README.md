@@ -395,3 +395,5 @@ V14.5 — Bibliothèque Force visible raccordée à la bibliothèque intelligent
 
 ## V15.2 — Récupération → Force
 Après confirmation de la capsule Garmin, le moteur V15 peut rendre les propositions Force plus prudentes si plusieurs signaux convergent. Les décisions préexistantes plus prudentes ne sont jamais rétrogradées. Aucune adaptation automatique n'est faite sans données confirmées; l'utilisateur garde le choix. Bibliothèque, vidéos, Cardio, Alimentation et stockage inchangés.
+
+V15.3 : Compagnon Cardio indépendant, conseil basé sur récupération et historique enregistré; aucune modification de données.
