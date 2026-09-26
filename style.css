@@ -1,0 +1,2 @@
+/* V15 recovery card — isolated styles */
+.recovery-v15{border:1px solid #529778}.recovery-v15[data-recovery-level="recover"]{border-color:#c37b60}.recovery-v15[data-recovery-level="adapt"],.recovery-v15[data-recovery-level="caution"]{border-color:#d1a45c}.recovery-v15 ul{padding-left:1.3rem;line-height:1.55}.recovery-v15 li{margin:.3rem 0}
