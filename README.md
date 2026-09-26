@@ -391,3 +391,7 @@ V14.4 — Bibliothèque Force intelligente: variantes structurées (2–4 altern
 
 
 V14.5 — Bibliothèque Force visible raccordée à la bibliothèque intelligente V14.4 (source unique). Les nouveaux exercices sont visibles depuis le bouton Bibliothèque d’exercices et conservent le routage Technique/Vidéo.
+
+
+## V15.2 — Récupération → Force
+Après confirmation de la capsule Garmin, le moteur V15 peut rendre les propositions Force plus prudentes si plusieurs signaux convergent. Les décisions préexistantes plus prudentes ne sont jamais rétrogradées. Aucune adaptation automatique n'est faite sans données confirmées; l'utilisateur garde le choix. Bibliothèque, vidéos, Cardio, Alimentation et stockage inchangés.

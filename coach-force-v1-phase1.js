@@ -189,11 +189,25 @@
     }catch(err){
       console.warn('Coach Force daily mode unavailable; using validated progression only',err);
     }
-    const mode=dailyDecision?.decision||'planned_session';
+    // V15.2: recovery advisor is advisory; never override a stricter existing Force decision.
+    let recoveryAdvice=null;
+    try{
+      const records=await LTDB.all('health');
+      const confirmed=records.find(x=>x.date===today&&x.confirmed);
+      if(confirmed&&window.FluiditeRecoveryV15?.assess){
+        recoveryAdvice=window.FluiditeRecoveryV15.assess(confirmed,records,checkins.find(x=>x.date===today)||null,[...cardio,...workouts]);
+      }
+    }catch(error){console.warn('Force recovery advisory unavailable',error);}
+    const baseMode=dailyDecision?.decision||'planned_session';
+    const recoveryMode=recoveryAdvice?.level==='recover'?'recovery':recoveryAdvice?.level==='adapt'||recoveryAdvice?.level==='caution'?'adapted_session':null;
+    const severity={planned_session:0,alternative_session:0,day_complete:0,adapted_session:1,recovery:2};
+    const mode=recoveryMode&&((severity[recoveryMode]||0)>(severity[baseMode]||0))?recoveryMode:baseMode;
     return {
       createdAt:new Date().toISOString(),
       workoutTitle:workout.title,
       dailyDecision:dailyDecision||null,
+      recoveryAdvice:recoveryAdvice||null,
+      appliedMode:mode,
       exercises:workout.plan.map(x=>applyDailyMode(x,recommendExercise(x,workouts),workouts,mode))
     };
   }
@@ -228,6 +242,7 @@
 
     return showSheet(`<div class="force-v1-active coach-force-active">
       <div class="force-v1-active-head"><div><div class="force-v1-kicker">✦ &nbsp;COACH FORCE</div><h2>${escape(w.title)}</h2><p>Fluidité a préparé chaque série. Les valeurs sont proposées, jamais imposées.</p></div><span>${w.plan.length} exercices</span></div>
+      ${coachSession.recoveryAdvice?`<div class="coach-intro" role="status"><strong>Récupération V15 · ${coachSession.appliedMode==='recovery'?'séance légère':coachSession.appliedMode==='adapted_session'?'progression prudente':'conseil du jour'}</strong><span>${escape(coachSession.recoveryAdvice.reasons.join(' · '))} · Tu gardes le choix de ta séance.</span></div>`:''}
       <div class="coach-intro"><strong>Proposé → réalisé → appris</strong><span>Modifie librement une valeur : ce que tu réalises réellement restera la référence.</span></div>
       <form id="workoutForm"><input type="hidden" name="name" value="${escape(w.title)}">${dateField('date',todayKey())}
       ${w.plan.map((x,i)=>coachExerciseInput(x,i,coachSession.exercises[i])).join('')}
