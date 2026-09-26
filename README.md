@@ -403,3 +403,5 @@ V15.4: conseils nutrition et récupération en lecture seule.
 V15.5: observations de progression dans Évolution, lecture seule.
 
 V15.6: Compagnon proactif discret : une suggestion prioritaire sur Aujourd’hui, sans notification, écriture ni changement des fonctionnalités existantes.
+
+V15.7: Fluidité Insights, bilan hebdomadaire consultable dans Évolution. Lecture seule, aucun changement des autres modules.
