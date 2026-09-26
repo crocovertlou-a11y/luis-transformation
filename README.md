@@ -399,3 +399,5 @@ Après confirmation de la capsule Garmin, le moteur V15 peut rendre les proposit
 V15.3 : Compagnon Cardio indépendant, conseil basé sur récupération et historique enregistré; aucune modification de données.
 
 V15.4: conseils nutrition et récupération en lecture seule.
+
+V15.5: observations de progression dans Évolution, lecture seule.
