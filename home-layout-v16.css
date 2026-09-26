@@ -1,0 +1,10 @@
+
+.v16-shortcuts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:14px 0 18px}
+.v16-shortcut{display:flex;align-items:center;gap:10px;text-align:left;padding:16px 12px;border:1px solid #e9dfd9;border-radius:18px;background:#fff;color:#25212a;min-width:0;cursor:pointer}
+.v16-shortcut>span:nth-child(2){display:flex;flex-direction:column;gap:5px;flex:1;min-width:0}
+.v16-shortcut strong{font-size:16px}.v16-shortcut small{font-size:12px;color:#716d76;line-height:1.25}
+.v16-shortcut-icon{display:grid;place-items:center;width:34px;height:34px;flex-shrink:0;border-radius:12px;background:#eaf4ed;color:#358a61;font-size:22px}
+.v16-recovery-details{margin-top:14px;border-top:1px solid #e9dfd9;padding-top:12px}
+.v16-recovery-details summary{cursor:pointer;font-size:14px;font-weight:650}
+.v16-recovery-details .recovery-v15{margin:12px 0 0;padding:12px;border:0;box-shadow:none;background:transparent}
+@media(max-width:360px){.v16-shortcut{padding:12px 8px;gap:6px}.v16-shortcut-icon{width:28px;height:28px}}
