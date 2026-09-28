@@ -1,0 +1,1 @@
+const {readCookie}=require('./withings-lib');exports.handler=async function(event){const s=readCookie(event.headers.cookie||event.headers.Cookie||'');return{statusCode:200,headers:{'Content-Type':'application/json'},body:JSON.stringify({connected:!!s})}};

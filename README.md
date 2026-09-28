@@ -407,3 +407,20 @@ V15.6: Compagnon proactif discret : une suggestion prioritaire sur Aujourd’hui
 V15.7: Fluidité Insights, bilan hebdomadaire consultable dans Évolution. Lecture seule, aucun changement des autres modules.
 
 V16 UX: une seule carte Compagnon prioritaire; détail récupération dépliable; accès directs Ma semaine et Évolution en haut de l'accueil. Aucun changement de stockage, nutrition, Force, Cardio ou import Garmin.
+
+## V16.3 — Withings + Garmin, sources complémentaires
+- Ajout d'une connexion OAuth Withings via Netlify Functions ; `WITHINGS_CLIENT_SECRET` reste exclusivement côté serveur.
+- Synchronisation volontaire des 90 derniers jours de poids et composition corporelle.
+- Withings devient la source de référence pour poids/composition ; Garmin reste la source activité/récupération.
+- Une mesure Withings ne remplace pas une correction de poids saisie manuellement le même jour.
+- Historique Withings séparé et compatible avec les sauvegardes Fluidité via le store `events`.
+- Aucun changement Force, Cardio, Alimentation, macros adaptatives, photos ou scanner.
+
+### Variables Netlify requises
+- `WITHINGS_CLIENT_ID`
+- `WITHINGS_CLIENT_SECRET`
+- optionnel : `WITHINGS_COOKIE_SECRET` (sinon le client secret signe le cookie)
+- optionnel : `WITHINGS_REDIRECT_URI` si l'URL de callback déclarée chez Withings doit être forcée.
+
+Callback par défaut à déclarer chez Withings : `https://<ton-site>/.netlify/functions/withings-auth-callback`
+Scope demandé : `user.metrics`.
