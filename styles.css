@@ -287,6 +287,9 @@
 .nutrition-v2-macros span{font-size:10px;font-weight:750}.nutrition-v2-macros b{font-size:19px}.nutrition-v2-macros b small{font-size:10px;color:var(--muted)}.nutrition-v2-macros em{font-size:9px;color:var(--muted);font-style:normal}
 .nutrition-v2-macros i{height:4px;border-radius:99px;background:rgba(255,108,55,.09);overflow:hidden}.nutrition-v2-macros u{display:block;height:100%;background:var(--accent);border-radius:99px}
 .nutrition-fluidity-note{grid-column:1/-1;display:flex;align-items:center;gap:10px;padding-top:13px;border-top:1px solid var(--line)}
+.nutrition-target-context{grid-column:1/-1;display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:14px;background:rgba(152,93,232,.055)}
+.nutrition-target-context span{font-size:11px;font-weight:800}.nutrition-target-context small{font-size:9px;color:var(--muted);text-align:right}
+.nutrition-macro-note{padding-top:10px}.nutrition-macro-note strong{color:var(--ink)}
 .nutrition-fluidity-note .companion-logo{flex:0 0 auto}.nutrition-fluidity-note>div{display:flex;flex-direction:column;gap:2px}.nutrition-fluidity-note strong{font-size:12px}.nutrition-fluidity-note span{font-size:11px;color:var(--muted)}
 .nutrition-meals-v2{display:grid;gap:10px;margin-top:12px}
 .nutrition-meal-card-v2{border-radius:22px;padding:14px 14px 10px;box-shadow:0 7px 22px rgba(31,25,22,.045)}

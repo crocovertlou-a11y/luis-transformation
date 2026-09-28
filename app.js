@@ -1041,11 +1041,11 @@ async function addRecipeToMeal(e){
 
 
 async function nutritionProposalContext(){
-  const [food,cardio,recipes]=await Promise.all([LTDB.all('food'),LTDB.all('cardio'),getPersonalRecipes()]);
-  const today=todayKey(),todayFood=food.filter(x=>x.date===today),target=Number(state.profile.proteinTarget)||170;
+  const [food,cardio,recipes,targets]=await Promise.all([LTDB.all('food'),LTDB.all('cardio'),getPersonalRecipes(),fluidityNutritionTargets()]);
+  const today=todayKey(),todayFood=food.filter(x=>x.date===today),target=targets.protein;
   const sum=k=>todayFood.reduce((s,x)=>s+(Number(x[k])||0),0);
   return {
-    date:today,hour:new Date().getHours(),goal:state.profile.goal||null,proteinTarget:target,
+    date:today,hour:new Date().getHours(),goal:state.profile.goal||null,proteinTarget:target,carbTarget:targets.carbs,fatRange:{min:targets.fatMin,max:targets.fatMax},activityLoad:targets.load,
     today:{protein:Number(sum('protein').toFixed(1)),calories:Math.round(sum('calories')),carbs:Number(sum('carbs').toFixed(1)),fat:Number(sum('fat').toFixed(1)),entries:todayFood.length},
     cardioToday:cardio.filter(x=>x.date===today).map(x=>({type:x.type||null,distance:x.distance??null,duration:x.durationLabel||null})),
     personalRecipes:recipes.slice(0,12).map(r=>{const t=recipeTotals(r.ingredients),p=Math.max(.01,Number(r.portions)||1);return {id:r.id,name:r.name,protein:Number((t.protein/p).toFixed(1)),calories:Math.round(t.calories/p),carbs:Number((t.carbs/p).toFixed(1)),fat:Number((t.fat/p).toFixed(1))}})
@@ -1156,18 +1156,41 @@ async function nutritionHistoryDaySheet(date){
   return showSheet(`<div class="nutrition-page-head"><div><div class="card-kicker">Historique</div><h2>${formatNutritionDate(date)}</h2></div><button type="button" class="text-action" data-history-back>Calendrier</button></div><section class="nutrition-day-summary"><div class="nutrition-day-top"><strong>${Math.round(total.calories)} kcal</strong><span>${Math.round(total.protein)} / ${target} g protéines</span></div><div class="nutrition-day-macros"><div><b>${Math.round(total.protein)} g</b><span>Protéines</span></div><div><b>${Math.round(total.carbs)} g</b><span>Glucides</span></div><div><b>${Math.round(total.fat)} g</b><span>Lipides</span></div></div></section><div class="history-meals">${mealOrder.map(type=>{const rows=byMeal[type],sum=mealSummary(rows);return `<section class="nutrition-meal-card"><div class="nutrition-meal-head"><div class="nutrition-meal-title"><span class="nutrition-meal-icon">${mealIcon(type)}</span><div><strong>${mealTypeLabel(type)}</strong><small>${rows.length?`${Math.round(sum.calories)} kcal · ${Math.round(sum.protein)} g prot.`:'Aucune saisie'}</small></div></div></div>${rows.length?`<div class="meal-items">${rows.map(x=>`<button type="button" class="meal-item-row" data-edit-food="${x.id}"><span>${escapeHtml(x.description||'Aliment')}</span><small>${x.calories?Math.round(x.calories)+' kcal':''}${x.protein?` · ${Math.round(x.protein)} g prot.`:''}</small><b>›</b></button>`).join('')}</div>`:''}</section>`}).join('')}</div>`);
 }
 
+async function fluidityNutritionTargets(){
+  const today=todayKey();
+  const [cardio,workouts]=await Promise.all([LTDB.all('cardio'),LTDB.all('workouts')]);
+  const todayCardio=cardio.filter(x=>x.date===today);
+  const hasForce=workouts.some(x=>x.date===today);
+  const load=todayCardio.some(x=>['high','moderate_high'].includes(fluidityIntensityFromCardio(x)))?'high':todayCardio.length?'moderate':hasForce?'force':'rest';
+  const protein=Number(state.profile.proteinTarget)||170;
+  const carbs=load==='high'?300:load==='moderate'?270:load==='force'?240:220;
+  const fatMin=65,fatMax=80,fatTarget=75;
+  return {protein,carbs,fatMin,fatMax,fatTarget,load,label:load==='high'?'Cardio soutenu':load==='moderate'?'Cardio':load==='force'?'Force':'Journée calme'};
+}
+function nutritionMacroGuidance(total,targets){
+  const carbsLeft=Math.max(0,targets.carbs-total.carbs),fat=Math.round(total.fat);
+  if(targets.load==='high' && carbsLeft>60)return `<strong>Journée cardio : pense aussi aux glucides.</strong><span>Il reste environ ${Math.round(carbsLeft)} g vers ton repère du jour. Le Compagnon peut en tenir compte au prochain repas.</span>`;
+  if(total.fat<targets.fatMin)return `<strong>Équilibre en cours.</strong><span>Les lipides sont encore bas (${fat} g). Pas besoin de les forcer : privilégie simplement des sources de qualité au fil des repas.</span>`;
+  if(total.fat>targets.fatMax)return `<strong>Lipides déjà bien couverts.</strong><span>${fat} g aujourd’hui : le prochain repas peut rester plus léger en matières grasses, sans restriction rigide.</span>`;
+  return `<strong>Macros bien réparties.</strong><span>Fluidité adapte surtout les glucides à l’activité ; protéines et lipides restent des repères souples.</span>`;
+}
+
 async function nutritionHubSheet(){
   pendingNutritionMealType=null;
   const all=await LTDB.all('food');
   const food=all.filter(x=>x.date===todayKey()).sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||''));
   const total=mealSummary(food);
-  const target=state.profile.proteinTarget||170;
+  const targets=await fluidityNutritionTargets();
+  const target=targets.protein;
   const calorieTarget=2250;
   const proteinPct=Math.min(100,target?total.protein/target*100:0);
+  const carbPct=Math.min(100,targets.carbs?total.carbs/targets.carbs*100:0);
+  const fatPct=Math.min(100,targets.fatTarget?total.fat/targets.fatTarget*100:0);
   const caloriePct=Math.min(100,calorieTarget?total.calories/calorieTarget*100:0);
   const remain=Math.max(0,target-total.protein);
   const mealOrder=['breakfast','lunch','snack','dinner'];
   const byMeal=Object.fromEntries(mealOrder.map(type=>[type,food.filter(x=>x.mealType===type)]));
+  const macroGuidance=nutritionMacroGuidance(total,targets);
   const fluidityText=remain>0
     ? `<strong>${Math.round(remain)} g de protéines restantes.</strong><span>${remain>60?'Tu as encore de la marge pour compléter tranquillement.':remain>25?'La journée avance bien, complète au prochain repas.':'Tu es tout près de ton repère du jour.'}</span>`
     : `<strong>Repère protéines atteint.</strong><span>Pas besoin d’en faire plus : garde simplement ton équilibre.</span>`;
@@ -1176,15 +1199,18 @@ async function nutritionHubSheet(){
       <div class="nutrition-calorie-ring" style="--progress:${caloriePct*3.6}deg"><div><strong>${Math.round(total.calories)}</strong><span>kcal</span><small>sur ${calorieTarget}</small></div></div>
       <div class="nutrition-v2-macros">
         <div><span>Protéines</span><b>${Math.round(total.protein)} <small>g</small></b><em>sur ${target} g</em><i><u style="width:${proteinPct}%"></u></i></div>
-        <div><span>Glucides</span><b>${Math.round(total.carbs)} <small>g</small></b><em>aujourd’hui</em></div>
-        <div><span>Lipides</span><b>${Math.round(total.fat)} <small>g</small></b><em>aujourd’hui</em></div>
+        <div><span>Glucides</span><b>${Math.round(total.carbs)} <small>g</small></b><em>sur ${targets.carbs} g</em><i><u style="width:${carbPct}%"></u></i></div>
+        <div><span>Lipides</span><b>${Math.round(total.fat)} <small>g</small></b><em>${targets.fatMin}–${targets.fatMax} g</em><i><u style="width:${fatPct}%"></u></i></div>
       </div>
+      <div class="nutrition-target-context"><span>${targets.label}</span><small>Repères du jour adaptés à ton activité</small></div>
       <div class="nutrition-fluidity-note">${companionMark("companion-mark-mini")}<div>${fluidityText}</div></div>
+      <div class="nutrition-fluidity-note nutrition-macro-note">${companionMark("companion-mark-mini")}<div>${macroGuidance}</div></div>
     </section>
     <button type="button" class="nutrition-companion-recipe" data-nutrition-proposals>${companionMark("companion-mark-mini")}<div><strong>Pas d’idée ?</strong><span>Demander une recette au Compagnon</span></div><b>›</b></button>
     <div class="nutrition-meals nutrition-meals-v2">${mealOrder.map(type=>nutritionMealCard(type,byMeal[type])).join('')}</div>
     <button type="button" class="nutrition-recipes-link" data-personal-recipes><span>▤</span><div><strong>Mes recettes</strong><small>Voir et gérer tes recettes</small></div><b>›</b></button>`);
 }
+
 async function editFoodSheet(id){
   const x=await LTDB.get('food',id); if(!x) return;
   showSheet(`<h2>Modifier le repas</h2><form id="foodEditForm">
