@@ -424,3 +424,11 @@ V16 UX: une seule carte Compagnon prioritaire; détail récupération dépliable
 
 Callback par défaut à déclarer chez Withings : `https://<ton-site>/.netlify/functions/withings-auth-callback`
 Scope demandé : `user.metrics`.
+
+
+## V16.4 — Sécurité Photos + dynamique corporelle
+- Coffre photos: reverrouillage configurable (immédiat / 1 / 5 / 15 min), 5 min par défaut.
+- Le délai glisse avec l’activité; fermer une étape photo ne force plus un nouveau déverrouillage.
+- Les images sensibles sont masquées lorsque l’app passe en arrière-plan.
+- Évolution: dynamique poids Withings avec dernière mesure, moyenne 7 jours et tendance 30 jours; masse grasse et musculaire si disponibles.
+- Aucune mutation des données Garmin, sport ou alimentation.

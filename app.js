@@ -3,7 +3,8 @@ const state = { route:'home', homeView:'today', profile:null, online:navigator.o
 const todayKey = () => new Date().toISOString().slice(0,10);
 const uid = () => crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
 const PHOTO_PRIVACY_STORAGE='fluidite_photo_privacy_v1';
-const PHOTO_VAULT_TTL_MS=3*60*1000;
+const PHOTO_VAULT_DEFAULT_TTL_MS=5*60*1000;
+function photoVaultTtlMs(){const cfg=photoPrivacyConfig();const min=[0,1,5,15].includes(Number(cfg.relockMinutes))?Number(cfg.relockMinutes):5;return min===0?0:min*60*1000}
 let photoVaultSession={unlocked:false,expiresAt:0,timer:null};
 let photoVaultSheetActive=false;
 function b64url(bytes){return btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
@@ -11,7 +12,7 @@ function fromB64url(v=''){const s=String(v).replace(/-/g,'+').replace(/_/g,'/');
 function photoPrivacyConfig(){try{return JSON.parse(localStorage.getItem(PHOTO_PRIVACY_STORAGE)||'null')||{enabled:true,method:null}}catch{return {enabled:true,method:null}}}
 function savePhotoPrivacyConfig(cfg){localStorage.setItem(PHOTO_PRIVACY_STORAGE,JSON.stringify({...cfg,enabled:true,updatedAt:new Date().toISOString()}))}
 function photoVaultUnlocked(){return photoVaultSession.unlocked&&Date.now()<photoVaultSession.expiresAt}
-function touchPhotoVault(){if(!photoVaultSession.unlocked)return;photoVaultSession.expiresAt=Date.now()+PHOTO_VAULT_TTL_MS;clearTimeout(photoVaultSession.timer);photoVaultSession.timer=setTimeout(()=>lockPhotoVault('timeout'),PHOTO_VAULT_TTL_MS+150)}
+function touchPhotoVault(){if(!photoVaultSession.unlocked)return;const ttl=photoVaultTtlMs();clearTimeout(photoVaultSession.timer);if(ttl===0){photoVaultSession.expiresAt=Number.MAX_SAFE_INTEGER;return}photoVaultSession.expiresAt=Date.now()+ttl;photoVaultSession.timer=setTimeout(()=>lockPhotoVault('timeout'),ttl+150)}
 function lockPhotoVault(reason='manual',refresh=true){photoVaultSession.unlocked=false;photoVaultSession.expiresAt=0;clearTimeout(photoVaultSession.timer);photoVaultSession.timer=null;if(photoVaultSheetActive&&$('#sheet')?.open){photoVaultSheetActive=false;$('#sheet').close()}if(refresh&&state.route==='home'&&state.homeView==='evolution')render();if(reason==='manual')toast('Photos verrouillées')}
 async function hashPhotoPin(pin,salt){const material=await crypto.subtle.importKey('raw',new TextEncoder().encode(pin),'PBKDF2',false,['deriveBits']);const bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt:fromB64url(salt),iterations:180000,hash:'SHA-256'},material,256);return b64url(bits)}
 function webAuthnAvailable(){return !!(window.PublicKeyCredential&&navigator.credentials?.create&&navigator.credentials?.get&&window.isSecureContext)}
@@ -21,7 +22,7 @@ async function setupPhotoPin(){if(!crypto?.subtle)throw new Error('PIN_UNAVAILAB
 async function unlockPhotoPin(){const cfg=photoPrivacyConfig();if(!cfg.pinHash)return setupPhotoPin();const pin=prompt('Code Fluidité pour afficher tes photos :');if(!pin)return false;const test=await hashPhotoPin(pin,cfg.pinSalt);if(test!==cfg.pinHash){toast('Code incorrect');return false}photoVaultSession.unlocked=true;touchPhotoVault();return true}
 function photoVaultLockSheet(message='Tes photos d’évolution sont masquées par défaut.'){
   const cfg=photoPrivacyConfig(),biometricLabel=cfg.method==='webauthn'?'Déverrouiller avec Face ID / Touch ID':'Activer Face ID / Touch ID';
-  showSheet(`<div class="photo-vault-lock"><div class="photo-vault-icon">◉</div><div class="card-kicker">COFFRE PHOTOS</div><h2>Photos protégées</h2><p class="subtle">${escapeHtml(message)} Fluidité ne reçoit jamais tes données biométriques : la vérification est gérée par iOS.</p><div class="photo-vault-actions">${webAuthnAvailable()?`<button class="action" type="button" id="unlockPhotoBiometric">${biometricLabel}</button>`:''}<button class="action secondary" type="button" id="unlockPhotoPin">${cfg.method==='pin'?'Déverrouiller avec mon code':'Utiliser un code Fluidité'}</button></div><p class="photo-vault-note">Le coffre se reverrouille quand l’app passe en arrière-plan et après quelques minutes d’inactivité.</p></div>`);
+  showSheet(`<div class="photo-vault-lock"><div class="photo-vault-icon">◉</div><div class="card-kicker">COFFRE PHOTOS</div><h2>Photos protégées</h2><p class="subtle">${escapeHtml(message)} Fluidité ne reçoit jamais tes données biométriques : la vérification est gérée par iOS.</p><div class="photo-vault-actions">${webAuthnAvailable()?`<button class="action" type="button" id="unlockPhotoBiometric">${biometricLabel}</button>`:''}<button class="action secondary" type="button" id="unlockPhotoPin">${cfg.method==='pin'?'Déverrouiller avec mon code':'Utiliser un code Fluidité'}</button></div><p class="photo-vault-note">Le coffre reste ouvert pendant la durée choisie après ta dernière activité. Les photos sont masquées quand l’app passe en arrière-plan.</p></div>`);
   $('#unlockPhotoBiometric')?.addEventListener('click',async()=>{try{await unlockPhotoBiometric();$('#sheet').close();document.dispatchEvent(new Event('fluidite-photo-unlocked'));toast('Photos déverrouillées');render()}catch(err){console.error(err);toast(err?.name==='NotAllowedError'?'Déverrouillage annulé':'Face ID / Touch ID indisponible')}});
   $('#unlockPhotoPin')?.addEventListener('click',async()=>{try{if(await unlockPhotoPin()){$('#sheet').close();document.dispatchEvent(new Event('fluidite-photo-unlocked'));toast('Photos déverrouillées');render()}}catch(err){console.error(err);toast('Impossible de configurer le code')}});
 }
@@ -49,9 +50,10 @@ function bindGlobal(){
   addEventListener('online',()=>{state.online=true; toast('Connexion retrouvée · données conservées'); render();});
   addEventListener('offline',()=>{state.online=false; toast('Mode hors ligne · tes saisies restent disponibles'); render();});
   $('#sheet').addEventListener('click',e=>{ if(e.target===$('#sheet')) $('#sheet').close(); });
-  $('#sheet').addEventListener('close',()=>{if(photoVaultSheetActive){photoVaultSheetActive=false;lockPhotoVault('sheet-close',state.route==='home'&&state.homeView==='evolution')}});
-  document.addEventListener('visibilitychange',()=>{if(document.hidden)lockPhotoVault('background')});
-  window.addEventListener('pagehide',()=>lockPhotoVault('background',false));
+  $('#sheet').addEventListener('close',()=>{if(photoVaultSheetActive){photoVaultSheetActive=false;if(photoVaultTtlMs()===0)lockPhotoVault('sheet-close',state.route==='home'&&state.homeView==='evolution');else touchPhotoVault()}});
+  document.addEventListener('visibilitychange',()=>{document.body.classList.toggle('photo-privacy-hidden',document.hidden);if(document.hidden&&photoVaultSession.unlocked&&photoVaultTtlMs()===0)lockPhotoVault('background',false);else if(!document.hidden&&photoVaultSession.unlocked&&!photoVaultUnlocked())lockPhotoVault('timeout')});
+  ['pointerdown','keydown','touchstart'].forEach(evt=>document.addEventListener(evt,()=>{if(photoVaultUnlocked())touchPhotoVault()},{passive:true}));
+  window.addEventListener('pagehide',()=>{document.body.classList.add('photo-privacy-hidden')});
   // V2.10.4.2: delegated action for the dynamically-rendered training recommendation.
   // This avoids fragile per-render listeners and opens exactly the workout shown on the card.
   $('#main')?.addEventListener('click',async e=>{

@@ -1,0 +1,4 @@
+.photo-privacy-hidden .progress-photo-large,.photo-privacy-hidden .photo-compare-pair img,.photo-privacy-hidden .companion-photo-strip img,.photo-privacy-hidden .progress-photo-grid img,.photo-privacy-hidden .photo-card img{visibility:hidden!important}
+.photo-privacy-hidden #sheetContent img{visibility:hidden!important}
+.photo-privacy-settings select{width:100%;min-height:44px;font-size:16px}
+.photo-setting-note{margin:.65rem 0 0;color:var(--muted,#667085);font-size:.86rem;line-height:1.4}

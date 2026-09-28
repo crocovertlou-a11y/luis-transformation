@@ -1,4 +1,4 @@
-const CACHE='fluidite-v163-withings';
+const CACHE='fluidite-v164-photo-body-trends';
 const ASSETS=['./','./index.html','./styles.css?v=v2112','./app.js?v=v14','./db.js?v=v211','./garmin-health-v212.js?v=v141','./garmin-health-v212.css?v=v141','./manifest.webmanifest','./icon-192.png','./icon-512.png','./force-detail-step1.js','./force-detail-step1.css','./nutrition-resilience.js'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil((async()=>{for(const key of await caches.keys())if(key!==CACHE)await caches.delete(key);await self.clients.claim()})()));
