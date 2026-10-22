@@ -14,11 +14,11 @@
   function normalizeActivity(a,index){
     const type=String(first(a.activity_type,a.activityType,a.type,'Activité'));
     const start=String(first(a.start_time_local,a.startTimeLocal,a.start_time,a.startTime,a.date,''));
-    const durationSeconds=n(first(a.duration_seconds,a.duration_s,a.durationInSeconds,a.duration));
+    const durationSeconds=n(first(a.duration_seconds,a.duration_s,a.durationInSeconds,a.duration,a.elapsedDuration,a.movingDuration));
     const distanceKm=n(first(a.distance_km,a.distanceKm,a.distance!=null&&Number(a.distance)>500?Number(a.distance)/1000:a.distance));
     const heart=a.heart_rate||a.heartRate||{};
     const cardioLike=/run|running|course|walk|marche|hike|randonn|cycle|cycling|bike|vélo|swim|natation|cardio|rowing|rameur/i.test(type);
-    return {activityId:String(first(a.activity_id,a.activityId,a.id,`${start||'activity'}-${index}`)),date:start.slice(0,10)||localDate(),type,name:String(first(a.name,a.activity_name,type)),device:String(first(a.device?.name,a.device,'')),durationSeconds,distanceKm,calories:n(a.calories),heartRateAvg:n(first(a.heart_rate_avg,a.averageHeartRate,heart.avg,heart.average)),heartRateMax:n(first(a.heart_rate_max,a.maximumHeartRate,heart.max,heart.maximum)),cadenceAvg:n(first(a.cadence_avg,a.averageCadence,a.cadence)),elevationGain:n(first(a.elevation_gain,a.totalAscent,a.ascent)),speedAvg:n(first(a.speed_avg,a.averageSpeed)),paceAvg:first(a.pace_avg,a.averagePace,null),cardioLike,details:a.details||a.fit_metrics||null};
+    return {activityId:String(first(a.activity_id,a.activityId,a.id,`${start||'activity'}-${index}`)),date:start.slice(0,10)||localDate(),type,name:String(first(a.name,a.activity_name,type)),device:String(first(a.device?.name,a.device,'')),durationSeconds:durationSeconds!=null&&durationSeconds>0?Math.round(durationSeconds):null,distanceKm,calories:n(a.calories),heartRateAvg:n(first(a.heart_rate_avg,a.averageHeartRate,heart.avg,heart.average)),heartRateMax:n(first(a.heart_rate_max,a.maximumHeartRate,heart.max,heart.maximum)),cadenceAvg:n(first(a.cadence_avg,a.averageCadence,a.cadence)),elevationGain:n(first(a.elevation_gain,a.totalAscent,a.ascent)),speedAvg:n(first(a.speed_avg,a.averageSpeed)),paceAvg:first(a.pace_avg,a.averagePace,null),cardioLike,details:a.details||a.fit_metrics||null};
   }
 
   function normalize(payload){
