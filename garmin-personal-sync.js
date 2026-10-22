@@ -4,16 +4,17 @@
   function message(container,text,error=false){const p=container.querySelector('[data-garmin-personal-status]');if(p){p.textContent=text;p.style.color=error?'#a43333':'';}}
   function mount(){
     const box=document.createElement('section');box.className='card garmin-personal-connector';
-    box.innerHTML='<div class="card-kicker">GARMIN · CONNEXION PERSONNELLE</div><h3>Synchronisation Garmin</h3><p class="subtle">Connexion officielle en lecture seule. Ta clé Garmin reste sur le serveur ; la synchronisation ne sauvegarde aucune donnée avant ta confirmation.</p><label class="field">Code privé de synchronisation<input data-garmin-personal-pass type="password" autocomplete="off" placeholder="Code configuré sur Netlify"></label><div class="card-actions"><button type="button" class="action" data-garmin-personal-sync>Récupérer depuis Garmin</button><button type="button" class="action secondary" data-garmin-personal-import>Importer un JSON</button></div><p class="subtle" data-garmin-personal-status aria-live="polite">Saisis ton code privé puis récupère les données de la journée.</p>';
+    box.innerHTML='<div class="card-kicker">GARMIN · CONNEXION PERSONNELLE</div><h3>Synchronisation Garmin</h3><p class="subtle">Connexion officielle en lecture seule. Ta clé Garmin reste sur le serveur ; la synchronisation ne sauvegarde aucune donnée avant ta confirmation.</p><label class="field" data-garmin-pass-wrap hidden>Code privé (une seule fois par appareil)<input data-garmin-personal-pass type="password" autocomplete="off" placeholder="Code configuré sur Netlify"></label><div class="card-actions"><button type="button" class="action" data-garmin-personal-sync>Récupérer depuis Garmin</button><button type="button" class="action secondary" data-garmin-personal-import>Importer un JSON</button></div><p class="subtle" data-garmin-personal-status aria-live="polite">Ton code privé sera demandé uniquement si cet appareil n’est pas reconnu.</p>';
     box.querySelector('[data-garmin-personal-import]').addEventListener('click',()=>window.FluiditeGarmin?.openImport());
     box.querySelector('[data-garmin-personal-sync]').addEventListener('click',async()=>{
       const btn=box.querySelector('[data-garmin-personal-sync]');const pass=box.querySelector('[data-garmin-personal-pass]').value;
-      if(!pass)return message(box,'Entre le code privé configuré pour ce connecteur.',true);
+
       btn.disabled=true;message(box,'Lecture des données en cours…');
       try{
-        const response=await fetch(endpoint,{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json','X-Fluidite-Sync-Code':pass},body:JSON.stringify({date:new Date().toLocaleDateString('en-CA')})});
+        const response=await fetch(endpoint,{method:'POST',cache:'no-store',credentials:'same-origin',headers:{'Content-Type':'application/json',...(pass?{'X-Fluidite-Sync-Code':pass}:{})},body:JSON.stringify({date:new Date().toLocaleDateString('en-CA')})});
         const json=await response.json().catch(()=>({error:'Réponse du serveur non reconnue'}));
-        if(!response.ok)throw new Error(json.error||`Erreur ${response.status}`);
+        if(!response.ok){if(response.status===401&&json.code==='SYNC_CODE_REQUIRED'){box.querySelector('[data-garmin-pass-wrap]').hidden=false;box.querySelector('[data-garmin-personal-pass]').focus();throw new Error('Saisis ton code privé une fois, puis relance la récupération.')}throw new Error(json.error||`Erreur ${response.status}`);}
+        box.querySelector('[data-garmin-pass-wrap]').hidden=true;
         window.FluiditeGarmin.normalize(json); // Validation avant prévisualisation.
         window.FluiditeGarmin.openImport();
         const field=document.querySelector('#garminCapsuleText');

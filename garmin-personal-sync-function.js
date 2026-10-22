@@ -1,8 +1,13 @@
 /* Garmin Connect Personal API — read-only, server-side. Official endpoint paths: garmin/connect-personal-api-python. */
-import { timingSafeEqual } from 'node:crypto';
+import { timingSafeEqual, createHmac } from 'node:crypto';
 const root='https://personal.connectapi.garmin.com';
 const tokenUrl=root+'/personalapitoken-service/personal-api/personal-api-key/token';
-const json=(statusCode,body)=>({statusCode,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'},body:JSON.stringify(body)});
+const json=(statusCode,body,cookie)=>({statusCode,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff',...(cookie?{'Set-Cookie':cookie}:{})},body:JSON.stringify(body)});
+const COOKIE='fluidite_garmin_session';
+function signature(secret){return createHmac('sha256',secret).update('fluidite-garmin-personal-session-v1').digest('hex')}
+function cookieValid(event,secret){const raw=event.headers?.cookie||event.headers?.Cookie||'';const match=raw.match(/(?:^|;\s*)fluidite_garmin_session=([a-f0-9]{64})(?:;|$)/);return !!match&&secure(match[1],signature(secret))}
+function sessionCookie(secret){return `${COOKIE}=${signature(secret)}; Path=/.netlify/functions/garmin-personal-sync-function; HttpOnly; Secure; SameSite=Strict; Max-Age=2592000`}
+
 const secure=(a,b)=>{const x=Buffer.from(String(a||'')),y=Buffer.from(String(b||''));return x.length===y.length&&timingSafeEqual(x,y)};
 const isDay=x=>/^20\d{2}-(0[1-9]|1[0-2])-([0-2]\d|3[01])$/.test(x);
 const numeric=x=>x==null||x===''?null:Number.isFinite(Number(x))?Number(x):null;
@@ -51,7 +56,7 @@ function mapped(date,raw){
  // Only include verified numeric fields; absent values must never be represented as zero.
  for(const [key,value] of Object.entries(vals)) vals[key]=numeric(value);
  const acts=Array.isArray(raw.activities)?raw.activities:raw.activities?.activities||[];
- const activities=acts.map(a=>({activityId:first(a.activityId,a.id),activityType:first(a.activityType?.typeKey,a.activityType,a.type),startTimeLocal:first(a.startTimeLocal,a.startTimeGMT),name:a.activityName,durationSeconds:first(a.duration,a.elapsedDuration),distanceKm:numeric(a.distance)!=null?numeric(a.distance)/1000:null,averageHeartRate:a.averageHR,maximumHeartRate:a.maxHR,averageCadence:a.averageRunningCadenceInStepsPerMinute,totalAscent:a.elevationGain,calories:a.calories}));
+ const activities=acts.filter(a=>String(first(a.startTimeLocal,a.startTimeGMT,a.startTime,'')).slice(0,10)===date).map(a=>({activityId:first(a.activityId,a.id),activityType:first(a.activityType?.typeKey,a.activityType,a.type),startTimeLocal:first(a.startTimeLocal,a.startTimeGMT),name:a.activityName,durationSeconds:first(a.duration,a.elapsedDuration),distanceKm:numeric(a.distance)!=null?numeric(a.distance)/1000:null,averageHeartRate:first(a.averageHR,a.averageHeartRate),maximumHeartRate:first(a.maxHR,a.maxHeartRate),averageCadence:first(a.averageRunningCadenceInStepsPerMinute,a.averageBikingCadenceInRevPerMinute,a.averageCadence),totalAscent:a.elevationGain,calories:a.calories,averageSpeed:a.averageSpeed,device:a.deviceName}));
  if(!Object.values(vals).some(v=>v!=null)&&!activities.length)throw Error('Aucune mesure reconnue : vérifier le contenu des réponses Garmin');
  return {schema:'fluidite-garmin-capsule-v1',date,source:'Garmin Personal API',data:vals,activities,data_status:'partial',notes:['Données Garmin Personal en lecture seule ; vérifier les valeurs avant confirmation.']};
 }
@@ -59,7 +64,8 @@ export async function handler(event){
  if(event.httpMethod!=='POST')return json(405,{error:'Méthode non autorisée'});
  const secret=process.env.FLUIDITE_GARMIN_SYNC_CODE;
  if(!secret||secret.length<16)return json(503,{error:'Configurer FLUIDITE_GARMIN_SYNC_CODE (16 caractères minimum) dans Netlify.'});
- if(!secure(event.headers?.['x-fluidite-sync-code']||event.headers?.['X-Fluidite-Sync-Code'],secret))return json(401,{error:'Code privé de synchronisation incorrect.'});
+ const authorized=secure(event.headers?.['x-fluidite-sync-code']||event.headers?.['X-Fluidite-Sync-Code'],secret)||cookieValid(event,secret);
+ if(!authorized)return json(401,{error:'Code privé requis pour cet appareil.',code:'SYNC_CODE_REQUIRED'});
  const key=process.env.GARMIN_PERSONAL_API_KEY;
  if(!key)return json(503,{error:'GARMIN_PERSONAL_API_KEY manquant dans Netlify.'});
  let date;
@@ -67,10 +73,10 @@ export async function handler(event){
  try{
   const token=await auth(key);
   const enc=encodeURIComponent(date);
-  const paths={daily:`/usersummary-service/v2/dailysummaries?startDate=${enc}&endDate=${enc}`,sleep:`/sleep-service/sleep/dailySleep?date=${enc}`,hrv:`/hrv-service/hrv/${enc}`,hr:`/wellness-service/wellness/dailyHeartRate?date=${enc}`,stress:`/usersummary-service/stats/stress/daily/${enc}/${enc}`,battery:`/wellness-service/wellness/bodyBattery/reports/daily?startDate=${enc}&endDate=${enc}`,steps:`/usersummary-service/stats/steps/daily/${enc}/${enc}`,activities:`/activitylist-service/activities/search/activities?start=0&limit=20&startDate=${enc}&endDate=${enc}`};
+  const paths={daily:`/usersummary-service/v2/dailysummaries?startDate=${enc}&endDate=${enc}`,sleep:`/sleep-service/sleep/dailySleep?date=${enc}`,hrv:`/hrv-service/hrv/${enc}`,hr:`/wellness-service/wellness/dailyHeartRate?date=${enc}`,stress:`/usersummary-service/stats/stress/daily/${enc}/${enc}`,battery:`/wellness-service/wellness/bodyBattery/reports/daily?startDate=${enc}&endDate=${enc}`,steps:`/usersummary-service/stats/steps/daily/${enc}/${enc}`,activities:`/activitylist-service/activities/search/activities?start=0&limit=50&startDate=${enc}&endDate=${enc}`};
   const entries=await Promise.all(Object.entries(paths).map(async ([k,p])=>{try{return [k,await request(p,token),null]}catch(e){return [k,null,e.message]}}));
   const raw={},missing=[];for(const [k,v,err] of entries){raw[k]=v;if(err)missing.push(k+' : '+err)}
   const payload=mapped(date,raw);payload.missing=missing;
-  return json(200,payload);
+  return json(200,payload,sessionCookie(secret));
  }catch(e){return json(502,{error:'Synchronisation Garmin impossible : '+String(e.message||e)});}
 }
