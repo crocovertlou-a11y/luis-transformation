@@ -10,7 +10,7 @@ const first=(...x)=>x.find(v=>v!==undefined&&v!==null&&v!=='');
 async function request(path,token){
  const url=root+path;
  const r=await fetch(url,{headers:{Authorization:'Bearer '+token,Accept:'application/json'},signal:AbortSignal.timeout(12000),redirect:'error'});
- if(!r.ok)throw new Error('Garmin HTTP '+r.status+' ('+path.split('?')[0]+')');
+ if(!r.ok)throw Object.assign(new Error('Garmin HTTP '+r.status+' ('+path.split('?')[0]+')'),{stage:'data',upstreamStatus:r.status});
  return r.status===204?null:r.json();
 }
 async function auth(key){
@@ -21,7 +21,7 @@ async function auth(key){
   try {const body=await r.json();const code=body?.errorCode||body?.code||body?.error;
    if(typeof code==='string' && /^[a-zA-Z0-9_.-]{1,64}$/.test(code))reason=' ['+code+']';
   }catch{}
-  throw new Error('Jeton Garmin HTTP '+r.status+reason);
+  throw Object.assign(new Error('Jeton Garmin HTTP '+r.status+reason),{stage:'token',upstreamStatus:r.status});
  }
  const obj=await r.json();const token=first(obj.access_token,obj.accessToken,obj.token);
  if(typeof token!=='string'||!token)throw new Error('Garmin : format du jeton non reconnu');return token;
@@ -59,5 +59,12 @@ export async function handler(event){
   const raw={},missing=[];for(const [k,v,err] of entries){raw[k]=v;if(err)missing.push(k+' : '+err)}
   const payload=mapped(date,raw);payload.missing=missing;
   return json(200,payload);
- }catch(e){return json(502,{error:'Synchronisation Garmin impossible : '+String(e.message||e)});}
+ }catch(e){
+  // Structured metadata only: never log personal API keys, bearer tokens or Garmin response bodies.
+  const stage=e?.stage==='token'?'token':e?.stage==='data'?'data':'processing';
+  const upstreamStatus=Number.isInteger(e?.upstreamStatus)?e.upstreamStatus:null;
+  const requestId=event.headers?.['x-nf-request-id']||null;
+  console.error('[fluidite-garmin] sync_failed',JSON.stringify({stage,upstreamStatus,requestId}));
+  return json(upstreamStatus===401?502:502,{error:'Synchronisation Garmin impossible : '+String(e.message||e),diagnostic:{stage,upstream_status:upstreamStatus,request_id:requestId},hint:stage==='token'&&upstreamStatus===401?'Garmin refuse la clé Personal API lors de la génération du jeton. Vérifier la valeur GARMIN_PERSONAL_API_KEY et les droits de la clé, sans la communiquer.':null});
+ }
 }
