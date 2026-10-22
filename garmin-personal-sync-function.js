@@ -14,8 +14,15 @@ async function request(path,token){
  return r.status===204?null:r.json();
 }
 async function auth(key){
- const r=await fetch(tokenUrl,{method:'POST',headers:{Authorization:'ApiKey '+key,Accept:'application/json'},signal:AbortSignal.timeout(12000),redirect:'error'});
- if(!r.ok)throw new Error('Jeton Garmin HTTP '+r.status);
+ const r=await fetch(tokenUrl,{method:'POST',headers:{Authorization:'ApiKey '+key,Accept:'*/*'},signal:AbortSignal.timeout(12000),redirect:'error'});
+ if(!r.ok){
+  // Return only a constrained, sanitized API error code; never expose credentials or response bodies.
+  let reason='';
+  try {const body=await r.json();const code=body?.errorCode||body?.code||body?.error;
+   if(typeof code==='string' && /^[a-zA-Z0-9_.-]{1,64}$/.test(code))reason=' ['+code+']';
+  }catch{}
+  throw new Error('Jeton Garmin HTTP '+r.status+reason);
+ }
  const obj=await r.json();const token=first(obj.access_token,obj.accessToken,obj.token);
  if(typeof token!=='string'||!token)throw new Error('Garmin : format du jeton non reconnu');return token;
 }
