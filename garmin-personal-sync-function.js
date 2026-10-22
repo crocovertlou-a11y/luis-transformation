@@ -10,7 +10,7 @@ const first=(...x)=>x.find(v=>v!==undefined&&v!==null&&v!=='');
 async function request(path,token){
  const url=root+path;
  const r=await fetch(url,{headers:{Authorization:'Bearer '+token,Accept:'application/json'},signal:AbortSignal.timeout(12000),redirect:'error'});
- if(!r.ok)throw Object.assign(new Error('Garmin HTTP '+r.status+' ('+path.split('?')[0]+')'),{stage:'data',upstreamStatus:r.status});
+ if(!r.ok)throw new Error('Garmin HTTP '+r.status+' ('+path.split('?')[0]+')');
  return r.status===204?null:r.json();
 }
 async function auth(key){
@@ -21,10 +21,23 @@ async function auth(key){
   try {const body=await r.json();const code=body?.errorCode||body?.code||body?.error;
    if(typeof code==='string' && /^[a-zA-Z0-9_.-]{1,64}$/.test(code))reason=' ['+code+']';
   }catch{}
-  throw Object.assign(new Error('Jeton Garmin HTTP '+r.status+reason),{stage:'token',upstreamStatus:r.status});
+  throw new Error('Jeton Garmin HTTP '+r.status+reason);
  }
- const obj=await r.json();const token=first(obj.access_token,obj.accessToken,obj.token);
- if(typeof token!=='string'||!token)throw new Error('Garmin : format du jeton non reconnu');return token;
+ // Garmin Personal API may return a raw JWT instead of a JSON object.
+ // Never include the response in errors or logs: it contains credentials.
+ const payload=(await r.text()).trim();
+ let token='';
+ if(payload.startsWith('{') || payload.startsWith('\"')){
+  let obj;
+  try{obj=JSON.parse(payload)}catch{throw new Error('Garmin : réponse de jeton JSON invalide')}
+  token=typeof obj==='string'?obj:first(obj?.access_token,obj?.accessToken,obj?.token);
+ }else{
+  token=payload;
+ }
+ if(typeof token!=='string'||!/^eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*$/.test(token)){
+  throw new Error('Garmin : format du jeton non reconnu');
+ }
+ return token;
 }
 function dailyObject(x){return Array.isArray(x)?(x[0]||{}):(x?.dailySummaries?.[0]||x?.dailySummary||x||{});}
 function sleepObject(x){return x?.dailySleepDTO||x?.dailySleep||x||{};}
@@ -59,12 +72,5 @@ export async function handler(event){
   const raw={},missing=[];for(const [k,v,err] of entries){raw[k]=v;if(err)missing.push(k+' : '+err)}
   const payload=mapped(date,raw);payload.missing=missing;
   return json(200,payload);
- }catch(e){
-  // Structured metadata only: never log personal API keys, bearer tokens or Garmin response bodies.
-  const stage=e?.stage==='token'?'token':e?.stage==='data'?'data':'processing';
-  const upstreamStatus=Number.isInteger(e?.upstreamStatus)?e.upstreamStatus:null;
-  const requestId=event.headers?.['x-nf-request-id']||null;
-  console.error('[fluidite-garmin] sync_failed',JSON.stringify({stage,upstreamStatus,requestId}));
-  return json(upstreamStatus===401?502:502,{error:'Synchronisation Garmin impossible : '+String(e.message||e),diagnostic:{stage,upstream_status:upstreamStatus,request_id:requestId},hint:stage==='token'&&upstreamStatus===401?'Garmin refuse la clé Personal API lors de la génération du jeton. Vérifier la valeur GARMIN_PERSONAL_API_KEY et les droits de la clé, sans la communiquer.':null});
- }
+ }catch(e){return json(502,{error:'Synchronisation Garmin impossible : '+String(e.message||e)});}
 }
