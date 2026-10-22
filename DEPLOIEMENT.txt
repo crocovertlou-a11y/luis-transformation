@@ -1,12 +1,1 @@
-Fluidité — Garmin Personal API : réponse token JWT texte brut
-
-Fichier unique à remplacer : garmin-personal-sync-function.js (racine GitHub, comme la version précédente).
-Aucune modification d'interface, app.js, vignettes ni des autres fonctions.
-
-Cause diagnostiquée : la réponse Garmin commence par eyJ... et n'est pas du JSON ; l'ancien code utilisait response.json() sans tenir compte du format texte brut.
-
-Changement : accepter un JWT brut ou un JWT contenu dans une réponse JSON ; ne jamais journaliser ni renvoyer le jeton.
-
-Après déploiement : utiliser « Récupérer depuis Garmin » une fois. Vérifier la prévisualisation, les champs et la date avant confirmation. Les appels de données Garmin ne sont pas encore validés en réel.
-
-Ne jamais transmettre les clés, le JWT ou les logs contenant des secrets.
+Remplacer les 3 fichiers a la racine Fluidite, puis deployer Netlify. Test de session Safari et recuperation activites a confirmer sur appareil. Aucune vignette ajoutee.

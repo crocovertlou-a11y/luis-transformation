@@ -78,7 +78,7 @@
   }
 
   function input(name,label,value,step='1',suffix=''){
-    return `<div class="field"><label>${label}${suffix?` (${suffix})`:''}</label><input name="${name}" type="number" step="${step}" value="${value??''}" placeholder="—"></div>`;
+    return `<div class="field"><label>${label}${suffix?` (${suffix})`:''}</label><input name="${name}" type="number" step="${step}" value="${value==null?'':(typeof value==='number'?Number(value.toFixed(3)):value)}" placeholder="—"></div>`;
   }
   function section(title,rows){return `<section class="garmin-preview-section"><h3>${title}</h3><div class="garmin-preview-grid">${rows}</div></section>`}
   function sleepLabel(v={}){return v.sleepMinutes!=null?formatSleepDuration(v.sleepHours,v.sleepMinutes):v.sleepHours!=null?formatSleepDuration(v.sleepHours):'—'}
@@ -126,7 +126,7 @@
     const v=pending.values;
     const activities=pending.activities||[];
     showSheet(`<div class="card-kicker">GARMIN · PRÉVISUALISATION</div><h2>${pending.replacesExisting?'Mettre à jour la capsule':'Vérifie avant d’enregistrer'}</h2>${pending.replacesExisting?'<div class="garmin-update-note"><b>Capsule déjà présente pour cette date.</b><span>La version enrichie remplace proprement la précédente, sans doublon. Les valeurs déjà confirmées sont conservées si la nouvelle capsule ne les retransmet pas.</span></div>':''}<form id="garminConfirmForm">${dateField('date',pending.date,'Date Garmin détectée')}
-      ${section('Récupération',input('restingHeartRate','Fréquence cardiaque au repos',v.restingHeartRate,'1','bpm')+input('hrvMs','HRV nocturne',v.hrvMs,'0.1','ms')+input('sleepHours','Sommeil décimal',v.sleepHours,'0.0166667','h')+input('sleepScore','Score de sommeil',v.sleepScore))}
+      ${section('Récupération',input('restingHeartRate','Fréquence cardiaque au repos',v.restingHeartRate,'1','bpm')+input('hrvMs','HRV nocturne',v.hrvMs,'0.1','ms')+input('sleepHours','Sommeil (heures décimales)',v.sleepHours==null?null:Math.round(v.sleepHours*100)/100,'0.01','h')+input('sleepScore','Score de sommeil',v.sleepScore))}
       ${section('Stress physiologique',input('stressAverage','Stress Garmin moyen',v.stressAverage)+input('stressMaximum','Stress Garmin maximal',v.stressMaximum)+input('bodyBatteryCharged','Body Battery chargé',v.bodyBatteryCharged)+input('bodyBatteryDrained','Body Battery consommé',v.bodyBatteryDrained))}
       ${section('Activité quotidienne',input('steps','Pas',v.steps)+input('distanceKm','Distance',v.distanceKm,'0.01','km')+input('activeMinutes','Temps actif',v.activeMinutes,'0.1','min')+input('floorsClimbed','Étages montés',v.floorsClimbed)+input('activeCalories','Calories actives',v.activeCalories)+input('totalCalories','Calories totales',v.totalCalories)+input('moderateMinutes','Minutes modérées',v.moderateMinutes,'0.1','min')+input('vigorousMinutes','Minutes soutenues',v.vigorousMinutes,'0.1','min'))}
       ${section('Corps et respiration',input('weightKg','Poids',v.weightKg,'0.1','kg')+input('bodyFatPercent','Masse grasse',v.bodyFatPercent,'0.1','%')+input('muscleMassKg','Masse musculaire',v.muscleMassKg,'0.1','kg')+input('bodyWaterPercent','Eau corporelle',v.bodyWaterPercent,'0.1','%')+input('respirationRate','Respiration',v.respirationRate,'0.1','/min')+input('spo2Average','SpO₂ moyenne',v.spo2Average,'0.1','%')+input('spo2Minimum','SpO₂ minimale',v.spo2Minimum,'0.1','%'))}
