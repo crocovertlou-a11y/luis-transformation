@@ -14,12 +14,7 @@
     return 'Force';
   }
 
-  function thumb(name){
-    if(window.forceVisualThumb) return window.forceVisualThumb(name);
-    const m=muscleFor(name);
-    const cls=m==='Pectoraux'?'chest':m==='Dos'?'back':m==='Épaules'?'shoulders':m==='Jambes'?'legs':'core';
-    return `<span class="fstep-thumb ${cls}" aria-hidden="true"><i></i><b></b><em></em></span>`;
-  }
+  function thumb(){ return ""; }
 
   async function detail(workout){
     const history=(await LTDB.all('workouts')).sort((a,b)=>b.date.localeCompare(a.date));

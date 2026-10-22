@@ -1,0 +1,16 @@
+/* Fluidité — no exercise thumbnails (persistent UX requirement).
+   Scoped to Force: user progress photos and food photos remain untouched. */
+.fstep-list .fstep-thumb,
+.fstep-row .fstep-thumb,
+.flc-item .fstep-thumb,
+.fstep-list .fvis-thumb,
+.flc-grid .fvis-thumb,
+.force-library-complete .deck-real-thumb,
+.force-library-complete img[class*="thumb"],
+.fstep-list img[class*="thumb"] { display:none !important; }
+.fstep-row,.fstep-row.fux-row { grid-template-columns:minmax(0,1fr) !important; grid-template-areas:"copy" "tech" !important; text-align:left !important; }
+.fstep-row:not(.fux-row) { display:flex; justify-content:space-between; align-items:center; }
+.fstep-row.fux-row .fstep-copy { grid-area:copy; text-align:left; }
+.fstep-row.fux-row .fux-tech { grid-area:tech; text-align:left; }
+.flc-grid { grid-template-columns:1fr !important; }
+.flc-item { min-height:0; padding:14px 16px; text-align:left; }
