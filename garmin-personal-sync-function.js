@@ -56,9 +56,16 @@ function mapped(date,raw){
  // Only include verified numeric fields; absent values must never be represented as zero.
  for(const [key,value] of Object.entries(vals)) vals[key]=numeric(value);
  const acts=Array.isArray(raw.activities)?raw.activities:raw.activities?.activities||[];
- const seconds=(...fields)=>{for(const field of fields){const n=numeric(field);if(n!=null && n>0)return n;}return null;};
+ const durationSeconds=a=>{
+  // Garmin's activity list has multiple generations of duration field names.
+  // Explicit millisecond fields are converted; second fields are preserved.
+  const secondsFields=[a.durationInSeconds,a.elapsedDurationInSeconds,a.movingDurationInSeconds,a.timerTimeInSeconds,a.elapsedTimeInSeconds,a.movingTimeInSeconds,a.duration,a.elapsedDuration,a.movingDuration,a.elapsedTime,a.movingTime,a.timerTime,a.totalElapsedTime,a.totalTimerTime,a.summaryDTO?.duration,a.summaryDTO?.elapsedDuration,a.summaryDTO?.movingDuration];
+  for(const v of secondsFields){const n=numeric(v);if(n!=null&&n>0&&n<=86400)return Math.round(n);}
+  for(const v of [a.durationInMilliseconds,a.elapsedDurationInMilliseconds,a.movingDurationInMilliseconds,a.elapsedTimeMillis,a.movingTimeMillis,a.durationMillis,a.elapsedTimeInMilliseconds,a.elapsedDurationMillis]){const n=numeric(v);if(n!=null&&n>0&&n<=86400000)return Math.round(n/1000);}
+  return null;
+ };
  const km=v=>{const n=numeric(v);return n==null?null:Math.round((n/1000)*1000)/1000;};
- const activities=acts.filter(a=>String(first(a.startTimeLocal,a.startTimeGMT,a.startTime,'')).slice(0,10)===date).map(a=>({activityId:first(a.activityId,a.id),activityType:first(a.activityType?.typeKey,a.activityType,a.type),startTimeLocal:first(a.startTimeLocal,a.startTimeGMT),name:a.activityName,durationSeconds:seconds(a.duration,a.elapsedDuration,a.movingDuration,a.elapsedTime,a.movingTime,a.durationInSeconds,a.elapsedDurationInSeconds),distanceKm:km(a.distance),averageHeartRate:first(a.averageHR,a.averageHeartRate),maximumHeartRate:first(a.maxHR,a.maxHeartRate),averageCadence:first(a.averageRunningCadenceInStepsPerMinute,a.averageBikingCadenceInRevPerMinute,a.averageCadence),totalAscent:first(a.elevationGain,a.totalAscent),calories:first(a.calories,a.activeKilocalories),averageSpeed:a.averageSpeed,device:a.deviceName}));
+ const activities=acts.filter(a=>String(first(a.startTimeLocal,a.startTimeGMT,a.startTime,'')).slice(0,10)===date).map(a=>({activityId:first(a.activityId,a.id),activityType:first(a.activityType?.typeKey,a.activityType,a.type),startTimeLocal:first(a.startTimeLocal,a.startTimeGMT),name:a.activityName,durationSeconds:durationSeconds(a),distanceKm:km(a.distance),averageHeartRate:first(a.averageHR,a.averageHeartRate),maximumHeartRate:first(a.maxHR,a.maxHeartRate),averageCadence:first(a.averageRunningCadenceInStepsPerMinute,a.averageBikingCadenceInRevPerMinute,a.averageCadence),totalAscent:first(a.elevationGain,a.totalAscent),calories:first(a.calories,a.activeKilocalories),averageSpeed:a.averageSpeed,device:a.deviceName}));
  if(!Object.values(vals).some(v=>v!=null)&&!activities.length)throw Error('Aucune mesure reconnue : vérifier le contenu des réponses Garmin');
  return {schema:'fluidite-garmin-capsule-v1',date,source:'Garmin Personal API',data:vals,activities,data_status:'partial',notes:['Données Garmin Personal en lecture seule ; vérifier les valeurs avant confirmation.']};
 }

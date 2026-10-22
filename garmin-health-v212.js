@@ -165,7 +165,11 @@
     for(const rawIndex of f.getAll('activityIndex')){
       const a=pending.activities?.[Number(rawIndex)];if(!a)continue;
       const id=`garmin-${a.activityId}`;
-      await LTDB.put('cardio',{id,date:a.date||date,type:a.type,name:a.name,distance:a.distanceKm,durationSeconds:a.durationSeconds,durationLabel:a.durationSeconds!=null?durationLabel(a.durationSeconds):null,heartRateAvg:a.heartRateAvg,heartRateMax:a.heartRateMax,cadenceAvg:a.cadenceAvg,elevationGain:a.elevationGain,calories:a.calories,speedAvg:a.speedAvg,paceAvg:a.paceAvg,device:a.device,garminActivityId:a.activityId,garminDetails:a.details,source:'garmin-capsule',importSource:'Garmin',createdAt:now});
+      const existing=await LTDB.get('cardio',id);
+      // A previously imported Garmin activity with a missing duration is updated
+      // in place when Garmin now supplies it; never replace a known duration by zero.
+      const recoveredDuration=(Number(a.durationSeconds)>0&&Number.isFinite(Number(a.durationSeconds)))?Math.round(Number(a.durationSeconds)):(Number(existing?.durationSeconds)>0?existing.durationSeconds:null);
+      await LTDB.put('cardio',{...existing,id,date:a.date||date,type:a.type,name:a.name,distance:a.distanceKm,durationSeconds:recoveredDuration,durationLabel:recoveredDuration!=null?durationLabel(recoveredDuration):null,heartRateAvg:a.heartRateAvg,heartRateMax:a.heartRateMax,cadenceAvg:a.cadenceAvg,elevationGain:a.elevationGain,calories:a.calories,speedAvg:a.speedAvg,paceAvg:a.paceAvg,device:a.device,garminActivityId:a.activityId,garminDetails:a.details,source:'garmin-capsule',importSource:'Garmin',createdAt:now});
     }
     $('#sheet').close();toast('Données Garmin confirmées');render();
   }
