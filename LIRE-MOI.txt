@@ -1,0 +1,12 @@
+FLUIDITÉ — ACCUEIL COMPACT — 24.10.2026
+
+Installation : remplacer les 6 fichiers à la racine du projet par ceux de ce ZIP, puis déployer. Aucun changement de configuration serveur ou de base de données.
+Fichiers : index.html, home-layout-v16.js, home-layout-v16.css, garmin-personal-sync.js, recovery-v15.js, sw.js.
+
+Accueil : ressenti, recommandation, accomplissements et évolution visibles. Récupération intégrée dans « Pourquoi ce conseil ? ». Santé Garmin repliée. Raccourcis Ma semaine et Évolution conservés. Import Garmin disponible sur Accueil et Profil, avec le même parcours de confirmation.
+
+Base : fichiers du 22 octobre et derniers correctifs Garmin durée/réimport. Livraison ciblée : les autres fichiers restent en place.
+
+Vérifications : syntaxe des scripts ; rendu DOM de l'application complète sans et avec ressenti ; cinq états de récupération ; menus fermés ; accès Garmin Accueil et Profil ; récupération simulée, prévisualisation et demande du code privé après HTTP 401. Aucun appel réel à Garmin effectué. Affichage visuel sur Safari/iPhone non vérifié : navigateur de test indisponible.
+
+Après déploiement : rouvrir l'application avec une connexion réseau. Vérifier l'ouverture de Santé Garmin, l'import et la confirmation puis le retour sur l'accueil.

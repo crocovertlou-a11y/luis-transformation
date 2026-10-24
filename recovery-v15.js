@@ -3,7 +3,7 @@
  const num=x=>x===null||x===undefined||x===''?null:(Number.isFinite(Number(x))?Number(x):null);
  const median=xs=>{xs=xs.filter(x=>x!==null).sort((a,b)=>a-b);return xs.length?xs.length%2?xs[(xs.length-1)/2]:(xs[xs.length/2-1]+xs[xs.length/2])/2:null};
  function assess(today,history,checkin,activities){
-  if(!today?.confirmed)return {level:'unknown',reasons:['Importe et confirme ta capsule Garmin pour commencer.']};
+  if(!today?.confirmed)return {level:'unknown',reasons:['Importe et confirme ta capsule Garmin pour commencer.'],baseline:{rhr:null,hrv:null}};
   const v=today.values||{};const prev=history.filter(x=>x.confirmed&&x.date<today.date).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,28);
   const rhr=median(prev.map(x=>num(x.values?.restingHeartRate))),hrv=median(prev.map(x=>num(x.values?.hrvMs)));
   const rhrCount=prev.filter(x=>num(x.values?.restingHeartRate)!==null).length,hrvCount=prev.filter(x=>num(x.values?.hrvMs)!==null).length;
