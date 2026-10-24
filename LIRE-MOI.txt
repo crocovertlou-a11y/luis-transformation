@@ -1,12 +1,13 @@
-FLUIDITÉ — ACCUEIL COMPACT — 24.10.2026
+FLUIDITÉ — ENTRAÎNEMENT ET PROFIL COMPACTS
+24 octobre 2026
 
-Installation : remplacer les 6 fichiers à la racine du projet par ceux de ce ZIP, puis déployer. Aucun changement de configuration serveur ou de base de données.
-Fichiers : index.html, home-layout-v16.js, home-layout-v16.css, garmin-personal-sync.js, recovery-v15.js, sw.js.
+Prérequis : Dashboard compact déjà installé et validé.
+Ajouter tabs-compact.js et tabs-compact.css à la racine.
+Remplacer index.html et sw.js. Déployer puis rouvrir en ligne.
+Aucune configuration serveur ni migration des données.
 
-Accueil : ressenti, recommandation, accomplissements et évolution visibles. Récupération intégrée dans « Pourquoi ce conseil ? ». Santé Garmin repliée. Raccourcis Ma semaine et Évolution conservés. Import Garmin disponible sur Accueil et Profil, avec le même parcours de confirmation.
+Entraînement : recommandation, séance et choix au premier plan, puis cardio. Historiques, imports, bibliothèque et explications dans des menus fermés par défaut.
+Profil : cinq menus, état de l'alimentation et date de sauvegarde visibles. Tous les contrôles existants sont conservés.
 
-Base : fichiers du 22 octobre et derniers correctifs Garmin durée/réimport. Livraison ciblée : les autres fichiers restent en place.
-
-Vérifications : syntaxe des scripts ; rendu DOM de l'application complète sans et avec ressenti ; cinq états de récupération ; menus fermés ; accès Garmin Accueil et Profil ; récupération simulée, prévisualisation et demande du code privé après HTTP 401. Aucun appel réel à Garmin effectué. Affichage visuel sur Safari/iPhone non vérifié : navigateur de test indisponible.
-
-Après déploiement : rouvrir l'application avec une connexion réseau. Vérifier l'ouverture de Santé Garmin, l'import et la confirmation puis le retour sur l'accueil.
+Vérification : comparaison exhaustive des contrôles avant/après ; ouverture séance et choix alternatif ; import fichier ; modification objectif ; enregistrement préférence alimentation ; cinq menus Profil ; un seul connecteur Garmin ; accueil et parcours de prévisualisation Garmin simulé ; syntaxe JavaScript.
+Limites : vérification DOM, pas de validation visuelle Safari/iPhone ni de connexion réelle aux services externes.
