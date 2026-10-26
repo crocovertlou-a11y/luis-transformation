@@ -1,36 +1,11 @@
-FLUIDITÉ — COACH OBJECTIF ET SUIVI — 26 OCTOBRE 2026
+FLUIDITÉ — BARRE DES ONGLETS STABLE — 26 OCTOBRE 2026
 
-Installation
-1. Conserve une sauvegarde des données depuis Profil et une copie de la version déployée.
-2. Dépose les 11 fichiers applicatifs de ce ZIP à la racine du dépôt existant, en remplaçant les fichiers de même nom. Ne supprime aucun autre fichier.
-3. Déploie avec le mécanisme Netlify habituel. Les fonctions IA existantes sont modifiées : charger uniquement index.html ne suffit pas.
-4. Rouvre Fluidité après le déploiement. Dans « Ton cap et ton suivi », ouvre « Comprendre et ajuster » puis « Configurer mon cap ».
-Pas de SQL, pas de nouvelle variable d’environnement, pas de migration IndexedDB. GEMINI_API_KEY reste la clé existante.
+Correctif à appliquer APRÈS Fluidite_Coach_Objectif_Suivi_20261026.zip.
+Remplacer uniquement styles.css, index.html et sw.js à la racine du dépôt puis redéployer.
+Le changement de version du cache permet de charger la nouvelle feuille de style.
 
-Ce qui change
-- Objectif partagé par les propositions Force, alimentation, Compagnon et comparaison photo.
-- Lecture sur 28 jours, avec comparaison des deux périodes de 14 jours pour poids et tour de taille. Données insuffisantes = conclusion suspendue.
-- Analyse des séries réellement renseignées et comparaison des répétitions à charge identique. Aucun total de tonnage interprété comme un progrès global.
-- Cardio réalisé transmis avec durée, distance et fréquence cardiaque disponibles. Pas de score de performance prétendument corrigé du terrain ou de la météo.
-- Repère calorique facultatif basé sur un entretien estimé saisi et confirmé, sport déjà inclus. Aucun calcul automatique du métabolisme ou du déficit réel. Un changement d’objectif impose une nouvelle confirmation.
-- Déficit optionnel plafonné dans cette version à 150 kcal pour recomposition, 250 pour abdos visibles ; pas de déficit par défaut pour force, course, maintien ou objectif libre. Ces plafonds sont des choix conservateurs de produit, non des prescriptions individuelles validées.
-- Suspension du déficit proposé et prudence sur les charges si les signaux disponibles l’indiquent.
-- Confirmation explicite des journées alimentaires complètes. Un ajout ou retrait alimentaire retire cette confirmation pour la journée touchée.
-- Action de suivi acceptée, point de départ, date de bilan, retour utilisateur et historique. Les retours difficiles orientent vers une simplification. L’IA reçoit les bilans précédents, sans prétendre isoler une causalité.
-- Photos : comparaison volontaire dans le coffre, contexte objectif/travail transmis à l’analyse. Bouton de consentement pour conserver le texte dans le suivi. Ce texte est utilisable par le Compagnon hors du coffre ; les images ne sont jamais jointes automatiquement. Retrait possible depuis le suivi. La suppression d’une photo retire les synthèses associées.
-- Préservation des séries à zéro / laissées vides : elles ne sont plus remplacées par les répétitions cibles lors de la sauvegarde d’une séance.
-- Date du jour locale au lieu d’une date UTC, pour éviter le décalage de fin de soirée.
+L’écran de l’application est borné à la hauteur disponible : en-tête et navigation restent en place, seul le contenu central défile. La zone de sécurité inférieure iPhone est conservée. Les fenêtres de saisie gardent leur propre défilement.
 
-Fichiers nouveaux
-coach-goal-engine.js, coach-goal.js, coach-goal.css
+Aucune modification des données, calculs du coach, fonctions IA ou connecteurs.
 
-Fichiers remplacés
-index.html, sw.js, app.js, coach-force-v1-phase1.js,
-training-ai-v1.js, nutrition-recipes-v1.js, companion-v1.js, compare-photos-v1.js
-
-Périmètre
-Correctif à appliquer à la version existante avec les onglets compacts du 24 octobre. Le paquet ne remplace pas tous les fichiers du projet. Aucun fichier Garmin, Withings, Strava, alimentation/scanner ou import n’est livré en remplacement.
-Les analyses reposent sur les données locales de ce navigateur. Elles ne constituent pas un apprentissage médical ou un modèle entraîné individuellement. Les observations photo dépendent de l’IA existante et de la comparabilité des images.
-
-À vérifier après déploiement
-Ouvrir le suivi, changer l’objectif, demander une séance IA, proposer un repas, effectuer une comparaison photo volontaire et vérifier sa synthèse. Les services réels et Safari iPhone n’ont pas été testés dans cette session : voir VERIFICATION.txt.
+Vérification : Chromium, quatre onglets et quatre dimensions (390×844, 390×650, 844×390, 1280×900). Position de la barre inchangée après défilement, bas aligné sur le cadre, contenu sans recouvrement ni débordement horizontal ; ouverture de fenêtre testée. Capture mobile inspectée. Safari sur iPhone réel reste à confirmer.
