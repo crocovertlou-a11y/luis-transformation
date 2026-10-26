@@ -201,7 +201,8 @@
     const baseMode=dailyDecision?.decision||'planned_session';
     const recoveryMode=recoveryAdvice?.level==='recover'?'recovery':recoveryAdvice?.level==='adapt'||recoveryAdvice?.level==='caution'?'adapted_session':null;
     const severity={planned_session:0,alternative_session:0,day_complete:0,adapted_session:1,recovery:2};
-    const mode=recoveryMode&&((severity[recoveryMode]||0)>(severity[baseMode]||0))?recoveryMode:baseMode;
+    let mode=recoveryMode&&((severity[recoveryMode]||0)>(severity[baseMode]||0))?recoveryMode:baseMode;
+    try{const global=await window.FluiditeGoalCoach?.snapshot();if(global?.recovery.caution&&(severity[mode]||0)<1)mode='adapted_session';}catch(error){console.warn('Goal recovery context unavailable',error);}
     return {
       createdAt:new Date().toISOString(),
       workoutTitle:workout.title,

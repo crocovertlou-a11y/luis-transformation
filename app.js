@@ -1,6 +1,6 @@
 const $ = s => document.querySelector(s);
 const state = { route:'home', homeView:'today', profile:null, online:navigator.onLine };
-const todayKey = () => new Date().toISOString().slice(0,10);
+const todayKey = () => { const d=new Date(); return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-'); };
 const uid = () => crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
 const PHOTO_PRIVACY_STORAGE='fluidite_photo_privacy_v1';
 const PHOTO_VAULT_DEFAULT_TTL_MS=5*60*1000;
@@ -1311,14 +1311,14 @@ function forceExerciseInput(name,sets,reps,rest){
 async function editActivitySheet(kind,id){
   const store=kind==='Force'?'workouts':'cardio'; const x=await LTDB.get(store,id); if(!x)return;
   if(kind==='Cardio'){
-    const total=Math.round(Number(x.durationSeconds)||0), h=Math.floor(total/3600), m=Math.floor((total%3600)/60), s=total%60;
+    const total=x.durationSeconds||0, h=Math.floor(total/3600), m=Math.floor((total%3600)/60), s=total%60;
     return showSheet(`<h2>Modifier Cardio</h2><form id="activityEditForm"><input type="hidden" name="kind" value="Cardio"><input type="hidden" name="id" value="${id}">
       ${dateField('date',x.date||todayKey())}
       <div class="field"><label>Type</label><select name="type">${['Course','Vélo','Natation','Marche','Autre'].map(v=>`<option ${x.type===v?'selected':''}>${v}</option>`).join('')}</select></div>
-      <div class="field"><label>Distance (km)</label><input name="distance" type="number" step="0.01" inputmode="decimal" value="${x.distance!=null?Number(x.distance).toFixed(2):''}"></div>
+      <div class="field"><label>Distance (km)</label><input name="distance" type="number" step="0.01" inputmode="decimal" value="${x.distance??''}"></div>
       <div class="duration-picker"><div><label>Heures</label><input name="hours" type="number" min="0" value="${h}"></div><span>:</span><div><label>Minutes</label><input name="minutes" type="number" min="0" max="59" value="${m}"></div><span>:</span><div><label>Secondes</label><input name="seconds" type="number" min="0" max="59" value="${s}"></div></div>
-      <div class="range-row"><div class="field"><label>FC moyenne</label><input name="hr" type="number" value="${x.heartRateAvg??''}"></div><div class="field"><label>Cadence moyenne (ppm)</label><input name="cadence" type="number" value="${x.cadenceAvg!=null?Math.round(x.cadenceAvg):''}"></div></div>
-      <div class="range-row"><div class="field"><label>Dénivelé +</label><input name="elevation" type="number" value="${x.elevationGain!=null?Math.round(x.elevationGain):''}"></div><div class="field"><label>Calories</label><input name="calories" type="number" value="${x.calories??''}"></div></div>
+      <div class="range-row"><div class="field"><label>FC moyenne</label><input name="hr" type="number" value="${x.heartRateAvg??''}"></div><div class="field"><label>Cadence moyenne (ppm)</label><input name="cadence" type="number" value="${x.cadenceAvg??''}"></div></div>
+      <div class="range-row"><div class="field"><label>Dénivelé +</label><input name="elevation" type="number" value="${x.elevationGain??''}"></div><div class="field"><label>Calories</label><input name="calories" type="number" value="${x.calories??''}"></div></div>
       <div class="edit-actions"><button class="action" type="submit">Enregistrer</button><button class="action danger" type="button" id="deleteActivity">Supprimer</button></div></form>`);
   }
   const entries=editableForceEntries(x);
@@ -1457,7 +1457,7 @@ async function saveWorkout(e){
   const pending=state.pendingWorkout||workoutById('upper');
   const specs=pending.plan.map(x=>[x.name,x.sets,x.reps,x.rest]);
   const exerciseEntries=specs.map((sp,i)=>{
-    const series=Array.from({length:sp[1]},(_,s)=>({set:s+1,reps:num(f.get(`reps_${i}_${s}`))||sp[2],weight:num(f.get(`weight_${i}_${s}`))}));
+    const series=Array.from({length:sp[1]},(_,s)=>({set:s+1,reps:num(f.get(`reps_${i}_${s}`)),weight:num(f.get(`weight_${i}_${s}`))}));
     const weights=series.map(x=>x.weight).filter(x=>x!=null);
     return {name:sp[0],sets:sp[1],targetReps:sp[2],rest:sp[3],series,weight:weights.length?weights[weights.length-1]:null,performance:series.map(x=>`${x.reps}×${x.weight??'—'}kg`).join(' · ')};
   });
@@ -1956,6 +1956,7 @@ async function renderPhotoComparison(dateA,dateB){
   touchPhotoVault();photoVaultSheetActive=true;
   if(!dateA||!dateB||dateA===dateB){toast('Choisis deux dates différentes');return}
   const [photos,checkins]=await Promise.all([LTDB.all('photos'),LTDB.all('checkins')]);
+  if(dateA>dateB)[dateA,dateB]=[dateB,dateA];
   const a=photos.filter(p=>p.date===dateA),b=photos.filter(p=>p.date===dateB);
   const views=['Face','Profil','Dos'];
   const available=views.filter(v=>a.some(p=>p.view===v)||b.some(p=>p.view===v));
@@ -1981,10 +1982,15 @@ async function renderPhotoComparison(dateA,dateB){
     const pa=a.find(p=>p.view===currentView),pb=b.find(p=>p.view===currentView);if(!pa||!pb)return;
     const btn=$('#analyzePhotoEvolution'),result=$('#photoEvolutionAnalysis');btn.disabled=true;btn.textContent='Analyse en cours…';
     result.innerHTML='<div class="ai-working">Le Compagnon compare les deux photos…</div>';
+    const analyzedView=currentView;
     try{
-      const r=await fetch('/.netlify/functions/compare-photos-v1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({view:currentView,before:{date:dateA,image:pa.image,metrics:metricA},after:{date:dateB,image:pb.image,metrics:metricB}})});
+      const goalContext=await window.FluiditeGoalCoach?.photoContext(dateA,dateB);
+      if(!photoVaultUnlocked())return;
+      const r=await fetch('/.netlify/functions/compare-photos-v1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({view:analyzedView,goalContext,before:{date:dateA,image:pa.image,metrics:metricA},after:{date:dateB,image:pb.image,metrics:metricB}})});
       const data=await r.json();if(!r.ok)throw new Error(data.detail||data.error||'Analyse impossible');
+      if(!photoVaultUnlocked()||!result.isConnected||currentView!==analyzedView)return;
       result.innerHTML=`<div class="ai-evolution-card"><div class="card-kicker">Lecture du Compagnon</div><div class="ai-evolution-text">${escapeHtml(data.analysis||'Pas de lecture utile.').replace(/\n/g,'<br>')}</div></div>`;
+      window.FluiditeGoalCoach?.offerPhoto(result,{photoIds:[pa.id,pb.id],from:dateA,to:dateB,view:analyzedView,analysis:data.analysis||''});
     }catch(err){result.innerHTML=`<div class="ai-error">Analyse impossible : ${escapeHtml(err.message||'erreur inconnue')}</div>`}
     finally{btn.disabled=false;btn.innerHTML=`${companionMark("choice-companion")}Analyser avec le Compagnon`;}
   });

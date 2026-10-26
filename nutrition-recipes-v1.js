@@ -7,6 +7,7 @@ exports.handler=async function(event){
 Propose exactement 3 repas simples et réalistes à partir du contexte fourni.
 
 Règles:
+- Utilise context.goalCoach : objectif, stratégie, calories estimées seulement si confirmées, récupération et ajustements suivis. N’invente ni entretien ni déficit réel. Une journée non confirmée complète n’est pas une sous-alimentation démontrée. Ne cherche jamais à compenser des calories sportives déjà incluses dans l’entretien. Si récupération prudente, pas de restriction supplémentaire. Ne fonde jamais un déficit sur une photo.
 - Le repère protéines est un objectif de contexte, jamais une obligation de manger si la faim ne le justifie pas.
 - Tiens compte de l'heure: ne cherche pas à combler artificiellement tout le déficit trop tôt dans la journée.
 - Si cardio aujourd'hui, une proposition peut inclure une source de glucides adaptée à la récupération.

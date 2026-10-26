@@ -1,0 +1,23 @@
+VÉRIFICATION — 26 OCTOBRE 2026
+
+Exécuté avec succès
+- 13 scénarios du moteur : absence de données, entretien confirmé, invalidation après changement de cap, suspension du déficit, entretien non confirmé, mesures multiples le même jour, séances futures/prévues exclues, tour de taille en baisse à poids stable, complétude alimentaire, exercices à charge comparable, répétitions nulles/zéro, suivi actif conservé, photos sans effet sur les calories.
+- Tests DOM de l’application complète avec IndexedDB simulé : formulaire objectif, acceptation et bilan d’ajustement, 4 onglets, contexte commun dans les 3 flux IA, invalidation de la complétude après un ajout alimentaire.
+- Chromium headless, viewport 390 × 844 : mêmes parcours, persistance après rechargement, absence de débordement horizontal et d’erreur JavaScript de page ; capture inspectée.
+- Parcours photo dans Chromium avec images de test et IA simulée : remise en ordre de deux dates inversées, comparaison, absence de synthèse avant consentement, consentement persistant, fermeture du coffre, suppression de la synthèse après suppression d’une photo source.
+- 4 fonctions serveur : méthode GET refusée ; appels POST testés avec réponses de modèle simulées ; objectif partagé présent dans les requêtes au modèle et réponses 200. 8 assertions principales.
+- Analyse mise en cache : 100 lectures consécutives du bilan ~0,3 ms dans le scénario Chromium vide. Ce chiffre n’est pas une mesure de connexion ou de performance sur iPhone avec un gros historique.
+- Vérification syntaxique de tous les fichiers JS livrés, contrôle des références de scripts et du contenu du ZIP.
+
+Limites
+- Appels réels à Gemini, Garmin, Withings et Strava non exécutés ; aucune validation des comptes en production.
+- Navigation Chromium avec fonctions distantes simulées indisponibles. Aucun test d’utilisation entièrement hors ligne de tous les modules historiques.
+- Safari iPhone et rendu sur un appareil physique non testés.
+- Aucun ajustement personnalisé appliqué aux données réelles de Luis. Les chiffres de test sont fictifs.
+- Les seuils de tendance et de récupération ajoutés sont des heuristiques transparentes. Ils ne permettent pas d’attribuer scientifiquement un résultat à un changement précis.
+
+Références consultées pour cadrer les limites
+IOC, consensus REDs 2023 : https://bjsm.bmj.com/content/57/17/1073
+NIDDK, Body Weight Planner : https://www.niddk.nih.gov/health-information/weight-management/body-weight-planner
+ACSM, Resistance Training Prescription 2026 : https://pubmed.ncbi.nlm.nih.gov/41843416/
+Ces références n’attestent pas les seuils ou la validation clinique du logiciel.

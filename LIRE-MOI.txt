@@ -1,13 +1,36 @@
-FLUIDITÉ — ENTRAÎNEMENT ET PROFIL COMPACTS
-24 octobre 2026
+FLUIDITÉ — COACH OBJECTIF ET SUIVI — 26 OCTOBRE 2026
 
-Prérequis : Dashboard compact déjà installé et validé.
-Ajouter tabs-compact.js et tabs-compact.css à la racine.
-Remplacer index.html et sw.js. Déployer puis rouvrir en ligne.
-Aucune configuration serveur ni migration des données.
+Installation
+1. Conserve une sauvegarde des données depuis Profil et une copie de la version déployée.
+2. Dépose les 11 fichiers applicatifs de ce ZIP à la racine du dépôt existant, en remplaçant les fichiers de même nom. Ne supprime aucun autre fichier.
+3. Déploie avec le mécanisme Netlify habituel. Les fonctions IA existantes sont modifiées : charger uniquement index.html ne suffit pas.
+4. Rouvre Fluidité après le déploiement. Dans « Ton cap et ton suivi », ouvre « Comprendre et ajuster » puis « Configurer mon cap ».
+Pas de SQL, pas de nouvelle variable d’environnement, pas de migration IndexedDB. GEMINI_API_KEY reste la clé existante.
 
-Entraînement : recommandation, séance et choix au premier plan, puis cardio. Historiques, imports, bibliothèque et explications dans des menus fermés par défaut.
-Profil : cinq menus, état de l'alimentation et date de sauvegarde visibles. Tous les contrôles existants sont conservés.
+Ce qui change
+- Objectif partagé par les propositions Force, alimentation, Compagnon et comparaison photo.
+- Lecture sur 28 jours, avec comparaison des deux périodes de 14 jours pour poids et tour de taille. Données insuffisantes = conclusion suspendue.
+- Analyse des séries réellement renseignées et comparaison des répétitions à charge identique. Aucun total de tonnage interprété comme un progrès global.
+- Cardio réalisé transmis avec durée, distance et fréquence cardiaque disponibles. Pas de score de performance prétendument corrigé du terrain ou de la météo.
+- Repère calorique facultatif basé sur un entretien estimé saisi et confirmé, sport déjà inclus. Aucun calcul automatique du métabolisme ou du déficit réel. Un changement d’objectif impose une nouvelle confirmation.
+- Déficit optionnel plafonné dans cette version à 150 kcal pour recomposition, 250 pour abdos visibles ; pas de déficit par défaut pour force, course, maintien ou objectif libre. Ces plafonds sont des choix conservateurs de produit, non des prescriptions individuelles validées.
+- Suspension du déficit proposé et prudence sur les charges si les signaux disponibles l’indiquent.
+- Confirmation explicite des journées alimentaires complètes. Un ajout ou retrait alimentaire retire cette confirmation pour la journée touchée.
+- Action de suivi acceptée, point de départ, date de bilan, retour utilisateur et historique. Les retours difficiles orientent vers une simplification. L’IA reçoit les bilans précédents, sans prétendre isoler une causalité.
+- Photos : comparaison volontaire dans le coffre, contexte objectif/travail transmis à l’analyse. Bouton de consentement pour conserver le texte dans le suivi. Ce texte est utilisable par le Compagnon hors du coffre ; les images ne sont jamais jointes automatiquement. Retrait possible depuis le suivi. La suppression d’une photo retire les synthèses associées.
+- Préservation des séries à zéro / laissées vides : elles ne sont plus remplacées par les répétitions cibles lors de la sauvegarde d’une séance.
+- Date du jour locale au lieu d’une date UTC, pour éviter le décalage de fin de soirée.
 
-Vérification : comparaison exhaustive des contrôles avant/après ; ouverture séance et choix alternatif ; import fichier ; modification objectif ; enregistrement préférence alimentation ; cinq menus Profil ; un seul connecteur Garmin ; accueil et parcours de prévisualisation Garmin simulé ; syntaxe JavaScript.
-Limites : vérification DOM, pas de validation visuelle Safari/iPhone ni de connexion réelle aux services externes.
+Fichiers nouveaux
+coach-goal-engine.js, coach-goal.js, coach-goal.css
+
+Fichiers remplacés
+index.html, sw.js, app.js, coach-force-v1-phase1.js,
+training-ai-v1.js, nutrition-recipes-v1.js, companion-v1.js, compare-photos-v1.js
+
+Périmètre
+Correctif à appliquer à la version existante avec les onglets compacts du 24 octobre. Le paquet ne remplace pas tous les fichiers du projet. Aucun fichier Garmin, Withings, Strava, alimentation/scanner ou import n’est livré en remplacement.
+Les analyses reposent sur les données locales de ce navigateur. Elles ne constituent pas un apprentissage médical ou un modèle entraîné individuellement. Les observations photo dépendent de l’IA existante et de la comparabilité des images.
+
+À vérifier après déploiement
+Ouvrir le suivi, changer l’objectif, demander une séance IA, proposer un repas, effectuer une comparaison photo volontaire et vérifier sa synthèse. Les services réels et Safari iPhone n’ont pas été testés dans cette session : voir VERIFICATION.txt.

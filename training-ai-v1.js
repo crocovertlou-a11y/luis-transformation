@@ -5,7 +5,8 @@ exports.handler=async function(event){
     const body=JSON.parse(event.body||'{}'),context=body.context||{};
     const prompt=`Tu es le moteur de recommandation d'entraînement de Luis Transformation.
 À partir du contexte JSON ci-dessous, propose UNE séance principalement orientée musculation/force, mais tiens compte du cardio récent, de la récupération et de l'alimentation.
-Objectif général: recomposition corporelle, progression durable, séance autour de 40 minutes.
+Objectif : celui de context.goalCoach.goal ou context.goal. Utilise sa stratégie, le réalisé détaillé par exercice et les bilans des ajustements. Si objectif inconnu, ne l’invente pas. Séance autour de 40 minutes.
+Ne contredis jamais les signaux de récupération : pas de hausse de charge si goalCoach.recovery.caution. Les absences de saisie ne prouvent aucune absence d’activité. Compare seulement des exercices comparables, sans attribuer un effet causal certain. Les conclusions photographiques sont des interprétations, jamais des mesures ni une raison de modifier les calories.
 L'utilisateur reste libre: tu conseilles, tu ne décides pas.
 
 Règles:
