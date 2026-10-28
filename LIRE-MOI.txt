@@ -1,11 +1,26 @@
-FLUIDITÉ — BARRE DES ONGLETS STABLE — 26 OCTOBRE 2026
+Fluidité — suivi alimentaire et clôture des journées — 28 octobre 2026
 
-Correctif à appliquer APRÈS Fluidite_Coach_Objectif_Suivi_20261026.zip.
-Remplacer uniquement styles.css, index.html et sw.js à la racine du dépôt puis redéployer.
-Le changement de version du cache permet de charger la nouvelle feuille de style.
+Correctif à appliquer à la version Coach Objectif Suivi du 26 octobre,
+avec la barre d’onglets fixe du 26 octobre.
+Remplacer à la racine du site les cinq fichiers fournis :
+coach-goal-engine.js, coach-goal.js, coach-goal.css, index.html, sw.js.
+Ce ZIP est un correctif, pas un site complet. Conserver tous les autres fichiers.
+Publier les fichiers ensemble, puis fermer et rouvrir Fluidité pour charger
+la nouvelle version. Aucun SQL ni réinitialisation des données nécessaire.
 
-L’écran de l’application est borné à la hauteur disponible : en-tête et navigation restent en place, seul le contenu central défile. La zone de sécurité inférieure iPhone est conservée. Les fenêtres de saisie gardent leur propre défilement.
+- Le compteur affiche les jours renseignés sur 28 jours, même non confirmés.
+- Les jours passés sont clôturés selon la date locale de l’appareil, y compris
+  à la réouverture après une période d’inactivité. Aucun repas n’est inventé.
+- Le journal propose « J’ai terminé ma journée ». Ce bouton confirme que
+  tous les repas sont renseignés ; il n’est pas obligatoire pour compter un jour.
+- Les jours passés restent modifiables et confirmables dans l’historique.
+- Une modification/suppression de repas annule la confirmation du jour.
+  Déplacer un repas annule celle du jour d’origine et du jour de destination.
+- Seuls les jours explicitement confirmés participent à la moyenne calorique.
+- Une journée sans saisie ne compte pas comme un jour suivi.
+- Les données existantes et la barre de navigation fixe sont conservées.
 
-Aucune modification des données, calculs du coach, fonctions IA ou connecteurs.
-
-Vérification : Chromium, quatre onglets et quatre dimensions (390×844, 390×650, 844×390, 1280×900). Position de la barre inchangée après défilement, bas aligné sur le cadre, contenu sans recouvrement ni débordement horizontal ; ouverture de fenêtre testée. Capture mobile inspectée. Safari sur iPhone réel reste à confirmer.
+Validation : syntaxe JavaScript et tests ciblés Chromium (écran 390 x 844,
+base de données simulée) : compteurs, clôture au changement de date,
+confirmation, modification/déplacement, journée vide, conservation d’un
+formulaire en cours. Pas de validation sur l’iPhone réel ni de déploiement.

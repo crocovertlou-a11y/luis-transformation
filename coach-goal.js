@@ -7,7 +7,15 @@ const invalidate=()=>{revision++;cached=null;};
 // Only successful writes invalidate the analysis; a render never writes data.
 for(const name of ['put','del','restore']){const base=LTDB[name];LTDB[name]=async function(...args){const out=await base.apply(this,args);invalidate();return out;};}
 const put=LTDB.put;
-LTDB.put=async function(store,value){const out=await put(store,value);if(store==='food'){const marker=await LTDB.get('memory','coach-food-'+value.date);if(marker?.complete)await put('memory',{...marker,complete:false});}return out;};
+LTDB.put=async function(store,value){
+ const previous=store==='food'&&value.id?await LTDB.get('food',value.id):null;
+ const out=await put(store,value);
+ if(store==='food')for(const date of new Set([previous?.date,value.date].filter(Boolean))){
+  const marker=await LTDB.get('memory','coach-food-'+date);
+  if(marker?.complete)await put('memory',{...marker,complete:false});
+ }
+ return out;
+};
 const oldDel=LTDB.del;
 LTDB.del=async function(store,id){const food=store==='food'?await LTDB.get(store,id):null;const out=await oldDel(store,id);if(food){const marker=await LTDB.get('memory','coach-food-'+food.date);if(marker?.complete)await put('memory',{...marker,complete:false});}if(store==='photos')for(const m of await LTDB.all('memory'))if(m.type==='coach-photo'&&m.photoIds?.includes(id))await oldDel('memory',m.id);return out;};
 async function snapshot(){
@@ -27,7 +35,7 @@ async function snapshot(){
 function signed(n,unit){return n===null?'Recul insuffisant':(n>0?'+':'')+n.toFixed(1)+' '+unit;}
 function overview(s,full=false){
  const calories=s.nutrition.calories;
- return `<section class="card goal-coach" aria-label="Ton cap et ton suivi"><div class="card-kicker">TON CAP ET TON SUIVI</div><h3>${esc(s.advice.title)}</h3><p>${esc(s.advice.text)}</p><p class="goal-caption">${esc(s.goal)} · analyse du ${esc(s.date)}</p><details ${full?'open':''}><summary>Comprendre et ajuster</summary><p>${esc(s.strategy.training)}</p><p>${esc(s.strategy.nutrition)}</p><div class="goal-stats"><div><strong>${signed(s.weight.delta,'kg')}</strong><small>Poids moyen</small></div><div><strong>${signed(s.waist.delta,'cm')}</strong><small>Tour de taille moyen</small></div><div><strong>${s.force.sessions} / ${s.cardio.sessions}</strong><small>Force / cardio enregistrés · 28 j</small></div><div><strong>${s.nutrition.completeDays} / 28</strong><small>Jours alimentaires confirmés complets</small></div></div><p>${calories?`Repère estimé : <strong>${Math.round(calories.target)} kcal/j</strong> · entretien saisi ${calories.maintenance}, déficit ${calories.deficit} kcal.${calories.suspended?' Déficit suspendu pour privilégier la récupération.':''}`:'Repère calorique à configurer : aucun déficit chiffré déduit des saisies incomplètes.'}</p><p class="subtle">${s.photoObservations.length?'Une comparaison photo autorisée enrichit le contexte du Compagnon.':'Les photos peuvent compléter ce bilan après une comparaison autorisée dans le coffre.'}</p><div class="card-actions"><button class="action secondary" data-goal-action="settings">Configurer mon cap</button><button class="action secondary" data-goal-action="detail">Travail réalisé et suivi</button><button class="action secondary" data-goal-action="photos">Comparer mes photos</button></div></details></section>`;
+ return `<section class="card goal-coach" aria-label="Ton cap et ton suivi"><div class="card-kicker">TON CAP ET TON SUIVI</div><h3>${esc(s.advice.title)}</h3><p>${esc(s.advice.text)}</p><p class="goal-caption">${esc(s.goal)} · analyse du ${esc(s.date)}</p><details ${full?'open':''}><summary>Comprendre et ajuster</summary><p>${esc(s.strategy.training)}</p><p>${esc(s.strategy.nutrition)}</p><div class="goal-stats"><div><strong>${signed(s.weight.delta,'kg')}</strong><small>Poids moyen</small></div><div><strong>${signed(s.waist.delta,'cm')}</strong><small>Tour de taille moyen</small></div><div><strong>${s.force.sessions} / ${s.cardio.sessions}</strong><small>Force / cardio enregistrés · 28 j</small></div><div><strong>${s.nutrition.daysLogged} / 28</strong><small>Jours alimentaires renseignés</small><small>${s.nutrition.closedDays} clôturés · ${s.nutrition.completeDays} confirmés complets</small></div></div><p>${calories?`Repère estimé : <strong>${Math.round(calories.target)} kcal/j</strong> · entretien saisi ${calories.maintenance}, déficit ${calories.deficit} kcal.${calories.suspended?' Déficit suspendu pour privilégier la récupération.':''}`:'Repère calorique à configurer : aucun déficit chiffré déduit des saisies incomplètes.'}</p><p class="subtle">${s.photoObservations.length?'Une comparaison photo autorisée enrichit le contexte du Compagnon.':'Les photos peuvent compléter ce bilan après une comparaison autorisée dans le coffre.'}</p><div class="card-actions"><button class="action secondary" data-goal-action="settings">Configurer mon cap</button><button class="action secondary" data-goal-action="detail">Travail réalisé et suivi</button><button class="action secondary" data-goal-action="photos">Comparer mes photos</button></div></details></section>`;
 }
 for(const name of ['renderToday','renderEvolution','renderProfile']){
  const base=window[name];window[name]=async function(...args){const html=await base(...args);try{return overview(await snapshot())+html;}catch(e){console.warn('Goal coach unavailable',e);return html;}};
@@ -68,13 +76,10 @@ async function settings(){
  }catch(err){toast(err.message);}finally{b.disabled=false;}});
 }
 async function detail(){
- const s=await snapshot(),m=await LTDB.all('memory'),confirmed=m.find(x=>x.id==='coach-food-'+todayKey())?.complete===true;
+ const s=await snapshot(),m=await LTDB.all('memory');
  const comparisons=s.force.exercises.map(e=>`<li><strong>${esc(e.name)}</strong> · ${e.sessions} séance(s)${e.comparison?` · à ${e.comparison.load} kg : ${e.comparison.before} → ${e.comparison.after} répétitions au meilleur set (${e.comparison.from} → ${e.comparison.to})`:' · pas encore de comparaison à charge identique'}</li>`).join('');
  const history=m.filter(x=>x.type==='coach-adjustment').sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8);
- showSheet(`<h2>Travail réalisé et suivi</h2><p>${esc(s.goal)} · 28 derniers jours</p><details open><summary>Ce que les données montrent</summary><p>${s.force.sets} séries avec répétitions renseignées · ${Math.round(s.cardio.minutes)} min de cardio enregistrées.</p><ul>${comparisons||'<li>Pas encore de séries exploitables.</li>'}</ul><p>Alimentation : ${s.nutrition.daysLogged} jours renseignés, ${s.nutrition.completeDays} confirmés complets.${s.nutrition.averageComplete!==null?' Moyenne de ces jours : '+Math.round(s.nutrition.averageComplete)+' kcal.':''}</p><label class="checkline"><input type="checkbox" id="goalFoodComplete" ${confirmed?'checked':''}>Tous mes repas du ${todayKey()} sont renseignés</label><label>Confirmer un autre jour<input type="date" id="goalFoodDate" max="${todayKey()}" value="${todayKey()}"></label><p class="subtle">Décoche si tu ajoutes ou corriges encore des repas. Une saisie manquante n’est pas interprétée comme un repas sauté.</p></details><details open><summary>Prochaine action</summary><p>${esc(s.advice.text)}</p>${s.active?`<p>Suivi démarré le ${s.active.date} · point prévu le ${s.active.reviewDate}</p><p>${esc(reviewComparison(s,s.active.baseline))}</p><form id="goalReview"><label>Ton retour<select name="outcome"><option value="uncertain">Pas encore concluant</option><option value="helpful">Cela m’aide</option><option value="difficult">Difficile à suivre</option></select></label><label>Ce qui a changé<textarea name="note" maxlength="600"></textarea></label><button class="action" type="submit">Enregistrer le bilan</button></form>`:`<p>${esc(s.advice.action)}</p><button class="action" data-goal-action="accept">Suivre cette action</button>`}</details><details><summary>Ajustements précédents</summary>${history.map(h=>`<p><strong>${h.date} · ${esc(h.goal)}</strong><br>${esc(h.action)}<br>${h.status==='reviewed'?esc(({helpful:'Utile selon ton retour',difficult:'Difficile à suivre',uncertain:'Résultat incertain'})[h.outcome]||'Bilan enregistré'):'Suivi en cours'}${h.note?'<br>'+esc(h.note):''}</p>`).join('')||'<p>Aucun ajustement enregistré.</p>'}</details><details><summary>Fiabilité de cette lecture</summary><ul>${s.limits.map(l=>'<li>'+esc(l)+'</li>').join('')}</ul></details><details><summary>Confidentialité du suivi photo</summary><p>Une synthèse photo autorisée peut être utilisée dans le Compagnon même lorsque le coffre est fermé. Les images restent dans le coffre et ne sont envoyées que lors d’une comparaison demandée.</p><button class="action secondary" data-goal-action="revokePhotos">Retirer les synthèses photo du suivi</button></details>`);
- const dateInput=$('#goalFoodDate'),check=$('#goalFoodComplete');
- dateInput.addEventListener('change',async()=>{check.checked=(await LTDB.get('memory','coach-food-'+dateInput.value))?.complete===true;});
- check.addEventListener('change',async()=>{try{if(!dateInput.value||dateInput.value>todayKey())return;await LTDB.put('memory',{id:'coach-food-'+dateInput.value,type:'coach-day-complete',date:dateInput.value,complete:check.checked});toast('Complétude du journal enregistrée');}catch{toast('Enregistrement impossible');}});
+ showSheet(`<h2>Travail réalisé et suivi</h2><p>${esc(s.goal)} · 28 derniers jours</p><details open><summary>Ce que les données montrent</summary><p>${s.force.sets} séries avec répétitions renseignées · ${Math.round(s.cardio.minutes)} min de cardio enregistrées.</p><ul>${comparisons||'<li>Pas encore de séries exploitables.</li>'}</ul><p>Alimentation : ${s.nutrition.daysLogged} jours renseignés, ${s.nutrition.completeDays} confirmés complets.${s.nutrition.averageComplete!==null?' Moyenne de ces jours : '+Math.round(s.nutrition.averageComplete)+' kcal.':''}</p><button class="action secondary" data-goal-action="foodJournal">Ouvrir mon journal alimentaire</button><p class="subtle">Les journées passées se clôturent automatiquement. Confirme dans le journal que tous tes repas sont renseignés pour les inclure dans la moyenne calorique.</p></details><details open><summary>Prochaine action</summary><p>${esc(s.advice.text)}</p>${s.active?`<p>Suivi démarré le ${s.active.date} · point prévu le ${s.active.reviewDate}</p><p>${esc(reviewComparison(s,s.active.baseline))}</p><form id="goalReview"><label>Ton retour<select name="outcome"><option value="uncertain">Pas encore concluant</option><option value="helpful">Cela m’aide</option><option value="difficult">Difficile à suivre</option></select></label><label>Ce qui a changé<textarea name="note" maxlength="600"></textarea></label><button class="action" type="submit">Enregistrer le bilan</button></form>`:`<p>${esc(s.advice.action)}</p><button class="action" data-goal-action="accept">Suivre cette action</button>`}</details><details><summary>Ajustements précédents</summary>${history.map(h=>`<p><strong>${h.date} · ${esc(h.goal)}</strong><br>${esc(h.action)}<br>${h.status==='reviewed'?esc(({helpful:'Utile selon ton retour',difficult:'Difficile à suivre',uncertain:'Résultat incertain'})[h.outcome]||'Bilan enregistré'):'Suivi en cours'}${h.note?'<br>'+esc(h.note):''}</p>`).join('')||'<p>Aucun ajustement enregistré.</p>'}</details><details><summary>Fiabilité de cette lecture</summary><ul>${s.limits.map(l=>'<li>'+esc(l)+'</li>').join('')}</ul></details><details><summary>Confidentialité du suivi photo</summary><p>Une synthèse photo autorisée peut être utilisée dans le Compagnon même lorsque le coffre est fermé. Les images restent dans le coffre et ne sont envoyées que lors d’une comparaison demandée.</p><button class="action secondary" data-goal-action="revokePhotos">Retirer les synthèses photo du suivi</button></details>`);
  $('#goalReview')?.addEventListener('submit',async e=>{e.preventDefault();e.submitter.disabled=true;try{const f=new FormData(e.currentTarget);await LTDB.put('memory',{...s.active,status:'reviewed',reviewedAt:new Date().toISOString(),outcome:String(f.get('outcome')),note:String(f.get('note')||''),result:baseline(s)});await detail();render();}catch{toast('Bilan non enregistré');e.submitter.disabled=false;}});
 }
 function baseline(s){return {date:s.date,weight:s.weight.after,waist:s.waist.after,forceSessions:s.force.sessions,cardioMinutes:s.cardio.minutes};}
@@ -86,6 +91,7 @@ document.addEventListener('click',async e=>{
  try{switch(button.dataset.goalAction){
  case 'settings':await settings();break;
  case 'detail':await detail();break;
+ case 'foodJournal':await nutritionHubSheet();break;
  case 'photos':await openSheet('photoCompare');break;
  case 'accept':{const s=await snapshot();if(s.active)break;await LTDB.put('memory',{id:'coach-adjustment-'+uid(),type:'coach-adjustment',date:s.date,goal:s.goal,action:s.advice.action,key:s.advice.key,status:'active',reviewDate:E.shift(s.date,s.advice.reviewDays),baseline:baseline(s)});await detail();render();break;}
  case 'revokePhotos':for(const m of await LTDB.all('memory'))if(m.type==='coach-photo')await LTDB.del('memory',m.id);toast('Synthèses photo retirées du suivi');await detail();render();break;
@@ -99,5 +105,48 @@ function offerPhoto(result,record){
  result.append(note,button);
  button.addEventListener('click',async()=>{if(!photoVaultUnlocked())return;button.disabled=true;try{await LTDB.put('memory',{id:'coach-photo-'+record.photoIds.join('-'),type:'coach-photo',consent:true,goal:state.profile.goal,date:todayKey(),...record,analysis:String(record.analysis).slice(0,6000)});button.textContent='Synthèse intégrée au suivi';toast('Synthèse autorisée pour le suivi');}catch{button.disabled=false;toast('Synthèse non enregistrée');}});
 }
+
+// Closure is derived from the local date, including after the app was suspended.
+// Only an explicit confirmation marks a food diary complete.
+async function foodDayCard(date,mode){
+ const host=$('#sheetContent'),head=host?.querySelector('.nutrition-page-head');
+ if(!head)return;
+ const [food,marker]=await Promise.all([LTDB.all('food'),LTDB.get('memory','coach-food-'+date)]);
+ if(!head.isConnected)return;
+ host.querySelector('.goal-food-day')?.remove();
+ const entries=food.filter(f=>f.date===date).length,complete=entries>0&&marker?.complete===true;
+ const past=date<todayKey(),future=date>todayKey();
+ const card=document.createElement('section');card.className='goal-food-day';card.dataset.date=date;card.dataset.mode=mode;
+ card.innerHTML=`<strong>${complete?'Journée confirmée complète':past?'Journée clôturée automatiquement':'Journée en cours'}</strong><p>${entries?`${entries} saisie(s) enregistrée(s). ${complete?'Tous tes repas sont confirmés.':past?'Tu peux encore compléter ou corriger tes repas.':'La journée sera clôturée automatiquement au changement de date.'}`:'Aucun repas renseigné. Cette journée ne compte pas comme un jour suivi.'}</p><button type="button" class="action secondary" ${!entries||future?'disabled':''}>${complete?'Retirer la confirmation':past?'Confirmer tous mes repas':'J’ai terminé ma journée'}</button><small>Confirmer signifie que tous tes repas sont renseignés. Une modification annule cette confirmation.</small>`;
+ head.after(card);
+ card.querySelector('button').addEventListener('click',async event=>{
+  const button=event.currentTarget;button.disabled=true;
+  try{
+   await LTDB.put('memory',{id:'coach-food-'+date,type:'coach-day-complete',date,complete:!complete,updatedAt:new Date().toISOString()});
+   await foodDayCard(date,mode);await render();toast(complete?'Confirmation retirée':'Journée confirmée complète');
+  }catch(error){button.disabled=false;toast('Confirmation non enregistrée. Réessaie.');}
+ });
+}
+const foodHub=nutritionHubSheet;
+nutritionHubSheet=async function(...args){const result=await foodHub(...args);await foodDayCard(todayKey(),'today');return result;};
+const foodHistory=nutritionHistoryDaySheet;
+nutritionHistoryDaySheet=async function(date,...args){const result=await foodHistory(date,...args);await foodDayCard(date,'history');return result;};
+let observedDate=todayKey(),rolloverTimer;
+async function checkFoodDate(){
+ if(observedDate===todayKey())return;
+ observedDate=todayKey();invalidate();
+ const card=$('#sheet[open] .goal-food-day');
+ // Never replace a meal form or another sheet while the user is typing.
+ if(card){if(card.dataset.mode==='today')await nutritionHistoryDaySheet(card.dataset.date);else await foodDayCard(card.dataset.date,card.dataset.mode);}
+ await render();
+}
+function scheduleFoodDate(){
+ clearTimeout(rolloverTimer);const now=new Date(),next=new Date(now);next.setHours(24,0,0,50);
+ rolloverTimer=setTimeout(()=>{checkFoodDate().catch(console.warn);scheduleFoodDate();},next-now);
+}
+window.addEventListener('focus',()=>{checkFoodDate().catch(console.warn);scheduleFoodDate();});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){checkFoodDate().catch(console.warn);scheduleFoodDate();}});
+scheduleFoodDate();
+
 window.FluiditeGoalCoach={snapshot,invalidate,photoContext,offerPhoto,settings,detail};
 })();
