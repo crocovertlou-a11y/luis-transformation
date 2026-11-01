@@ -5,13 +5,13 @@
  const number=v=>v==null||v===''?null:Number.isFinite(Number(v))?Number(v):null;
  function localDay(iso){const d=new Date(iso);return Number.isFinite(d.getTime())?`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`:null;}
  function project(checkins,events){
-  const measures=events.filter(e=>e.type==='withings-measurement'&&localDay(e.measuredAt)&&new Date(e.measuredAt)<=new Date()).sort((a,b)=>a.measuredAt.localeCompare(b.measuredAt));
+  const measures=events.filter(e=>e.type==='withings-measurement').map(e=>({...e,measuredAt:e.measuredAt||e.values?.measuredAt||(e.timestamp?new Date(Number(e.timestamp)*1000).toISOString():e.date?e.date+'T12:00:00':null)})).filter(e=>e.measuredAt&&localDay(e.measuredAt)&&new Date(e.measuredAt)<=new Date()).sort((a,b)=>new Date(a.measuredAt)-new Date(b.measuredAt));
   const firstWeight=measures.find(e=>number(e.values?.weightKg)>0);
   const start=firstWeight?localDay(firstWeight.measuredAt):null;
   const days=new Map(checkins.map(c=>{const row={...c};
-   if(start&&c.date>=start){delete row.weight;delete row.weightSource;}
-   // Rebuild imported fields from their dated source events, including legacy UTC days.
-   if(measures.length&&c.withingsBody){delete row.withingsBody;for(const key of Object.values(fields))if(key!=='weight')delete row[key];if(c.weightSource==='withings'){delete row.weight;delete row.weightSource;}}
+   // Older imports stored composition only inside withingsBody.
+   if(c.withingsBody)for(const [key,target] of Object.entries(fields)){const value=number(c.withingsBody[key]);if(value!==null&&value>0){row[target]=value;if(key==='weightKg')row.weightSource='withings';}}
+   if(start&&c.date>=start&&number(c.withingsBody?.weightKg)===null){delete row.weight;delete row.weightSource;}
    return [c.date,row];
   }));
   for(const e of measures){const date=localDay(e.measuredAt),row=days.get(date)||{id:date,date},body={...(row.withingsBody||{}),fieldDates:{...(row.withingsBody?.fieldDates||{})}};
@@ -34,6 +34,7 @@
  if(typeof module!=='undefined')module.exports=api;
  if(typeof LTDB==='undefined')return;
  const all=LTDB.all.bind(LTDB),get=LTDB.get.bind(LTDB);let cache=null,revision=0;
+ api.invalidate=()=>{revision++;cache=null;};
  async function read(){if(!cache){const current=revision;const promise=Promise.all([all('checkins'),all('events')]).then(([c,e])=>project(c,e));cache=promise;promise.catch(()=>{if(revision===current)cache=null;});}return (await cache).map(r=>({...r,withingsBody:r.withingsBody?{...r.withingsBody,fieldDates:{...r.withingsBody.fieldDates}}:undefined}));}
  LTDB.all=store=>store==='checkins'?read():all(store);
  LTDB.get=async(store,id)=>store==='checkins'?(await read()).find(r=>r.id===id):get(store,id);

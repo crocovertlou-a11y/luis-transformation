@@ -1,0 +1,15 @@
+Fluidité — Actualiser Withings depuis le Dashboard — 1er novembre 2026
+
+INSTALLATION
+Copier les 11 fichiers applicatifs à la racine GitHub, remplacer ceux qui existent, puis attendre le déploiement Netlify. Conserver tous les autres fichiers du dépôt. Ce ZIP est cumulatif : les deux correctifs Withings précédents sont inclus. Aucun SQL ni changement de configuration.
+Fermer puis rouvrir Fluidité et appuyer sur Actualiser Withings dans Ton évolution sur le Dashboard.
+
+CHANGEMENTS
+Bouton Actualiser Withings directement dans Ton évolution. Son clic ne déclenche pas la navigation vers Évolution. Bouton désactivé pendant la requête et réactivé même en cas d’erreur. Résultat persistant sur l’écran : nombre de mesures reçues, nombre de changements et dernier poids avec sa date. Les erreurs de connexion, de réponse serveur et les réponses vides sont distinguées. Une requête distante dépassant 25 secondes est interrompue avec un message explicite.
+Les mesures inchangées ne sont pas réécrites. Le cache du suivi est invalidé après la synchronisation même si toutes les mesures étaient déjà stockées. Les écrans sont ensuite recalculés.
+Compatibilité avec les imports anciens contenant la composition dans withingsBody et les événements dont la date existe sans measuredAt. Une réponse vide ou une erreur ne supprime pas l’historique.
+Les mesures continuent à alimenter le suivi et le Compagnon ; le poids Withings reste prioritaire et le tour de taille manuel.
+
+VALIDATION ET LIMITES
+Contrôle syntaxique de tous les scripts livrés. Tests simulés : récupération et pagination, 7 métriques, jetons, absence de doublons, suivi et contexte du Compagnon, priorité des pesées, sauvegarde du ressenti, compatibilité des données anciennes, messages de réussite/vide/connexion/expiration, réactivation du bouton et interception de son clic.
+Pas de test sur le compte réel Withings ni de validation visuelle sur iPhone : aucune cause unique du défaut signalé n’est confirmée à distance. Le résultat visible après Actualiser permettra de distinguer absence de mesures renvoyées, problème de connexion et problème d’enregistrement.
