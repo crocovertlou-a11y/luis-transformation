@@ -1,38 +1,17 @@
-/* Fluidité V16.4 — Withings body trends, observational only */
+/* Body tracking uses the same dated canonical measurements as the Companion. */
 (()=>{
- const num=v=>v==null||v===''?null:(Number.isFinite(+v)?+v:null);
- const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- const shift=(date,days)=>{const d=new Date(date+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+days);return d.toISOString().slice(0,10)};
- const mean=a=>a.length?a.reduce((s,v)=>s+v,0)/a.length:null;
- const signed=(v,unit)=>`${v>0?'+':''}${v.toFixed(1).replace('.',',')} ${unit}`;
- function daily(checkins){return checkins.filter(x=>x.date&&num(x.weight)!=null).sort((a,b)=>a.date.localeCompare(b.date));}
- function avgBetween(rows,field,a,b){const vals=rows.filter(x=>x.date>=a&&x.date<=b).map(x=>num(field(x))).filter(v=>v!=null);return mean(vals)}
- function trendData(today,checkins){
-   const rows=daily(checkins); if(!rows.length)return null;
-   const latest=rows.at(-1),start7=shift(today,-6),start30=shift(today,-29);
-   const avg7=avgBetween(rows,x=>x.weight,start7,today);
-   const recent7=avgBetween(rows,x=>x.weight,shift(today,-6),today);
-   const first7=avgBetween(rows,x=>x.weight,start30,shift(start30,6));
-   const w30=recent7!=null&&first7!=null?recent7-first7:null;
-   const bodyRows=rows.filter(x=>x.withingsBody);
-   const latestBody=bodyRows.at(-1)?.withingsBody||null;
-   const bodyDelta=(key)=>{const br=bodyRows.filter(x=>x.date>=start30&&num(x.withingsBody?.[key])!=null);if(br.length<2)return null;return num(br.at(-1).withingsBody[key])-num(br[0].withingsBody[key])};
-   return {latest,avg7,w30,latestBody,fat30:bodyDelta('fatPercent'),muscle30:bodyDelta('muscleMassKg'),count30:rows.filter(x=>x.date>=start30).length};
- }
+ const esc=escapeHtml,fmt=v=>Number(v).toFixed(1).replace('.',',');
  const old=renderEvolution;
  renderEvolution=async function(checkins,workouts,cardio){
-   const html=await old(checkins,workouts,cardio);try{
-     const d=trendData(todayKey(),checkins);if(!d)return html;
-     const cards=[
-       ['Dernier poids',`${num(d.latest.weight).toFixed(1).replace('.',',')} kg`,d.latest.weightSource==='withings'?'Withings · dernière pesée synchronisée':`Mesure du ${d.latest.date}`],
-       ['Moyenne 7 jours',d.avg7!=null?`${d.avg7.toFixed(1).replace('.',',')} kg`:'—','Lisse les variations quotidiennes'],
-       ['Tendance 30 jours',d.w30!=null?signed(d.w30,'kg'):'—',d.w30!=null?'Écart entre les moyennes du début et de la fin de période':'Pas encore assez de pesées comparables']
-     ];
-     if(d.latestBody?.fatPercent!=null)cards.push(['Masse grasse',`${num(d.latestBody.fatPercent).toFixed(1).replace('.',',')} %`,d.fat30!=null?`30 j : ${signed(d.fat30,'pt')}`:'Dernière mesure Withings']);
-     if(d.latestBody?.muscleMassKg!=null)cards.push(['Masse musculaire',`${num(d.latestBody.muscleMassKg).toFixed(1).replace('.',',')} kg`,d.muscle30!=null?`30 j : ${signed(d.muscle30,'kg')}`:'Dernière mesure Withings']);
-     const panel=`<section class="card body-trends-v164"><div class="card-kicker">ÉVOLUTION · CORPS</div><h3>Ta dynamique, pas une pesée isolée</h3><p class="subtle">Fluidité privilégie les moyennes et tendances. ${d.count30} pesée${d.count30>1?'s':''} disponible${d.count30>1?'s':''} sur 30 jours.</p><div class="body-trend-grid">${cards.map(x=>`<article><span>${esc(x[0])}</span><strong>${esc(x[1])}</strong><small>${esc(x[2])}</small></article>`).join('')}</div></section>`;
-     return panel+html;
-   }catch(e){console.warn('V16.4 body trends unavailable',e);return html}
+  const html=await old(checkins,workouts,cardio),body=FluiditeBodyData.summary(checkins);
+  if(!Object.keys(body.metrics).length)return html;
+  const labels=[['weightKg','Poids','kg'],['fatPercent','Taux de masse grasse','%'],['fatMassKg','Masse grasse','kg'],['muscleMassKg','Masse musculaire','kg'],['fatFreeMassKg','Masse maigre','kg'],['hydrationKg','Eau corporelle','kg'],['boneMassKg','Masse osseuse','kg']];
+  const cards=labels.map(([key,label,unit])=>{const m=body.metrics[key];return `<article><span>${label}</span><strong>${m?fmt(m.value)+' '+unit:'—'}</strong><small>${m?esc(`${m.source} · ${displayDate(m.date)}${m.ageDays>7?' · à actualiser':''}`):'Non fournie par Withings'}</small></article>`;});
+  const weights=checkins.filter(r=>r.weight!=null&&daysAgo(r.date)>=0&&daysAgo(r.date)<30);
+  const avg=rows=>rows.length?rows.reduce((s,r)=>s+Number(r.weight),0)/rows.length:null;
+  const recent=weights.filter(r=>daysAgo(r.date)<7),first=weights.filter(r=>daysAgo(r.date)>=23),mean=avg(recent),before=avg(first);
+  cards.push(`<article><span>Poids moyen · 7 jours</span><strong>${mean===null?'—':fmt(mean)+' kg'}</strong><small>${recent.length} jour(s) mesuré(s)</small></article>`);
+  cards.push(`<article><span>Tendance du poids · 30 jours</span><strong>${recent.length>=2&&first.length>=2?fmt(mean-before)+' kg':'—'}</strong><small>Écart entre les moyennes des semaines de début et de fin ; au moins deux pesées par semaine.</small></article>`);
+  return `<section class="card body-trends-v164"><div class="card-kicker">ÉVOLUTION · CORPS</div><h3>Ta dynamique, pas une pesée isolée</h3><p class="subtle">${body.automatic?'Poids et composition corporelle alimentés par Withings, sans saisie manuelle.':'Mesures corporelles enregistrées.'} Chaque valeur garde sa date. ${weights.length} jour(s) de pesée sur 30 jours.</p><div class="body-trend-grid">${cards.join('')}</div><p class="subtle">Les estimations de composition corporelle sont croisées avec tes performances et ton ressenti par le Compagnon.</p></section>`+html;
  };
- window.FluiditeBodyTrendsV164={trendData};
 })();

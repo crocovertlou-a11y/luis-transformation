@@ -356,9 +356,11 @@ async function renderToday(today,todayWorkout,todayCardio,protein,calories,foodC
   const done=[`<button type="button" class="done-tile green" data-route-card="training"><span>🏃</span><div><strong>Course à pied</strong><small>${run?(run.distance?`${run.distance} km aujourd’hui`:'Activité enregistrée'):'Aucune activité enregistrée'}</small></div></button>`,`<button type="button" class="done-tile orange" data-route-card="training"><span>◉</span><div><strong>Force</strong><small>${todayWorkout?'Séance enregistrée':'Aucune activité enregistrée'}</small></div></button>`,`<button type="button" class="done-tile purple" data-open="nutritionHub"><span>♨</span><div><strong>Alimentation</strong><small>${foodCount?`${Math.round(protein)} g de protéines`:'Aucun repas enregistré'}</small></div></button>`,`<button type="button" class="done-tile blue" data-open="hydrationQuick"><span>▣</span><div><strong>Eau</strong><small>${water?`${water.toFixed(1).replace('.',',')} L enregistrés`:'Aucune donnée enregistrée'}</small></div></button>`].join('');
   const validCheckins=checkinsAll.filter(x=>x.weight!=null||x.waist!=null).sort((a,b)=>a.date.localeCompare(b.date));
   const first=validCheckins[0]||{}, last=validCheckins.at(-1)||{};
+  const body=FluiditeBodyData.summary(checkinsAll), bodyMetric=(key,label,unit)=>{const m=body.metrics[key];return `<div><label>${label}</label><strong>${m?m.value.toFixed(1).replace('.',',')+' '+unit:'—'}</strong><small>${m?`${m.source} · ${displayDate(m.date)}${m.ageDays>7?' · à actualiser':''}`:'En attente de mesure Withings'}</small></div>`;};
+  const waistLast=validCheckins.filter(c=>c.waist!=null).at(-1)||{};
   const delta=(a,b,u)=>a!=null&&b!=null?`${(Number(b)-Number(a)>0?'+':'')+(Number(b)-Number(a)).toFixed(1).replace('.',',')} ${u}`:'—';
   const active7=new Set([...workoutsAll,...cardioAll].filter(x=>daysAgo(x.date)<=6).map(x=>x.date)).size;
-  const evolution=`<section class="today-evolution clickable" data-home-view="evolution"><div class="today-card-head"><h2>↗ &nbsp;Ton évolution</h2><span>7 derniers jours⌄</span></div><div class="evo-grid"><div><label>Poids</label><strong>${last.weight!=null?`${Number(last.weight).toFixed(1).replace('.',',')} kg`:'— kg'}</strong><small>${delta(first.weight,last.weight,'kg')}</small><i class="spark">⌁⌁</i></div><div><label>Tour de taille</label><strong>${last.waist!=null?`${Number(last.waist).toFixed(1).replace('.',',')} cm`:'— cm'}</strong><small>${delta(first.waist,last.waist,'cm')}</small><i class="spark">⌁⌁</i></div><div><label>Séances</label><strong>${workoutsAll.filter(x=>daysAgo(x.date)<=6).length}</strong><small>7 derniers jours</small><i class="spark">⌁⌁</i></div><div><label>Jours actifs</label><strong>${active7}</strong><small>7 derniers jours</small><i class="spark">⌁⌁</i></div></div></section>`;
+  const evolution=`<section class="today-evolution clickable" data-home-view="evolution"><div class="today-card-head"><h2>↗ &nbsp;Ton évolution</h2><span>Mesures datées · activité 7 j</span></div><div class="evo-grid">${bodyMetric('weightKg','Poids','kg')}${bodyMetric('fatPercent','Masse grasse','%')}${bodyMetric('muscleMassKg','Masse musculaire','kg')}<div><label>Tour de taille</label><strong>${waistLast.waist!=null?`${Number(waistLast.waist).toFixed(1).replace('.',',')} cm`:'— cm'}</strong><small>${delta(first.waist,waistLast.waist,'cm')}</small><i class="spark">⌁⌁</i></div><div><label>Séances</label><strong>${workoutsAll.filter(x=>daysAgo(x.date)<=6).length}</strong><small>7 derniers jours</small><i class="spark">⌁⌁</i></div><div><label>Jours actifs</label><strong>${active7}</strong><small>7 derniers jours</small><i class="spark">⌁⌁</i></div></div></section>`;
   return `${checkin}${recommendation}<section class="today-accomplished"><div class="today-card-head"><h2>⚑ &nbsp;Ce que tu as déjà accompli</h2></div><div class="done-grid">${done}</div></section>${evolution}`;
 }
 function renderCheckinSummary(t){
@@ -382,7 +384,7 @@ async function renderEvolution(checkins,workouts,cardio){
   const activities=workouts.filter(x=>daysAgo(x.date)<=30).length+cardio.filter(x=>daysAgo(x.date)<=30).length;
   const reading=sorted.length<2?'Je n’ai pas encore assez de recul pour lire une tendance fiable.':'Ton évolution reste cohérente avec ce que tu suis actuellement.';
   const explanation=sorted.length<2
-    ? 'Il me faut au moins deux mesures comparables pour distinguer une tendance d’une variation ponctuelle. Continue simplement à enregistrer poids, tour de taille et photos dans des conditions similaires.'
+    ? 'Il me faut au moins deux mesures comparables pour distinguer une tendance d’une variation ponctuelle. Les pesées Withings alimentent le suivi automatiquement. Tu peux compléter avec le tour de taille et les photos dans des conditions similaires.'
     : `Je m’appuie sur tes mesures enregistrées et ton activité récente.${weightDelta!==null?` Poids : ${signed(weightDelta)} kg depuis ta première mesure.`:''}${waistDelta!==null?` Tour de taille : ${signed(waistDelta)} cm.`:''} ${activities?`${activities} activité${activities>1?'s':''} enregistrée${activities>1?'s':''} sur 30 jours.`:'Je manque encore d’activité enregistrée pour relier entraînement et évolution.'} Je regarde surtout la tendance, jamais une mesure isolée.`;
   const photos=(await LTDB.all('photos')).sort((x,y)=>(y.date+y.createdAt).localeCompare(x.date+x.createdAt));
   const unlocked=photoVaultUnlocked();
@@ -506,7 +508,7 @@ async function smartTrainingContext(){
     date:todayKey(),
     force:recent(workouts,14).slice(0,12).map(w=>({date:w.date,name:w.name,duration:w.durationLabel||null,effort:w.effort??null,exercises:(w.exerciseEntries||[]).map(e=>({name:e.name,performance:e.performance||null}))})),
     cardio:recent(cardio,14).slice(0,15).map(c=>({date:c.date,type:c.type,name:c.name||null,distance:c.distance??null,duration:c.durationLabel||null,heartRateAvg:c.heartRateAvg??null,elevationGain:c.elevationGain??null,source:c.importSource||c.source||null})),
-    recovery:recent(checkins,7).slice(0,7).map(c=>({date:c.date,sleep:c.sleep??null,stress:c.stress??null,energy:c.energy??null,hunger:c.hunger??null,weight:c.weight??null,waist:c.waist??null})),
+    recovery:recent(checkins,7).slice(0,7).map(c=>({date:c.date,sleep:c.sleep??null,stress:c.stress??null,energy:c.energy??null,hunger:c.hunger??null,weight:c.weight??null,waist:c.waist??null,fatPercent:c.fatPercent??null,fatMassKg:c.fatMassKg??null,muscleMassKg:c.muscleMassKg??null,bodyMeasuredAt:c.withingsBody?.measuredAt??null})),
     nutrition:recent(nutrition,3).slice(0,20).map(n=>({date:n.date,meal:n.meal||n.type||null,protein:n.protein??null,calories:n.calories??null})),
     constraints:{preferredDurationMin:40,primaryFocus:'force et recomposition corporelle',freedom:'L’utilisateur peut toujours changer la séance'},
     allowedExercises:[...new Set(workoutLibrary().flatMap(w=>w.plan.map(e=>e.name)))],
@@ -541,7 +543,7 @@ async function loadSmartTrainingSuggestion(){
     box.innerHTML=`<div class="training-v2-head"><div><h3>${escapeHtml(shownTitle)}</h3><p class="subtle">${escapeHtml(data.workout.subtitle)}</p></div><span class="pill">${escapeHtml(shownGoal)}</span></div><div class="training-v2-reason">${escapeHtml(shownReason)}</div>${data.contextNote?`<div class="smart-context-note">${escapeHtml(data.contextNote)}</div>`:''}<div class="card-actions"><button class="action" id="viewAIWorkout" type="button">Voir la séance</button><button class="action secondary" id="regenerateAIWorkout" type="button">Une autre proposition</button><button class="text-action" data-open="workoutIdeas">Choisir moi-même</button></div>`;
     $('#viewAIWorkout')?.addEventListener('click',()=>workoutDetailSheet(state.aiWorkout));
     $('#regenerateAIWorkout')?.addEventListener('click',loadSmartTrainingSuggestion);
-    document.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>openSheet(b.dataset.open)));
+
   }catch(err){
     console.error(err);
     if(btn){btn.disabled=false;btn.textContent='Réessayer avec le Compagnon'}
@@ -657,7 +659,7 @@ function exerciseJournal(workouts){
   return rows.join('');
 }
 function trendAverage(rows,key){
-  const vals=rows.map(x=>Number(x?.[key])).filter(Number.isFinite);
+  const vals=rows.filter(x=>x?.[key]!=null&&x[key]!=='').map(x=>Number(x[key])).filter(Number.isFinite);
   return vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:null;
 }
 function trendWindowSummary(days,checkins,workouts,cardio,food,proteinTarget){
@@ -670,8 +672,8 @@ function trendWindowSummary(days,checkins,workouts,cardio,food,proteinTarget){
   const foodDays=Object.values(dailyFood).filter(x=>x.entries>0);
   const half=Math.max(2,Math.floor(days/2));
   const recent=ci.filter(x=>daysAgo(x.date)<half), previous=ci.filter(x=>daysAgo(x.date)>=half&&daysAgo(x.date)<days);
-  const delta=(key)=>{const a=trendAverage(recent,key),b=trendAverage(previous,key);return a!=null&&b!=null&&recent.length>=2&&previous.length>=2?Math.round((a-b)*10)/10:null};
-  return {days,coverage:{checkins:ci.length,nutritionDays:foodDays.length,forceSessions:wo.length,cardioSessions:ca.length},body:{weightAvg:trendAverage(ci,'weight'),waistAvg:trendAverage(ci,'waist'),weightRecentVsPrevious:delta('weight'),waistRecentVsPrevious:delta('waist')},wellbeing:{sleepAvg:trendAverage(ci,'sleep'),energyAvg:trendAverage(ci,'energy'),stressAvg:trendAverage(ci,'stress'),hungerAvg:trendAverage(ci,'hunger'),sleepRecentVsPrevious:delta('sleep'),energyRecentVsPrevious:delta('energy'),stressRecentVsPrevious:delta('stress')},training:{forceSessions:wo.length,cardioSessions:ca.length,cardioDistance:Math.round(ca.reduce((sum,x)=>sum+(Number(x.distance)||0),0)*10)/10,activeDays:new Set([...wo,...ca].map(x=>x.date)).size},nutrition:{daysLogged:foodDays.length,proteinAvg:foodDays.length?Math.round(foodDays.reduce((a,b)=>a+b.protein,0)/foodDays.length):null,proteinTargetDays:proteinTarget?foodDays.filter(x=>x.protein>=proteinTarget).length:null}};
+  const delta=(key)=>{const a=trendAverage(recent,key),b=trendAverage(previous,key);return a!=null&&b!=null&&recent.filter(x=>x[key]!=null).length>=2&&previous.filter(x=>x[key]!=null).length>=2?Math.round((a-b)*10)/10:null};
+  return {days,coverage:{checkins:ci.length,nutritionDays:foodDays.length,forceSessions:wo.length,cardioSessions:ca.length},body:{fatPercentAvg:trendAverage(ci,'fatPercent'),fatMassKgAvg:trendAverage(ci,'fatMassKg'),muscleMassKgAvg:trendAverage(ci,'muscleMassKg'),fatPercentRecentVsPrevious:delta('fatPercent'),fatMassKgRecentVsPrevious:delta('fatMassKg'),muscleMassKgRecentVsPrevious:delta('muscleMassKg'),measurementDays:ci.filter(x=>x.weight!=null).length,compositionDays:ci.filter(x=>x.fatPercent!=null).length,weightAvg:trendAverage(ci,'weight'),waistAvg:trendAverage(ci,'waist'),weightRecentVsPrevious:delta('weight'),waistRecentVsPrevious:delta('waist')},wellbeing:{sleepAvg:trendAverage(ci,'sleep'),energyAvg:trendAverage(ci,'energy'),stressAvg:trendAverage(ci,'stress'),hungerAvg:trendAverage(ci,'hunger'),sleepRecentVsPrevious:delta('sleep'),energyRecentVsPrevious:delta('energy'),stressRecentVsPrevious:delta('stress')},training:{forceSessions:wo.length,cardioSessions:ca.length,cardioDistance:Math.round(ca.reduce((sum,x)=>sum+(Number(x.distance)||0),0)*10)/10,activeDays:new Set([...wo,...ca].map(x=>x.date)).size},nutrition:{daysLogged:foodDays.length,proteinAvg:foodDays.length?Math.round(foodDays.reduce((a,b)=>a+b.protein,0)/foodDays.length):null,proteinTargetDays:proteinTarget?foodDays.filter(x=>x.protein>=proteinTarget).length:null}};
 }
 function buildCompanionTrends(checkins,workouts,cardio,food,proteinTarget){ return {windows:[7,14,30].map(d=>trendWindowSummary(d,checkins,workouts,cardio,food,proteinTarget)),minimums:{days7:{checkins:4,nutritionDays:4},days14:{checkins:7,nutritionDays:7},days30:{checkins:12,nutritionDays:12},rule:'duration_and_density_required'}}; }
 function fluidityDataQuality(checkins,workouts,cardio,food){
@@ -711,12 +713,13 @@ async function companionSnapshot(){
     goal:state.profile.goal||null,
     proteinTarget,
     latestCheckin:latest,
+    bodyComposition:FluiditeBodyData.summary(checkins),
     nutritionToday:{protein:Math.round(protein*10)/10,calories:Math.round(calories),water:Math.round(water*10)/10,entries:todayFood.length},
     todayWorkout:todayWorkout?{name:todayWorkout.name||null,duration:todayWorkout.durationLabel||null,effort:todayWorkout.effort??null}:null,
     todayCardio:todayCardio.map(c=>({type:c.type||null,name:c.name||null,distance:c.distance??null,duration:c.durationLabel||null,durationSeconds:c.durationSeconds??null,heartRateAvg:c.heartRateAvg??null,cadenceAvg:c.cadenceAvg??c.cadence??null,calories:c.calories??null,source:c.importSource||c.source||null})),
     recentForce:recentWorkouts.slice(0,8).map(w=>({date:w.date,name:w.name||null,duration:w.durationLabel||null,effort:w.effort??null})),
     recentCardio:recentCardio.slice(0,8).map(c=>({date:c.date,type:c.type||null,name:c.name||null,distance:c.distance??null,duration:c.durationLabel||null,durationSeconds:c.durationSeconds??null,heartRateAvg:c.heartRateAvg??null,cadenceAvg:c.cadenceAvg??c.cadence??null,source:c.importSource||c.source||null})),
-    recentCheckins:recentCheckins.slice(0,7).map(c=>({date:c.date,sleep:c.sleep??null,stress:c.stress??null,energy:c.energy??null,recovery:c.recovery??null,hunger:c.hunger??null,weight:c.weight??null,waist:c.waist??null})),
+    recentCheckins:recentCheckins.slice(0,7).map(c=>({date:c.date,sleep:c.sleep??null,stress:c.stress??null,energy:c.energy??null,recovery:c.recovery??null,hunger:c.hunger??null,weight:c.weight??null,waist:c.waist??null,fatPercent:c.fatPercent??null,fatMassKg:c.fatMassKg??null,muscleMassKg:c.muscleMassKg??null,bodyMeasuredAt:c.withingsBody?.measuredAt??null})),
     dailyDecision:decision,
     trends:buildCompanionTrends(checkins,workouts,cardio,food,proteinTarget),
     dataQuality:fluidityDataQuality(checkins,workouts,cardio,food),
@@ -829,7 +832,7 @@ function bindPage(){
   document.querySelectorAll('[data-route-card]').forEach(b=>b.addEventListener('click',()=>navigate(b.dataset.routeCard)));
   document.querySelectorAll('[data-nutrition-proposals]').forEach(b=>b.addEventListener('click',openNutritionProposals));
   document.querySelectorAll('[data-fluidity-force]').forEach(b=>b.addEventListener('click',async()=>{const [ws,cs,fs,ks]=await Promise.all([LTDB.all('workouts'),LTDB.all('cardio'),LTDB.all('food'),LTDB.all('checkins')]);ws.sort((a,b)=>b.date.localeCompare(a.date));cs.sort((a,b)=>b.date.localeCompare(a.date));const today=todayKey(),check=ks.find(x=>x.date===today)||null,todayWorkout=ws.find(x=>x.date===today)||null,todayCardio=cs.filter(x=>x.date===today),decision=fluidityEngine(check,todayWorkout,todayCardio,ws,cs,fs,ks),w=fluidityWorkoutForDecision(decision,ws);if(b.dataset.fluidityForce==='detail')return workoutDetailSheet(w);await workoutDetailSheet(w);chosenWorkoutForm();}));
-  document.querySelectorAll('[data-open]').forEach(b=>b.onclick=e=>{e?.stopPropagation?.();openSheet(b.dataset.open)}); document.querySelectorAll('[data-photo-view]').forEach(b=>b.onclick=()=>viewProgressPhoto(b.dataset.photoView));
+  document.querySelectorAll('[data-photo-view]').forEach(b=>b.onclick=()=>viewProgressPhoto(b.dataset.photoView));
   document.querySelectorAll('[data-edit-activity]').forEach(b=>b.addEventListener('click',()=>{const [kind,id]=b.dataset.editActivity.split(':'); editActivitySheet(kind,id);}));
   $('#openCompanionHistory')?.addEventListener('click',openCompanionHistory);
   $('#openCompanionEvolution')?.addEventListener('click',openCompanionEvolution);
@@ -851,7 +854,7 @@ function bindPage(){
 }
 async function quickAdd(){ openSheet('quick'); }
 let sheetBackAction=null;
-function showSheet(html,backAction=null){ stopBarcodeCamera(); stopProgressCamera(); sheetBackAction=typeof backAction==='function'?backAction:null; $('#sheetContent').innerHTML=`<button class="sheet-x" type="button" data-close aria-label="Fermer">×</button>${html}`; $('#sheet').showModal(); bindSheet(); updateAllRanges(); }
+function showSheet(html,backAction=null){ stopBarcodeCamera(); stopProgressCamera(); sheetBackAction=typeof backAction==='function'?backAction:null; $('#sheetContent').innerHTML=`<button class="sheet-x" type="button" data-close aria-label="Fermer">×</button>${html}`; if(!$('#sheet').open) $('#sheet').showModal(); $('#sheetContent').scrollTop=0; bindSheet(); updateAllRanges(); }
 function slider(name,label,min,max,step,value,unit=''){ return `<div class="slider-line"><div class="slider-head"><label>${label}</label><output data-output="${name}">${value}${unit}</output></div><input type="range" name="${name}" min="${min}" max="${max}" step="${step}" value="${value}" data-range-unit="${unit}"></div>`; }
 function openSheet(kind){
   if((kind==='photoCompare'||kind==='progressPhoto')&&!photoVaultUnlocked()){ensurePhotoVaultUnlocked(()=>openSheet(kind));return}
@@ -860,7 +863,9 @@ function openSheet(kind){
   if(kind==='checkin') {
     showSheet(`<h2>Comment vas-tu aujourd’hui ?</h2><form id="checkinForm">${dateField('date',todayKey())}${slider('sleep','Sommeil','0','12','0.0166667','7',' h')}${slider('energy','Énergie','1','5','1','3','/5')}${slider('stress','Stress','1','5','1','2','/5')}${slider('recovery','Récupération','1','5','1','3','/5')}${slider('hunger','Faim','1','5','1','3','/5')}<div class="field"><label>Poids (kg)</label><input name="weight" type="number" min="20" max="300" step="0.1" inputmode="decimal" placeholder="80.4"></div><div class="field"><label>Tour de taille (cm)</label><input name="waist" type="number" min="30" max="250" step="0.1" inputmode="decimal" placeholder="90.0"></div><button class="action" type="submit">Enregistrer</button></form>`);
     const form=$('#checkinForm'), date=todayKey();
-    LTDB.get('checkins',date).then(existing=>{
+    LTDB.all('checkins').then(rows=>{
+      if(!form?.isConnected)return;const body=FluiditeBodyData.summary(rows);if(body.automatic){const input=form.elements.weight;const m=body.metrics.weightKg;if(input){input.closest('.field').innerHTML=`<label>Poids · Withings</label><p>${m.value.toFixed(1).replace('.',',')} kg · ${displayDate(m.date)}</p><small>Mis à jour depuis ta balance, sans saisie manuelle.</small>`;}}
+      const existing=rows.find(r=>r.date===date);
       if(!existing || !form || !form.isConnected) return;
       ['sleep','energy','stress','recovery','hunger','weight','waist'].forEach(name=>{
         if(existing[name]!==null && existing[name]!==undefined && form.elements[name]){
@@ -1407,7 +1412,7 @@ function bindSheet(){
   $('[data-cancel-delete-recipe]')?.addEventListener('click',()=>renderRecipeEditor());
   $('#useRecipeForm')?.addEventListener('submit',addRecipeToMeal);
 
-  document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>{stopBarcodeCamera();stopProgressCamera();if(sheetBackAction){const back=sheetBackAction;sheetBackAction=null;back();return;}$('#sheet').close()}));
+
   document.querySelectorAll('[data-workout-choice]').forEach(b=>b.addEventListener('click',()=>workoutDetailSheet(workoutById(b.dataset.workoutChoice))));
   document.querySelectorAll('[data-swap-exercise]').forEach(b=>b.addEventListener('click',()=>swapExerciseSheet(Number(b.dataset.swapExercise))));
   document.querySelectorAll('[data-exercise-replace]').forEach(b=>b.addEventListener('click',()=>{const [idx,name]=b.dataset.exerciseReplace.split('|');const i=Number(idx);if(state.pendingWorkout){state.pendingWorkout.plan[i]={...state.pendingWorkout.plan[i],name};workoutDetailSheet(state.pendingWorkout)}}));
@@ -1434,6 +1439,15 @@ function bindSheet(){
 
 // V2.10.5.4 — safety net for dynamic sheet actions. One delegated listener avoids losing handlers after a sheet rerender.
 document.addEventListener('click',e=>{
+  const close=e.target.closest?.('#sheet [data-close]');
+  if(close){
+    e.preventDefault();stopBarcodeCamera();stopProgressCamera();
+    const back=sheetBackAction;sheetBackAction=null;
+    if(back) back(); else $('#sheet').close();
+    return;
+  }
+  const open=e.target.closest?.('[data-open]');
+  if(open && !open.disabled){e.preventDefault();openSheet(open.dataset.open);return;}
   const nutritionProposal=e.target.closest?.('[data-nutrition-proposals]');
   if(nutritionProposal && nutritionProposal.closest('#sheet') && !nutritionProposal.__fluiditeHandled){
     e.preventDefault();
@@ -1451,7 +1465,7 @@ document.addEventListener('click',e=>{
 
 function updateAllRanges(){ document.querySelectorAll('input[type="range"]').forEach(updateRange); }
 function updateRange(r){ const out=document.querySelector(`[data-output="${r.name}"]`); if(out) out.value=r.name==='sleep'?formatSleepDuration(r.value):`${r.value}${r.dataset.rangeUnit||''}`; }
-async function saveCheckin(e){e.preventDefault(); const f=new FormData(e.currentTarget); const date=f.get('date')||todayKey(); const previous=await LTDB.get('checkins',date)||{}; const sleep=num(f.get('sleep')); const row={...previous,id:date,date,sleep,sleepMinutes:sleep==null?null:Math.round(sleep*60),sleepSource:'manual',energy:num(f.get('energy')),stress:num(f.get('stress')),recovery:num(f.get('recovery')),hunger:num(f.get('hunger')),weight:num(f.get('weight')),waist:num(f.get('waist')),source:'manual',updatedAt:new Date().toISOString()}; await LTDB.put('checkins',row); $('#sheet').close(); toast('Point du jour enregistré'); render();}
+async function saveCheckin(e){e.preventDefault(); const f=new FormData(e.currentTarget); const date=f.get('date')||todayKey(); const previous=await LTDB.get('checkins',date)||{}; const sleep=num(f.get('sleep')); const row={...previous,id:date,date,sleep,sleepMinutes:sleep==null?null:Math.round(sleep*60),sleepSource:'manual',energy:num(f.get('energy')),stress:num(f.get('stress')),recovery:num(f.get('recovery')),hunger:num(f.get('hunger')),weight:previous.weightSource==='withings'||!f.has('weight')?previous.weight:num(f.get('weight')),waist:num(f.get('waist')),source:'manual',updatedAt:new Date().toISOString()}; await LTDB.put('checkins',row); $('#sheet').close(); toast('Point du jour enregistré'); render();}
 async function saveWorkout(e){
   e.preventDefault(); const f=new FormData(e.currentTarget);
   const pending=state.pendingWorkout||workoutById('upper');

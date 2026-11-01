@@ -1,0 +1,23 @@
+Fluidité — Withings relié au suivi et au Compagnon — 1er novembre 2026
+
+INSTALLATION
+Copier les 11 fichiers du ZIP à la racine du dépôt, en remplaçant les fichiers existants et en ajoutant body-data.js. Ce correctif inclut celui de synchronisation Withings livré précédemment. Conserver les autres fichiers du projet. Attendre la fin du déploiement Netlify, puis fermer et rouvrir Fluidité.
+Aucun SQL, aucune nouvelle variable d’environnement.
+
+RÉSULTAT
+Les mesures Withings déjà présentes sont reprises automatiquement : pas besoin de les ressaisir ni de réimporter l’historique.
+Accueil : poids, taux de graisse et muscle datés ; tour de taille, séances et jours actifs conservés.
+Évolution : poids, graisse en % et kg, muscle, masse maigre, eau et os, selon les valeurs disponibles ; date propre à chaque mesure ; moyenne de poids et tendance.
+Compagnon : dernières mesures avec source et ancienneté, tendances graisse/muscle sur 7/14/30 jours, comparaison des moyennes des deux fenêtres de 14 jours dans le bilan de l’objectif. Les données manquantes ne deviennent pas des zéros. Les estimations de composition corporelle ne prouvent pas un changement de muscle et ne déclenchent aucun déficit automatique.
+Saisie : le champ de poids est remplacé par la dernière pesée datée dès que Withings fournit du poids. Le tour de taille reste manuel. Enregistrer un ressenti ne remplace pas la mesure de la balance.
+
+DONNÉES
+Une couche commune de lecture alimente les écrans et les analyses. Les événements Withings restent les données sources. Les anciennes saisies brutes sont conservées. À partir de la première pesée Withings disponible, le suivi utilise les pesées Withings et ne mélange plus les saisies manuelles ultérieures. Les anciennes mesures manuelles antérieures restent dans l’historique. Les journées utilisent la date locale de l’appareil ; plusieurs pesées le même jour sont ramenées à la dernière valeur disponible par métrique. Une mesure absente n’est pas copiée sur les jours suivants.
+Le bouton Synchroniser importe les nouvelles pesées ; ce correctif ne met pas en place une synchronisation de fond permanente.
+
+VALIDATION
+Contrôle syntaxique de tous les scripts livrés.
+Tests simulés du connecteur : unités des 7 métriques, pagination, authentification, renouvellement du jeton conservé en cas d’erreur, retour de connexion, absence de doublons.
+Tests de données : priorité Withings, conservation des données brutes, mesures partielles et dates indépendantes, date locale, moyennes et maturité des tendances.
+Test des fonctions réelles de l’application : HTML accueil/évolution, contexte envoyé au Compagnon, bilan objectif, absence de conversion des valeurs manquantes en zéro, sauvegarde du ressenti préservant le poids Withings.
+La vérification visuelle dans un navigateur n’a pas pu être exécutée : moteur de navigateur indisponible et téléchargement impossible dans cet environnement. Aucun test sur iPhone ou compte Withings réel ni déploiement effectué ici.
