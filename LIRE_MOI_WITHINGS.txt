@@ -1,0 +1,21 @@
+Fluidité — correction Withings du 1er novembre 2026
+
+Déploiement
+Remplacer les quatre fichiers du ZIP à la racine du dépôt GitHub, puis laisser Netlify terminer son déploiement. Ne pas remplacer le reste du projet.
+Fermer puis rouvrir Fluidité, puis Profil > Withings > Synchroniser.
+En cas de session expirée, utiliser Reconnecter Withings. Une synchronisation démarre après le retour de connexion.
+Aucun SQL ni nouvelle variable d’environnement.
+
+Contenu
+withings-measures.js : demande explicite des 7 mesures, historique de 365 jours, pagination, validation des réponses et conservation du cookie renouvelé même si la requête de mesures échoue.
+withings-health-v163.js : correction de window.history.replaceState (le nom history désignait une fonction locale), synchronisation après connexion, protection contre les doubles clics, actualisation de la fenêtre ouverte, message d’erreur persistant, bouton de reconnexion, affichage masse maigre/eau/os en plus du poids, graisse et muscle.
+index.html : version du script Withings mise à jour.
+sw.js : version du cache mise à jour.
+
+Mesures
+Poids, taux de graisse, masse grasse, masse maigre, masse musculaire, eau corporelle et masse osseuse, uniquement lorsque Withings les fournit. Aucune mesure manquante n’est inventée. Les saisies manuelles de poids restent prioritaires. L’historique utilise les identifiants Withings pour éviter les doublons.
+
+Validation
+Tests locaux sur réponses simulées : session absente, conversion des 7 métriques, pagination et ordre chronologique, jeton renouvelé conservé sur erreur API, protection contre pagination en boucle, retour OAuth sans erreur JavaScript, import local, actualisation de l’historique visible, absence de doublons, préservation du poids manuel. Contrôle syntaxique des quatre fichiers concernés (HTML : référence du script).
+Pas de test avec le compte Withings réel ni de déploiement effectué : le cookie de connexion est sur le téléphone de l’utilisateur. La cause exacte côté compte/API reste à confirmer si l’import échoue après cette correction.
+Base : livraison Fluidite_Correction_Interactions_20261028 et correction Fluidite_Cloture_Alimentaire_20261028 disponibles. Les autres modules ne sont pas inclus dans ce correctif.
