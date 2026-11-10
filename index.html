@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#fbf7f1" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Luis" />
+  <title>Luis Transformation — Fluidité V13</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <link rel="stylesheet" href="styles.css?v=20261026-fixed-nav" />
+  <link rel="stylesheet" href="force-detail-step1.css?v=force-step1-isolated" />
+  <link rel="stylesheet" href="force-visual-step2.css?v=force-step2" />
+  <link rel="stylesheet" href="force-ux-step4.css?v=force-v2-10-2-left" />
+  <link rel="stylesheet" href="force-complete-library.css?v=1" />
+  <link rel="stylesheet" href="force-focus-step5.css?v=force-step5" />
+  <link rel="stylesheet" href="coach-force-v1-phase1.css?v=coach-force-v1-p1" />
+  <link rel="stylesheet" href="coach-force-v1-phase1-hotfix.css?v=coach-p1-1" />
+  <link rel="stylesheet" href="fluidite-v21-context.css?v=v21-p1" />
+  <link rel="stylesheet" href="garmin-health-v212.css?v=v141" />
+  <link rel="stylesheet" href="withings-health-v163.css?v=v163" />
+<link rel="stylesheet" href="cardio-advisor-v153.css?v=153" /><link rel="stylesheet" href="nutrition-recovery-v154.css?v=154"><link rel="stylesheet" href="progress-insights-v155.css?v=155"><link rel="stylesheet" href="proactive-companion-v156.css?v=156"><link rel="stylesheet" href="weekly-insights-v157.css?v=157"><link rel="stylesheet" href="home-layout-v16.css?v=20261024-dashboard"><link rel="stylesheet" href="photo-privacy-v164.css?v=164"><link rel="stylesheet" href="body-trends-v164.css?v=20261101-body"><link rel="stylesheet" href="force-no-vignettes.css?v=20261022" />
+<link rel="stylesheet" href="tabs-compact.css?v=20261024-1" />
+<link rel="stylesheet" href="coach-goal.css?v=20261028-food-1" />
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <header class="topbar">
+      <button class="identity" id="identityButton" aria-label="Ouvrir le profil">
+        <span class="fluidity-wrap" aria-hidden="true">
+          <svg class="fluidity" viewBox="0 0 64 64" role="img" aria-label="Fluidité">
+            <defs><linearGradient id="fluidityGradient" x1="8" x2="56" y1="10" y2="54" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#7c5cff"/><stop offset="1" stop-color="#ff6b3d"/></linearGradient></defs>
+            <path d="M15 43.5A22 22 0 0 1 44.5 14" class="fluidity-arc arc-a" />
+            <path d="M49.2 20.2A22 22 0 0 1 19.8 50" class="fluidity-arc arc-b" />
+          </svg><span class="initials" id="initials">LS</span>
+        </span>
+      </button>
+      <div class="brand-copy"><div class="brand-title">Aujourd’hui</div></div>
+      <button class="icon-btn" id="companionButton" aria-label="Ouvrir le Compagnon"><svg class="header-companion-mark companion-logo" viewBox="0 0 64 64" aria-hidden="true">
+<path d="M21 8.5C12.5 12.7 7.5 21.3 7.5 31.1c0 10.1 5.1 18.9 13.5 24.4"/>
+<path d="M43 8.5c8.5 4.2 13.5 12.8 13.5 22.6 0 10.1-5.1 18.9-13.5 24.4"/>
+<path d="M24.5 15.5C18.3 19.2 14.8 25 14.8 32c0 7 3.5 12.8 9.7 16.5"/>
+<path d="M39.5 15.5c6.2 3.7 9.7 9.5 9.7 16.5 0 7-3.5 12.8-9.7 16.5"/>
+</svg></button>
+    </header>
+    <main id="main" class="main-content" tabindex="-1"></main>
+    <nav class="bottom-nav" aria-label="Navigation principale"><button class="nav-item active" data-route="home"><span>⌂</span><small>Accueil</small></button><button class="nav-item" data-route="training"><span>◎</span><small>Entraînement</small></button><button class="nav-item nav-plus" data-action="quickAdd" aria-label="Ajouter"><span>＋</span></button><button class="nav-item" data-route="companion"><svg class="nav-companion companion-logo" viewBox="0 0 64 64" aria-hidden="true">
+<path d="M21 8.5C12.5 12.7 7.5 21.3 7.5 31.1c0 10.1 5.1 18.9 13.5 24.4"/>
+<path d="M43 8.5c8.5 4.2 13.5 12.8 13.5 22.6 0 10.1-5.1 18.9-13.5 24.4"/>
+<path d="M24.5 15.5C18.3 19.2 14.8 25 14.8 32c0 7 3.5 12.8 9.7 16.5"/>
+<path d="M39.5 15.5c6.2 3.7 9.7 9.5 9.7 16.5 0 7-3.5 12.8-9.7 16.5"/>
+</svg><small>Compagnon</small></button><button class="nav-item" data-route="profile"><span>◌</span><small>Profil</small></button></nav>
+  </div>
+  <dialog id="sheet" class="sheet"><div class="sheet-handle"></div><div id="sheetContent"></div></dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="db.js?v=v211"></script><script src="body-data.js?v=20261101-refresh-3"></script><script src="app.js?v=20261101-refresh-3"></script>
+  <script src="nutrition-resilience.js?v=nutrition-hotfix-1"></script>
+  <script src="force-visual-step2.js?v=v21-complete-patch"></script>
+  <script src="force-detail-step1.js?v=force-step1-isolated"></script>
+  <script src="force-ux-step4.js?v=v21053"></script>
+  <script src="force-session-guard-step5.js?v=v21053"></script>
+  <script src="coach-force-v1-phase1.js?v=20261026-goal"></script>
+  <script src="coach-force-v1-phase1-hotfix.js?v=coach-p1-1"></script>
+  <script src="force-technique-router-stable.js?v=v21053"></script>
+  <script src="force-complete-library.js?v=2"></script>
+  <script src="force-session-return-v21051.js?v=v21053"></script>
+  <script src="fluidite-v21-context.js?v=v21-p1"></script>
+  <script src="garmin-health-v212.js?v=20261022-cardio-2"></script>
+  <script src="garmin-personal-sync.js?v=20261024-dashboard"></script>
+  <script src="withings-health-v163.js?v=20261101-refresh-3"></script>
+  <script src="recovery-v15.js?v=20261024-dashboard"></script>
+<script src="cardio-advisor-v153.js?v=153"></script><script src="nutrition-recovery-v154.js?v=154"></script><script src="progress-insights-v155.js?v=155"></script><script src="proactive-companion-v156.js?v=156"></script><script src="weekly-insights-v157.js?v=157"></script><script src="home-layout-v16.js?v=20261024-dashboard"></script><script src="photo-privacy-v164.js?v=164"></script><script src="body-trends-v164.js?v=20261101-body"></script><script src="tabs-compact.js?v=20261024-1"></script><script src="coach-goal-engine.js?v=20261101-body"></script><script src="coach-goal.js?v=20261101-body"></script></body>
+</html>
